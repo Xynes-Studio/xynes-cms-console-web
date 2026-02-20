@@ -6,6 +6,7 @@ export default async function WorkspaceHomePage({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
+  const logoutHref = `/logout?redirect=${encodeURIComponent(`/${workspaceSlug}`)}`;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 font-sans text-zinc-950 dark:bg-black dark:text-zinc-50">
@@ -26,6 +27,12 @@ export default async function WorkspaceHomePage({
           >
             Home
           </Link>
+          <Link
+            href={logoutHref}
+            className="shrink-0 rounded-full border border-black/10 px-4 py-2 text-sm font-medium hover:bg-black/[.04] dark:border-white/10 dark:hover:bg-white/[.06]"
+          >
+            Logout
+          </Link>
         </div>
 
         <div className="mt-8 grid gap-3">
@@ -38,4 +45,3 @@ export default async function WorkspaceHomePage({
     </main>
   );
 }
-

@@ -6,7 +6,7 @@
     "dev": "node ../infra/scripts/with-env.mjs next dev",
     "build": "node ../infra/scripts/with-env.mjs next build",
     "start": "node ../infra/scripts/with-env.mjs next start",
-    "lint": "node ../infra/scripts/with-env.mjs eslint",
+    "lint": "node ../infra/scripts/with-env.mjs next lint",
     "test": "node ../infra/scripts/with-env.mjs vitest run",
     "test:watch": "node ../infra/scripts/with-env.mjs vitest",
     "test:coverage": "node ../infra/scripts/with-env.mjs vitest run --coverage"

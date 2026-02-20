@@ -55,4 +55,29 @@ describe("getCmsAuthConfig", () => {
       "Missing required env: NEXT_PUBLIC_SUPABASE_ANON_KEY"
     );
   });
+
+  it("throws when redirect domains env is blank after parsing", () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+    process.env.NEXT_PUBLIC_API_URL = "http://127.0.0.1:4100";
+    process.env.NEXT_PUBLIC_AUTH_APP_URL = "http://localhost:3100";
+    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+    process.env.NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS = "  ,   ";
+
+    expect(() => getCmsAuthConfig()).toThrow(
+      "Missing required env: NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS"
+    );
+  });
+
+  it("throws when sdk validation fails", () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "invalid-url";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+    process.env.NEXT_PUBLIC_API_URL = "http://127.0.0.1:4100";
+    process.env.NEXT_PUBLIC_AUTH_APP_URL = "http://localhost:3100";
+    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+    process.env.NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS =
+      "localhost:3000,localhost:3100";
+
+    expect(() => getCmsAuthConfig()).toThrow("Invalid CMS auth config:");
+  });
 });
