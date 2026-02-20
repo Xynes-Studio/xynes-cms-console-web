@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { buildAuthLoginUrl, getSafeRedirectUrl } from "@xynes/auth-sdk";
-import { getCmsAuthConfig } from "./src/lib/auth/config";
+import {
+  buildAuthRouteUrl,
+  getSafeRedirectUrl,
+} from "./src/lib/auth/redirect.server";
+import { getCmsServerAuthRuntimeConfig } from "./src/lib/auth/server-config";
 
 const PUBLIC_PATHS = new Set<string>(["/", "/logout"]);
 const PUBLIC_PREFIXES = ["/_next", "/favicon.ico", "/api"];
@@ -175,9 +178,10 @@ export function middleware(request: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
-  const { authAppUrl, appUrl, allowedRedirectDomains } = getCmsAuthConfig();
+  const { authAppUrl, appUrl, allowedRedirectDomains } =
+    getCmsServerAuthRuntimeConfig();
   const allowedDomains = allowedRedirectDomains ?? [];
-  const effectiveAppUrl = appUrl || request.nextUrl.origin;
+  const effectiveAppUrl = appUrl;
   const fallbackRedirect = new URL("/", effectiveAppUrl).toString();
   const safeRedirect = getSafeRedirectUrl(
     request.nextUrl.toString(),
@@ -185,12 +189,7 @@ export function middleware(request: NextRequest): NextResponse {
     allowedDomains
   );
 
-  const loginUrl = buildAuthLoginUrl({
-    authAppUrl,
-    redirectUrl: safeRedirect,
-    allowedDomains,
-    fallbackRedirectUrl: fallbackRedirect,
-  });
+  const loginUrl = buildAuthRouteUrl(authAppUrl, "login", safeRedirect);
 
   return NextResponse.redirect(loginUrl);
 }

@@ -1,18 +1,18 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { middleware } from "./middleware";
 
-const { getCmsAuthConfigMock } = vi.hoisted(() => ({
-  getCmsAuthConfigMock: vi.fn(() => ({
-    authAppUrl: "http://localhost:3100",
-    appUrl: "http://localhost:3000",
-    allowedRedirectDomains: ["localhost:3000", "localhost:3100"],
-  })),
-}));
+const originalEnv = { ...process.env };
 
-vi.mock("./src/lib/auth/config", () => ({
-  getCmsAuthConfig: getCmsAuthConfigMock,
-}));
+function setMiddlewareEnv(overrides: Partial<NodeJS.ProcessEnv> = {}) {
+  process.env.NEXT_PUBLIC_AUTH_APP_URL =
+    overrides.NEXT_PUBLIC_AUTH_APP_URL ?? "http://localhost:3100";
+  process.env.NEXT_PUBLIC_APP_URL =
+    overrides.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  process.env.NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS =
+    overrides.NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS ??
+    "localhost:3000,localhost:3100";
+}
 
 function toBase64Url(value: string): string {
   return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -31,7 +31,13 @@ function createJwt({
 }
 
 describe("CMS middleware auth protection", () => {
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    vi.restoreAllMocks();
+  });
+
   it("keeps explicit public routes accessible", () => {
+    setMiddlewareEnv();
     const request = new NextRequest("http://localhost:3000/");
     const response = middleware(request);
 
@@ -39,6 +45,7 @@ describe("CMS middleware auth protection", () => {
   });
 
   it("keeps logout route public for auth-app handoff", () => {
+    setMiddlewareEnv();
     const request = new NextRequest("http://localhost:3000/logout");
     const response = middleware(request);
 
@@ -46,6 +53,7 @@ describe("CMS middleware auth protection", () => {
   });
 
   it("skips auth redirect for Next.js static internals", () => {
+    setMiddlewareEnv();
     const request = new NextRequest(
       "http://localhost:3000/_next/static/chunks/app.js"
     );
@@ -55,6 +63,7 @@ describe("CMS middleware auth protection", () => {
   });
 
   it("skips auth redirect for API routes", () => {
+    setMiddlewareEnv();
     const request = new NextRequest("http://localhost:3000/api/health");
     const response = middleware(request);
 
@@ -62,6 +71,7 @@ describe("CMS middleware auth protection", () => {
   });
 
   it("redirects unauthenticated protected routes to auth-app login", () => {
+    setMiddlewareEnv();
     const request = new NextRequest("http://localhost:3000/acme/content");
     const response = middleware(request);
 
@@ -72,6 +82,7 @@ describe("CMS middleware auth protection", () => {
   });
 
   it("rejects protected routes when auth cookie is forged", () => {
+    setMiddlewareEnv();
     const request = {
       nextUrl: new URL("http://localhost:3000/acme/content"),
       cookies: {
@@ -86,6 +97,7 @@ describe("CMS middleware auth protection", () => {
   });
 
   it("allows protected routes when Supabase auth cookie contains a valid JWT", () => {
+    setMiddlewareEnv();
     const validToken = createJwt({
       exp: Math.floor(Date.now() / 1000) + 300,
     });

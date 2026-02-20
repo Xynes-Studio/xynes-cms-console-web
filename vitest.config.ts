@@ -1,6 +1,11 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  resolve: {
+    // Keep linked packages resolved through node_modules symlinks so peer deps
+    // (react/react-dom) are discovered from this app during tests.
+    preserveSymlinks: true,
+  },
   esbuild: {
     jsx: "automatic",
   },

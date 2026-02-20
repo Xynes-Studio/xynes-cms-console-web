@@ -3,8 +3,8 @@ import { createAuthConfig, validateAuthConfig } from "@xynes/auth-sdk";
 
 const DEFAULT_FALLBACK_PATH = "/";
 
-function readRequiredEnv(name: string): string {
-  const value = process.env[name]?.trim();
+function readRequiredEnv(name: string, rawValue: string | undefined): string {
+  const value = rawValue?.trim();
   if (!value) {
     throw new Error(`Missing required env: ${name}`);
   }
@@ -30,11 +30,23 @@ function parseAllowedDomains(raw: string | undefined): string[] {
 }
 
 export function getCmsAuthConfig(): AuthConfig {
-  const supabaseUrl = readRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const supabaseAnonKey = readRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  const apiBaseUrl = readRequiredEnv("NEXT_PUBLIC_API_URL");
-  const authAppUrl = readRequiredEnv("NEXT_PUBLIC_AUTH_APP_URL");
-  const appUrl = readRequiredEnv("NEXT_PUBLIC_APP_URL");
+  const supabaseUrl = readRequiredEnv(
+    "NEXT_PUBLIC_SUPABASE_URL",
+    process.env.NEXT_PUBLIC_SUPABASE_URL
+  );
+  const supabaseAnonKey = readRequiredEnv(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+  const apiBaseUrl = readRequiredEnv(
+    "NEXT_PUBLIC_API_URL",
+    process.env.NEXT_PUBLIC_API_URL
+  );
+  const authAppUrl = readRequiredEnv(
+    "NEXT_PUBLIC_AUTH_APP_URL",
+    process.env.NEXT_PUBLIC_AUTH_APP_URL
+  );
+  const appUrl = readRequiredEnv("NEXT_PUBLIC_APP_URL", process.env.NEXT_PUBLIC_APP_URL);
 
   const allowedDomains = parseAllowedDomains(
     process.env.NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS

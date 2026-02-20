@@ -1,5 +1,43 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { getCmsAuthConfig } from "./config";
+
+type MockAuthConfigInput = {
+  supabase: { url: string; anonKey: string };
+  api: { baseUrl: string };
+  auth: { appUrl: string };
+  crossApp: unknown;
+};
+
+type MockAuthConfig = {
+  supabase: { url: string; anonKey: string };
+  api: { baseUrl: string };
+  auth: { appUrl: string };
+  crossApp: unknown;
+};
+
+const createAuthConfigMock = (input: MockAuthConfigInput): MockAuthConfig => ({
+  supabase: {
+    url: input.supabase.url,
+    anonKey: input.supabase.anonKey,
+  },
+  api: {
+    baseUrl: input.api.baseUrl,
+  },
+  auth: {
+    appUrl: input.auth.appUrl,
+  },
+  crossApp: input.crossApp,
+});
+
+vi.mock("@xynes/auth-sdk", () => ({
+  createAuthConfig: (input: MockAuthConfigInput) => createAuthConfigMock(input),
+  validateAuthConfig: (config: MockAuthConfig) => ({
+    valid: config.supabase.url.startsWith("http"),
+    errors: config.supabase.url.startsWith("http")
+      ? []
+      : ["supabase.url must be a valid URL"],
+  }),
+}));
 
 describe("getCmsAuthConfig", () => {
   afterEach(() => {

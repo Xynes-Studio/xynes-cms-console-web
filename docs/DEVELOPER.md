@@ -47,7 +47,8 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 - Do not read or expose server-only secrets in client modules.
 - Only allow redirect hosts from explicit allowlist values (`NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS`).
 - Keep fallback redirect deterministic (`/`) to avoid open redirect behavior.
-- Use SDK redirect/config primitives; do not hand-roll auth redirect URLs in app routes/components.
+- In server routes (`app/*/route.ts`), avoid importing SDK barrel exports that include React providers/hooks.
+- Keep server-route redirect helpers local and framework-neutral; keep client-side config/guards on SDK contracts.
 
 ## Auth Routing Standards (S1-006/S1-007)
 

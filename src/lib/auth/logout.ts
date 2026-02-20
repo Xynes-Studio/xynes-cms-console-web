@@ -1,8 +1,8 @@
 import {
-  buildAuthLogoutUrl,
+  buildAuthRouteUrl,
   getSafeRedirectUrl,
   isValidRedirectUrl,
-} from "@xynes/auth-sdk";
+} from "./redirect.server";
 
 type CmsLogoutHandoffInput = {
   authAppUrl: string;
@@ -36,10 +36,5 @@ export function buildCmsLogoutHandoffUrl({
     ? safeAbsoluteRedirect
     : fallbackRedirect;
 
-  return buildAuthLogoutUrl({
-    authAppUrl,
-    redirectUrl: finalRedirect,
-    allowedDomains,
-    fallbackRedirectUrl: fallbackRedirect,
-  });
+  return buildAuthRouteUrl(authAppUrl, "logout", finalRedirect);
 }
