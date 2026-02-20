@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   // This route is used to test security headers
   // The actual headers are set via next.config.ts, not in the route handler
   
