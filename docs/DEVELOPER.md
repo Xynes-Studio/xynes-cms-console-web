@@ -52,10 +52,11 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 ## Auth Routing Standards (S1-006/S1-007)
 
 - CMS follows protect-all by default through `middleware.ts`.
+- Middleware matcher is UI-focused and excludes `/api/*` and Next static/image internals.
 - Public allowlist must stay explicit and minimal:
   - `/` (landing)
   - `/logout` (delegates to auth-app logout even when local cookie is absent)
-  - `/_next/*`, `/favicon.ico`, `/api/security-headers`
+  - `/_next/*`, `/favicon.ico`, `/api/*`
 - Protected route redirects must use auth-sdk URL helpers and preserve safe return URLs.
 - Never pass unvalidated external redirect values directly into auth/logout URLs.
 - Logout authority is `xynes-auth-app`; CMS must not clear Supabase auth cookies directly.
@@ -80,3 +81,9 @@ Verification commands:
 - `pnpm test`
 - `pnpm test:coverage`
 - `pnpm lint`
+
+## Lint Strategy
+
+- Use `next lint` as the canonical lint entrypoint in this repo.
+- Keep shared Next.js lint rules in root `.eslintrc.json`.
+- Ensure lint can run in local and CI without mutating runtime/test settings.
