@@ -51,7 +51,7 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 
 ## Testing Standards (ADR-001)
 
-Reference: `/Users/archanray/xynes-erp/xynes-front-end/lumia-ds/docs/ADR-001-testing-standards.md`
+Reference: `../../lumia-ds/docs/ADR-001-testing-standards.md`
 
 - Follow TDD red-green-refactor for feature work.
 - Keep global coverage at `>=80%`.
@@ -63,4 +63,3 @@ Verification commands:
 - `pnpm test`
 - `pnpm test:coverage`
 - `pnpm lint`
-

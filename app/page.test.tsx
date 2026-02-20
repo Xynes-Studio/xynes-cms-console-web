@@ -1,9 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ImgHTMLAttributes } from "react";
 import { describe, expect, it, vi } from "vitest";
 import Home from "./page";
 
+type MockNextImageProps = ImgHTMLAttributes<HTMLImageElement> & {
+  priority?: boolean;
+};
+
 vi.mock("next/image", () => ({
-  default: (props: Record<string, unknown>) => {
+  default: (props: MockNextImageProps) => {
     const { priority: _priority, ...rest } = props;
     return <img alt="" {...rest} />;
   },
