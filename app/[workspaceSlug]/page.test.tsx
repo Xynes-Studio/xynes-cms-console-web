@@ -11,6 +11,6 @@ describe("Workspace Home Page", () => {
     const html = renderToStaticMarkup(element);
     expect(html).toContain("Workspace: acme");
     expect(html).toContain("/acme/content");
+    expect(html).toContain("/logout?redirect=%2Facme");
   });
 });
-
