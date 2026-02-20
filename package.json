@@ -6,18 +6,27 @@
     "dev": "node ../infra/scripts/with-env.mjs next dev",
     "build": "node ../infra/scripts/with-env.mjs next build",
     "start": "node ../infra/scripts/with-env.mjs next start",
-    "lint": "node ../infra/scripts/with-env.mjs eslint"
+    "lint": "node ../infra/scripts/with-env.mjs eslint",
+    "test": "node ../infra/scripts/with-env.mjs vitest run",
+    "test:watch": "node ../infra/scripts/with-env.mjs vitest",
+    "test:coverage": "node ../infra/scripts/with-env.mjs vitest run --coverage"
   },
   "dependencies": {
+    "@xynes/auth-sdk": "link:../xynes-auth-sdk",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "happy-dom": "^20.0.10",
+    "vitest": "^2.1.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
