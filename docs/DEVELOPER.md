@@ -62,6 +62,29 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 - Never pass unvalidated external redirect values directly into auth/logout URLs.
 - Logout authority is `xynes-auth-app`; CMS must not clear Supabase auth cookies directly.
 
+## Dashboard Route Contract
+
+- Workspace dashboard routes must be namespaced under `/dashboard`.
+- Canonical workspace entry route is `/dashboard/:workspaceSlug`.
+- `/dashboard` is a resolver route:
+  - redirects to `/dashboard/:workspaceSlug` when a valid last-selected workspace is available
+  - renders an accessible 404-style state when workspace resolution fails
+- Legacy flat route `/:workspaceSlug` is retired and must not be reintroduced.
+- Logout redirects from dashboard pages must preserve the namespaced target (for example, `/logout?redirect=/dashboard/acme-team`).
+
+### Dashboard Implementation Standards (Next.js + React)
+
+- Next.js route ownership:
+  - `app/dashboard/[workspaceSlug]/page.tsx`: server route presentation for workspace dashboard entry.
+  - `app/dashboard/page.tsx`: client resolver route only (workspace state + navigation behavior).
+- React responsibility split:
+  - Keep stateful resolver behavior in client route only.
+  - Keep pure URL/validation logic in `src/lib/dashboard/*` utilities (no duplicated inline regex logic across routes).
+- Segregation and low-tech-debt rules:
+  - Route files should orchestrate; reusable logic belongs in `src/lib/*`.
+  - Add Tier 1 tests for pure helpers (`src/lib/**/*.test.ts`) and Tier 2 tests for route behavior (`app/**/*.test.tsx`).
+  - Reuse existing logout/middleware security helpers instead of introducing alternate redirect-validation code paths.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
