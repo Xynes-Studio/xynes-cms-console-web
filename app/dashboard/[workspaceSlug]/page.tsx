@@ -1,15 +1,19 @@
 import Link from "next/link";
+import WorkspaceSelectionSync from "./WorkspaceSelectionSync.client";
+import { toSafeDashboardPath } from "../../../src/lib/dashboard/workspace-route";
 
-export default async function WorkspaceHomePage({
+export default async function WorkspaceDashboardPage({
   params,
 }: {
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const logoutHref = `/logout?redirect=${encodeURIComponent(`/${workspaceSlug}`)}`;
+  const sanitizedDashboardPath = toSafeDashboardPath(workspaceSlug) ?? "/dashboard";
+  const logoutHref = `/logout?redirect=${encodeURIComponent(sanitizedDashboardPath)}`;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 font-sans text-zinc-950 dark:bg-black dark:text-zinc-50">
+      <WorkspaceSelectionSync workspaceSlug={workspaceSlug} />
       <div className="w-full max-w-xl rounded-2xl border border-black/10 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-zinc-950">
         <div className="flex items-start justify-between gap-6">
           <div>
@@ -37,8 +41,8 @@ export default async function WorkspaceHomePage({
 
         <div className="mt-8 grid gap-3">
           <div className="rounded-xl bg-zinc-50 p-4 text-sm text-zinc-700 dark:bg-white/[.04] dark:text-zinc-300">
-            Next steps: add routes like <code className="font-mono">/{workspaceSlug}/content</code>{" "}
-            or <code className="font-mono">/{workspaceSlug}/documents</code>.
+            Next steps: add routes like <code className="font-mono">/dashboard/{workspaceSlug}/content</code>{" "}
+            or <code className="font-mono">/dashboard/{workspaceSlug}/documents</code>.
           </div>
         </div>
       </div>
