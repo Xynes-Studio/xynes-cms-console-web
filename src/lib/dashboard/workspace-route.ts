@@ -1,4 +1,4 @@
-const WORKSPACE_SLUG_PATTERN = /^[a-z][a-z0-9-]{1,62}$/;
+const WORKSPACE_SLUG_PATTERN = /^[a-z](?:[a-z0-9-]{0,61}[a-z0-9])$/;
 
 export function toSafeDashboardPath(
   workspaceSlug: string | null | undefined,

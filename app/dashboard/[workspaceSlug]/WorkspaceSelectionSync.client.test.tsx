@@ -2,7 +2,9 @@ import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspaceSelectionSync from "./WorkspaceSelectionSync.client";
 
-const selectWorkspaceMock = vi.fn();
+const { selectWorkspaceMock } = vi.hoisted(() => ({
+  selectWorkspaceMock: vi.fn(),
+}));
 
 const authState = vi.hoisted(() => ({
   workspaces: [] as Array<{ id: string; slug?: string | null }>,
@@ -23,6 +25,8 @@ vi.mock("@xynes/auth-sdk", () => ({
 describe("WorkspaceSelectionSync", () => {
   beforeEach(() => {
     selectWorkspaceMock.mockReset();
+    authState.workspaces = [];
+    workspaceState.currentWorkspace = null;
   });
 
   it("selects matching workspace by slug when current workspace differs", () => {

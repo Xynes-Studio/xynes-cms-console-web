@@ -15,6 +15,7 @@ describe("toSafeDashboardPath", () => {
     expect(toSafeDashboardPath("")).toBeNull();
     expect(toSafeDashboardPath("../evil")).toBeNull();
     expect(toSafeDashboardPath("bad slug")).toBeNull();
+    expect(toSafeDashboardPath("acme-")).toBeNull();
     expect(toSafeDashboardPath("a")).toBeNull();
   });
 });
