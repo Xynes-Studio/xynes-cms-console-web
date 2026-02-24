@@ -8,7 +8,7 @@ describe("getCmsDashboardNavItems", () => {
         key: "contents",
         label: "Contents",
         icon: "file-text",
-        href: "/dashboard/acme-team",
+        href: "/dashboard/acme-team/content",
       },
       {
         key: "plugins",
@@ -43,7 +43,7 @@ describe("getCmsDashboardNavItems", () => {
         key: "contents",
         label: "Contents",
         icon: "file-text",
-        href: "/dashboard",
+        href: "/dashboard/content",
       },
       {
         key: "plugins",

@@ -46,11 +46,9 @@ function extractAccessTokenFromCookieValue(cookieValue: string): string | null {
   const decoded = decodeCookieValue(cookieValue).trim();
   const maybeBase64Payload = decoded.startsWith("base64-")
     ? (() => {
-        try {
-          return atob(decoded.slice("base64-".length));
-        } catch {
-          return decoded;
-        }
+        const encodedPayload = decoded.slice("base64-".length);
+        const decodedPayload = base64UrlDecode(encodedPayload);
+        return decodedPayload ?? decoded;
       })()
     : decoded;
 
@@ -104,9 +102,13 @@ function isJwtLikeAndNotExpired(token: string): boolean {
 }
 
 function parseCookiesFromHeaders(request: NextRequest): ParsedCookie[] {
-  const parsed: ParsedCookie[] = request.cookies
-    .getAll()
-    .map((cookie) => ({ name: cookie.name, value: cookie.value }));
+  const uniqueCookies = new Map<string, string>();
+
+  request.cookies.getAll().forEach((cookie) => {
+    if (!uniqueCookies.has(cookie.name)) {
+      uniqueCookies.set(cookie.name, cookie.value);
+    }
+  });
   const rawCookieHeader = request.headers.get("cookie") ?? "";
 
   rawCookieHeader
@@ -120,10 +122,15 @@ function parseCookiesFromHeaders(request: NextRequest): ParsedCookie[] {
       }
       const name = entry.slice(0, separatorIndex).trim();
       const value = entry.slice(separatorIndex + 1);
-      parsed.push({ name, value });
+      if (!uniqueCookies.has(name)) {
+        uniqueCookies.set(name, value);
+      }
     });
 
-  return parsed;
+  return Array.from(uniqueCookies.entries()).map(([name, value]) => ({
+    name,
+    value,
+  }));
 }
 
 function getCandidateTokens(cookies: ParsedCookie[]): string[] {

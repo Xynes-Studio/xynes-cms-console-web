@@ -22,7 +22,12 @@ export type CmsDashboardNavItem = {
 };
 
 const CMS_DASHBOARD_NAV_SPECS: CmsDashboardNavSpec[] = [
-  { key: "contents", label: "Contents", icon: "file-text", segment: "" },
+  {
+    key: "contents",
+    label: "Contents",
+    icon: "file-text",
+    segment: "content",
+  },
   { key: "plugins", label: "Plugins", icon: "package", segment: "plugins" },
   {
     key: "access-control",

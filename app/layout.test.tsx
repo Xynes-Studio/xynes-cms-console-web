@@ -8,6 +8,10 @@ vi.mock("next/font/google", () => ({
   Geist_Mono: () => ({ variable: "geist-mono" }),
 }));
 
+vi.mock("@lumia-ui/icons", () => ({
+  IconSprite: () => <span data-testid="icon-sprite" aria-hidden="true" />,
+}));
+
 vi.mock("../src/app/providers", () => ({
   Providers: ({ children }: { children: ReactNode }) => (
     <div data-testid="cms-providers">{children}</div>
@@ -23,6 +27,7 @@ describe("RootLayout", () => {
     );
 
     expect(html).toContain("data-testid=\"cms-providers\"");
+    expect(html).toContain("data-testid=\"icon-sprite\"");
     expect(html).toContain("<main>content</main>");
   });
 });
