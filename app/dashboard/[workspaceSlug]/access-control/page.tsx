@@ -1,9 +1,9 @@
 import {
   CmsDashboardShell,
   DashboardComingSoonPanel,
-} from "../../../src/components/dashboard";
+} from "../../../../src/components/dashboard";
 
-export default async function WorkspaceDashboardPage({
+export default async function WorkspaceAccessControlPage({
   params,
 }: {
   params: Promise<{ workspaceSlug: string }>;
@@ -12,7 +12,7 @@ export default async function WorkspaceDashboardPage({
 
   return (
     <CmsDashboardShell workspaceSlug={workspaceSlug}>
-      <DashboardComingSoonPanel sectionLabel="Contents" />
+      <DashboardComingSoonPanel sectionLabel="Access Control" />
     </CmsDashboardShell>
   );
 }

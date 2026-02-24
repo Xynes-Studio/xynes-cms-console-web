@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import WorkspaceDashboardPage from "./page";
+import WorkspacePluginsPage from "./page";
 
-vi.mock("../../../src/components/dashboard", () => ({
+vi.mock("../../../../src/components/dashboard", () => ({
   CmsDashboardShell: ({
     children,
     workspaceSlug,
@@ -20,18 +20,17 @@ vi.mock("../../../src/components/dashboard", () => ({
   ),
 }));
 
-describe("Workspace Dashboard Page", () => {
-  it("renders contents dashboard shell with coming soon panel", async () => {
-    const element = await WorkspaceDashboardPage({
+describe("Workspace Plugins Page", () => {
+  it("renders plugins coming soon panel", async () => {
+    const element = await WorkspacePluginsPage({
       params: Promise.resolve({ workspaceSlug: "acme" }),
     });
 
     render(element);
-
     expect(screen.getByTestId("cms-dashboard-shell")).toHaveAttribute(
       "data-workspace-slug",
       "acme",
     );
-    expect(screen.getByTestId("coming-soon-panel")).toHaveTextContent("Contents");
+    expect(screen.getByTestId("coming-soon-panel")).toHaveTextContent("Plugins");
   });
 });

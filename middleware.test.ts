@@ -70,6 +70,17 @@ describe("CMS middleware auth protection", () => {
     expect(response.status).toBe(200);
   });
 
+  it("protects dashboard routes behind auth redirect", () => {
+    setMiddlewareEnv();
+    const request = new NextRequest("http://localhost:3000/dashboard");
+    const response = middleware(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fdashboard"
+    );
+  });
+
   it("redirects unauthenticated protected routes to auth-app login", () => {
     setMiddlewareEnv();
     const request = new NextRequest("http://localhost:3000/acme/content");

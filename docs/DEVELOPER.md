@@ -85,6 +85,17 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
   - Add Tier 1 tests for pure helpers (`src/lib/**/*.test.ts`) and Tier 2 tests for route behavior (`app/**/*.test.tsx`).
   - Reuse existing logout/middleware security helpers instead of introducing alternate redirect-validation code paths.
 
+### Dashboard Design Standardization (Auth Parity)
+
+Reference:
+- `../../infra/docs/plans/2026-02-24-fe-dashboard-design-standardization.md`
+
+Rules:
+- Treat auth dashboard visuals/behavior as the parity baseline.
+- Use Lumia DS `DashboardShell` as the source of truth for shell structure.
+- Do not introduce app-local re-implementations of shell internals.
+- If shell internals need adjustment (for example, workspace trigger alignment), fix in `lumia-ds` and consume the updated package in apps.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
@@ -108,6 +119,6 @@ Verification commands:
 
 ## Lint Strategy
 
-- Use `next lint` as the canonical lint entrypoint in this repo.
-- Keep shared Next.js lint rules in root `.eslintrc.json`.
-- Ensure lint can run in local and CI without mutating runtime/test settings.
+- Use ESLint flat config (`eslint.config.mjs`) as required by Next.js 16 / ESLint 9.
+- Canonical command: `pnpm lint` (executes `eslint .` through infra env wrapper).
+- Keep lint setup non-mutating and deterministic for local + CI usage.
