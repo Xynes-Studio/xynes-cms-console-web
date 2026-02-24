@@ -1,6 +1,6 @@
 import type { DashboardShellProps } from "@lumia-ui/layout";
-import { render } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsDashboardShell } from "./CmsDashboardShell";
 
 const mockUseAuth = vi.fn();
@@ -27,6 +27,10 @@ vi.mock("@lumia-ui/layout", () => ({
 }));
 
 describe("CmsDashboardShell", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     mockPush.mockReset();
     mockDashboardShell.mockReset();
@@ -129,5 +133,25 @@ describe("CmsDashboardShell", () => {
     expect(mockDashboardShell).not.toHaveBeenCalled();
     expect(mockRedirectToLogin).toHaveBeenCalledTimes(1);
     expect(getByRole("status")).toHaveTextContent("Redirecting to login...");
+  });
+
+  it("shows loading state while auth is still resolving", () => {
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: true,
+      redirectToLogin: mockRedirectToLogin,
+      user: null,
+      workspaces: [],
+    });
+
+    const { getByRole } = render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    expect(mockDashboardShell).not.toHaveBeenCalled();
+    expect(mockRedirectToLogin).not.toHaveBeenCalled();
+    expect(getByRole("status")).toHaveTextContent("Loading dashboard...");
   });
 });

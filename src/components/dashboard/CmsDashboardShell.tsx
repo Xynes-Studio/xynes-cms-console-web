@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
@@ -13,7 +13,7 @@ import { getCmsDashboardNavItems } from "./navigation";
 import { WorkspaceSelectionSync } from "./WorkspaceSelectionSync";
 
 type CmsDashboardShellProps = {
-  children: ReactNode;
+  children: LumiaDashboardChildren;
   workspaceSlug: string;
 };
 
@@ -48,6 +48,16 @@ export function CmsDashboardShell({
   const fallbackDashboardPath = toSafeDashboardPath(workspaceSlug) ?? "/dashboard";
   const currentDashboardPath =
     activePath && activePath.startsWith("/dashboard/") ? activePath : fallbackDashboardPath;
+
+  if (isAuthLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <p role="status" aria-live="polite" className="text-sm text-zinc-600 dark:text-zinc-300">
+          Loading dashboard...
+        </p>
+      </main>
+    );
+  }
 
   if (!isAuthLoading && !isAuthenticated) {
     return (
@@ -91,7 +101,7 @@ export function CmsDashboardShell({
       sidebarFooterNote="Need access? Contact your workspace owner."
     >
       <WorkspaceSelectionSync workspaceSlug={workspaceSlug} />
-      {children as unknown as LumiaDashboardChildren}
+      {children}
     </DashboardShell>
   );
 }

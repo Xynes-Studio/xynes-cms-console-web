@@ -22,7 +22,8 @@
 - `docs/*`: standards and implementation notes.
 
 Feature ownership for cross-app auth:
-- `middleware.ts`: protect-all route enforcement and public allowlist policy.
+- `middleware.ts`: protect-all route enforcement and public allowlist policy.  
+  **Next.js 16 deprecation note:** middleware is deprecated in favor of `proxy.ts` for new implementations. `proxy.ts` runs on the `nodejs` runtime, while `middleware.ts` remains `edge`. Prefer `proxy.ts` unless edge runtime behavior is explicitly required. Migration reference: `https://nextjs.org/docs/app/guides/upgrading/version-16`.
 - `app/logout/route.ts`: server route that delegates logout to auth-app authority.
 - `src/lib/auth/logout.ts`: Tier 1 pure helper for canonical auth-app logout URL handoff.
 
@@ -52,7 +53,8 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 
 ## Auth Routing Standards (S1-006/S1-007)
 
-- CMS follows protect-all by default through `middleware.ts`.
+- CMS follows protect-all by default through `middleware.ts`.  
+  **Next.js 16 deprecation note:** for any new route interception logic, implement `proxy.ts` by default (node runtime) and keep `middleware.ts` only for edge-specific needs. Migration reference: `https://nextjs.org/docs/app/guides/upgrading/version-16`.
 - Middleware matcher is UI-focused and excludes `/api/*` and Next static/image internals.
 - Public allowlist must stay explicit and minimal:
   - `/` (landing)

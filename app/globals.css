@@ -1,3 +1,4 @@
+/* stylelint-disable at-rule-no-unknown */
 @import "tailwindcss";
 @source "../app/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../src/**/*.{js,ts,jsx,tsx,mdx}";
@@ -85,3 +86,4 @@ body {
 [aria-label="Dashboard navigation"] [data-active="true"] svg {
   color: rgb(55 48 163);
 }
+/* stylelint-enable at-rule-no-unknown */
