@@ -13,7 +13,12 @@ export default function DashboardResolverPage() {
     currentWorkspace,
     selectWorkspace,
   } = useWorkspace();
-  const { isLoading: authLoading, workspaces } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    redirectToLogin,
+    workspaces,
+  } = useAuth();
   const isLoading = workspaceLoading || authLoading;
   const fallbackWorkspace = workspaces.find((workspace) =>
     Boolean(toSafeDashboardPath(workspace?.slug)),
@@ -43,11 +48,29 @@ export default function DashboardResolverPage() {
     selectWorkspace,
   ]);
 
+  useEffect(() => {
+    if (isLoading || isAuthenticated) {
+      return;
+    }
+
+    redirectToLogin(window.location.href);
+  }, [isAuthenticated, isLoading, redirectToLogin]);
+
   if (isLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
         <p role="status" aria-live="polite" className="text-sm text-zinc-600 dark:text-zinc-300">
           Loading dashboard...
+        </p>
+      </main>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <p role="status" aria-live="polite" className="text-sm text-zinc-600 dark:text-zinc-300">
+          Redirecting to login...
         </p>
       </main>
     );

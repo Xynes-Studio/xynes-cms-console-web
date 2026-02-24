@@ -7,7 +7,7 @@ type WorkspaceSelectionSyncProps = {
   workspaceSlug: string;
 };
 
-export default function WorkspaceSelectionSync({
+export function WorkspaceSelectionSync({
   workspaceSlug,
 }: WorkspaceSelectionSyncProps) {
   const { workspaces } = useAuth();

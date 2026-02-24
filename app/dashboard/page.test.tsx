@@ -4,13 +4,16 @@ import DashboardResolverPage from "./page";
 
 const replaceMock = vi.fn();
 const selectWorkspaceMock = vi.fn();
+const redirectToLoginMock = vi.hoisted(() => vi.fn());
 
 const workspaceState = vi.hoisted(() => ({
   isLoading: true,
   currentWorkspace: null as null | { slug?: string | null },
 }));
 const authState = vi.hoisted(() => ({
+  isAuthenticated: true,
   isLoading: true,
+  redirectToLogin: redirectToLoginMock,
   workspaces: [] as Array<{ id: string; slug?: string | null }>,
 }));
 
@@ -32,6 +35,7 @@ describe("Dashboard Resolver Page", () => {
   beforeEach(() => {
     replaceMock.mockReset();
     selectWorkspaceMock.mockReset();
+    redirectToLoginMock.mockReset();
   });
 
   afterEach(() => {
@@ -42,6 +46,7 @@ describe("Dashboard Resolver Page", () => {
     workspaceState.isLoading = true;
     workspaceState.currentWorkspace = null;
     authState.isLoading = true;
+    authState.isAuthenticated = true;
     authState.workspaces = [];
 
     render(<DashboardResolverPage />);
@@ -55,6 +60,7 @@ describe("Dashboard Resolver Page", () => {
     workspaceState.isLoading = false;
     workspaceState.currentWorkspace = { slug: "acme-team" };
     authState.isLoading = false;
+    authState.isAuthenticated = true;
     authState.workspaces = [];
 
     render(<DashboardResolverPage />);
@@ -67,6 +73,7 @@ describe("Dashboard Resolver Page", () => {
     workspaceState.isLoading = false;
     workspaceState.currentWorkspace = null;
     authState.isLoading = false;
+    authState.isAuthenticated = true;
     authState.workspaces = [
       { id: "ws-1", slug: "bad slug" },
       { id: "ws-2", slug: "acme-fallback" },
@@ -82,6 +89,7 @@ describe("Dashboard Resolver Page", () => {
     workspaceState.isLoading = false;
     workspaceState.currentWorkspace = null;
     authState.isLoading = false;
+    authState.isAuthenticated = true;
     authState.workspaces = [];
 
     render(<DashboardResolverPage />);
@@ -96,11 +104,26 @@ describe("Dashboard Resolver Page", () => {
     workspaceState.isLoading = false;
     workspaceState.currentWorkspace = { slug: "../evil" };
     authState.isLoading = false;
+    authState.isAuthenticated = true;
     authState.workspaces = [];
 
     render(<DashboardResolverPage />);
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("redirects unauthenticated users to auth-app login", () => {
+    workspaceState.isLoading = false;
+    workspaceState.currentWorkspace = null;
+    authState.isLoading = false;
+    authState.isAuthenticated = false;
+    authState.workspaces = [];
+
+    render(<DashboardResolverPage />);
+
+    expect(redirectToLoginMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Redirecting to login...")).toBeInTheDocument();
     expect(replaceMock).not.toHaveBeenCalled();
   });
 });

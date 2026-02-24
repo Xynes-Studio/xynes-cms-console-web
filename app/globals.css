@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@source "../app/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../src/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../node_modules/@lumia-ui/components/dist/**/*.{js,mjs,cjs}";
+@source "../node_modules/@lumia-ui/layout/dist/**/*.{js,mjs,cjs}";
+@source "../node_modules/@lumia-ui/icons/dist/**/*.{js,mjs,cjs}";
 
 :root {
   --background: #ffffff;
@@ -6,8 +11,27 @@
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--colors-background, var(--background));
+  --color-foreground: var(--colors-foreground, var(--foreground));
+  --color-border: var(--colors-border, #e2e8f0);
+  --color-muted: var(--colors-muted, var(--background));
+  --color-muted-foreground: var(--colors-mutedForeground, var(--foreground));
+  --color-card: var(--colors-background, var(--background));
+  --color-secondary: var(--colors-secondary, #f1f5f9);
+  --color-ring: var(--colors-ring, #6366f1);
+  --color-destructive: var(--colors-destructive, #dc2626);
+  --color-destructive-foreground: var(--colors-destructiveForeground, #ffffff);
+  --color-primary: #0f172a;
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -20,7 +44,44 @@
 }
 
 body {
+  min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-testid="dashboard-workspace-trigger"]:not(.flex-col) {
+  display: flex;
+  width: 100% !important;
+  align-items: center;
+  justify-content: space-between !important;
+}
+
+[data-testid="dashboard-workspace-trigger"]:not(.flex-col) > span.contents {
+  display: contents;
+}
+
+[data-testid="dashboard-workspace-trigger"]:not(.flex-col)
+  > span.contents
+  > span:first-child {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+}
+
+[data-testid="dashboard-workspace-trigger"]:not(.flex-col)
+  > span.contents
+  > svg {
+  margin-left: auto;
+}
+
+[aria-label="Dashboard navigation"] [data-active="true"] {
+  background-color: rgb(15 23 42 / 10%);
+  color: rgb(55 48 163);
+}
+
+[aria-label="Dashboard navigation"] [data-active="true"] svg {
+  color: rgb(55 48 163);
 }

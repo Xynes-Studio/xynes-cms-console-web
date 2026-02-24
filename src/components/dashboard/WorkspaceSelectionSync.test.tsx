@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import WorkspaceSelectionSync from "./WorkspaceSelectionSync.client";
+import { WorkspaceSelectionSync } from "./WorkspaceSelectionSync";
 
 const { selectWorkspaceMock } = vi.hoisted(() => ({
   selectWorkspaceMock: vi.fn(),

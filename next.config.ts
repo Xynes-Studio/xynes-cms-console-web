@@ -4,7 +4,12 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
-  transpilePackages: ["@xynes/auth-sdk"],
+  transpilePackages: [
+    "@xynes/auth-sdk",
+    "@lumia-ui/components",
+    "@lumia-ui/layout",
+    "@lumia-ui/icons",
+  ],
   async headers() {
     return [
       {
@@ -24,7 +29,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=(), payment=(), usb=(), vr=()',
+            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=(), payment=(), usb=()',
           },
           {
             key: 'Strict-Transport-Security',
