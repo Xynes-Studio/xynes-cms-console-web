@@ -108,6 +108,39 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
   - Parent/child row clicks keep URL as source of truth for selected node.
   - Deep links to nested content paths must hydrate with matching expanded path in sidebar.
 
+### CMS Content Directory API Contract
+
+- API route:
+  - `GET /workspaces/:workspaceId/content-types`
+  - gateway action key: `cms.content_types.listForWorkspace`
+- Frontend integration ownership:
+  - `src/lib/dashboard/content-types-client.ts`: API request + envelope unwrapping + strict runtime shape validation
+  - `src/components/dashboard/CmsDashboardShell.tsx`: effect orchestration + workspace-scoped synchronization into `DashboardShell.directorySection`
+- Security and fail-closed rules:
+  - Require bearer token from `useAuth().getAccessToken()` for content type requests.
+  - Never trust API payload shape implicitly; validate before rendering.
+  - If content-types fetch fails or is malformed, keep shell stable and avoid crashing the dashboard.
+- No-redundancy routing rule:
+  - Treat `routeSegment` from API as the source of truth for directory path generation.
+  - Do not derive path segments from labels when `routeSegment` is available.
+- Workspace isolation rule:
+  - Reset API-backed root directory nodes on workspace changes to prevent cross-workspace sidebar leakage.
+  - Preserve manual same-workspace nodes by merging non-conflicting roots only.
+
+### Dashboard API Integration Standards (Next.js + React)
+
+- Next.js:
+  - Keep page/layout files as orchestration only; no direct fetch/shape-validation logic in route files.
+  - Keep dashboard data synchronization logic in client shell/component layer.
+- React:
+  - Use effect-driven synchronization for API-backed sidebar data.
+  - Scope sync effects to stable identifiers (`workspaceId`, auth state) to avoid redundant network calls.
+  - Use cleanup (`AbortController`) for in-flight fetches during route/workspace transitions.
+- Folder segregation:
+  - Pure data/client helpers in `src/lib/dashboard/*`.
+  - UI composition/state ownership in `src/components/dashboard/*`.
+  - Route segments remain thin under `app/dashboard/*`.
+
 ### Dashboard Design Standardization (Auth Parity)
 
 Reference:

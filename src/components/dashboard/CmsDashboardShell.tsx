@@ -2,7 +2,7 @@
 
 import type { ComponentProps } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DashboardShell,
   type DashboardNavItem as LumiaDashboardNavItem,
@@ -14,8 +14,13 @@ import {
   getContentDirectoryPathIds,
   getContentDirectoryPathSegment,
   maxContentDirectoryNameLength,
+  mergeContentDirectoryRoots,
   type ContentDirectoryNode,
 } from "../../lib/dashboard/content-directory-tree";
+import {
+  listWorkspaceContentTypes,
+  mapContentTypesToDirectoryNodes,
+} from "../../lib/dashboard/content-types-client";
 import {
   buildDashboardSectionPath,
   defaultDashboardSection,
@@ -78,10 +83,24 @@ export function CmsDashboardShell({
 }: CmsDashboardShellProps) {
   const router = useRouter();
   const activePath = usePathname();
-  const { user, workspaces, isAuthenticated, isLoading: isAuthLoading, redirectToLogin } =
-    useAuth();
+  const {
+    user,
+    workspaces,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    redirectToLogin,
+    getAccessToken,
+  } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const normalizedWorkspaceSlug = workspaceSlug.trim().toLowerCase();
+  const workspaceBySlug = useMemo(
+    () =>
+      workspaces.find(
+        (workspace) => workspace.slug.trim().toLowerCase() === normalizedWorkspaceSlug,
+      ) ?? null,
+    [normalizedWorkspaceSlug, workspaces],
+  );
+  const contentDirectoryWorkspaceId = workspaceBySlug?.id ?? null;
   const fallbackContentPath =
     buildDashboardSectionPath({
       workspaceSlug,
@@ -108,6 +127,7 @@ export function CmsDashboardShell({
   const [contentDirectories, setContentDirectories] = useState<ContentDirectoryNode[]>(
     initialDirectoryTree,
   );
+  const lastSyncedWorkspaceIdRef = useRef<string | null>(null);
   const [expandedDirectoryIds, setExpandedDirectoryIds] = useState<string[]>(
     getContentDirectoryPathIds({
       nodes: initialDirectoryTree,
@@ -122,6 +142,68 @@ export function CmsDashboardShell({
 
     redirectToLogin(window.location.href);
   }, [isAuthLoading, isAuthenticated, redirectToLogin]);
+
+  useEffect(() => {
+    if (isAuthLoading || !isAuthenticated || !contentDirectoryWorkspaceId) {
+      return;
+    }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+    if (!apiBaseUrl) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    void (async () => {
+      try {
+        const accessToken = await getAccessToken();
+        if (!accessToken || abortController.signal.aborted) {
+          return;
+        }
+
+        const contentTypes = await listWorkspaceContentTypes({
+          apiBaseUrl,
+          workspaceId: contentDirectoryWorkspaceId,
+          accessToken,
+          signal: abortController.signal,
+        });
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        const apiDirectoryNodes = mapContentTypesToDirectoryNodes(contentTypes);
+        setContentDirectories((previous) => {
+          const previousWorkspaceId = lastSyncedWorkspaceIdRef.current;
+          const isWorkspaceChanged =
+            previousWorkspaceId !== null &&
+            previousWorkspaceId !== contentDirectoryWorkspaceId;
+          lastSyncedWorkspaceIdRef.current = contentDirectoryWorkspaceId;
+
+          if (isWorkspaceChanged) {
+            return apiDirectoryNodes;
+          }
+
+          return mergeContentDirectoryRoots({
+            primaryNodes: apiDirectoryNodes,
+            secondaryNodes: previous,
+          });
+        });
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          console.error("Failed to load workspace content directory tree", error);
+        }
+      }
+    })();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [
+    contentDirectoryWorkspaceId,
+    getAccessToken,
+    isAuthLoading,
+    isAuthenticated,
+  ]);
 
   const navItems: LumiaDashboardNavItem[] = getCmsDashboardNavItems(workspaceSlug).map(
     (item) => ({
