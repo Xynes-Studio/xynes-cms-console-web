@@ -1,12 +1,12 @@
 import type { ContentDirectoryNode } from "./content-directory-tree";
+import {
+  isNonEmptyString,
+  isRecord,
+  normalizeGatewayClientInputs,
+  unwrapGatewayEnvelope,
+} from "./gateway-client-utils";
 
 type FetchLike = typeof fetch;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === "string" && value.trim().length > 0;
 
 export interface WorkspaceContentType {
   id: string;
@@ -30,14 +30,6 @@ const isWorkspaceContentType = (value: unknown): value is WorkspaceContentType =
   );
 };
 
-const unwrapGatewayEnvelope = (value: unknown): unknown => {
-  let current: unknown = value;
-  while (isRecord(current) && "data" in current && current.data !== undefined) {
-    current = current.data;
-  }
-  return current;
-};
-
 export async function listWorkspaceContentTypes({
   apiBaseUrl,
   workspaceId,
@@ -51,26 +43,19 @@ export async function listWorkspaceContentTypes({
   fetchImpl?: FetchLike;
   signal?: AbortSignal;
 }): Promise<WorkspaceContentType[]> {
-  const normalizedApiBaseUrl = apiBaseUrl.trim().replace(/\/+$/g, "");
-  const normalizedWorkspaceId = workspaceId.trim();
-  const normalizedAccessToken = accessToken.trim();
+  const normalized = normalizeGatewayClientInputs({
+    apiBaseUrl,
+    workspaceId,
+    accessToken,
+    errorContext: "content type lookup",
+  });
 
-  if (!normalizedApiBaseUrl) {
-    throw new Error("Missing apiBaseUrl for content type lookup");
-  }
-  if (!normalizedWorkspaceId) {
-    throw new Error("Missing workspaceId for content type lookup");
-  }
-  if (!normalizedAccessToken) {
-    throw new Error("Missing access token for content type lookup");
-  }
-
-  const endpoint = `${normalizedApiBaseUrl}/workspaces/${encodeURIComponent(normalizedWorkspaceId)}/content-types`;
+  const endpoint = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}/content-types`;
   const response = await fetchImpl(endpoint, {
     method: "GET",
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${normalizedAccessToken}`,
+      Authorization: `Bearer ${normalized.accessToken}`,
     },
     signal,
   });

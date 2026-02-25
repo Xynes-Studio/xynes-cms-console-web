@@ -7,6 +7,13 @@ export type ContentDirectoryNode = {
   children?: ContentDirectoryNode[];
 };
 
+export type PersistedContentDirectory = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  pathSegment: string;
+};
+
 export const maxContentDirectoryNameLength = 80;
 
 export const normalizeContentDirectoryName = (value: string) => value.trim();
@@ -135,12 +142,14 @@ export const addContentDirectory = ({
   rawName,
   maxNameLength = maxContentDirectoryNameLength,
   createId = defaultIdFactory,
+  pathSegment,
 }: {
   nodes: ContentDirectoryNode[];
   parentId: string | null;
   rawName: string;
   maxNameLength?: number;
   createId?: () => string;
+  pathSegment?: string;
 }) => {
   const normalizedName = normalizeContentDirectoryName(rawName);
 
@@ -161,6 +170,7 @@ export const addContentDirectory = ({
   const newNode: ContentDirectoryNode = {
     id: createId(),
     label: normalizedName,
+    ...(pathSegment ? { pathSegment } : {}),
     children: [],
   };
 
@@ -170,6 +180,43 @@ export const addContentDirectory = ({
 
   const result = insertNodeRecursively(nodes, parentId, newNode);
   return result.inserted ? result.nodes : nodes;
+};
+
+export const materializePersistedContentDirectories = ({
+  baseNodes,
+  directories,
+}: {
+  baseNodes: ContentDirectoryNode[];
+  directories: PersistedContentDirectory[];
+}) => {
+  let nodes = baseNodes;
+
+  for (const directory of directories) {
+    const withParent = addContentDirectory({
+      nodes,
+      parentId: directory.parentId,
+      rawName: directory.name,
+      createId: () => directory.id,
+      pathSegment: directory.pathSegment,
+    });
+
+    if (withParent !== nodes) {
+      nodes = withParent;
+      continue;
+    }
+
+    if (directory.parentId !== null) {
+      nodes = addContentDirectory({
+        nodes,
+        parentId: null,
+        rawName: directory.name,
+        createId: () => directory.id,
+        pathSegment: directory.pathSegment,
+      });
+    }
+  }
+
+  return nodes;
 };
 
 export const getContentDirectoryPathNodes = ({

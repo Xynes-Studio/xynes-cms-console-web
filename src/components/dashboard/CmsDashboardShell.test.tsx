@@ -43,9 +43,34 @@ describe("CmsDashboardShell", () => {
     mockRedirectToLogin.mockReset();
     mockGetAccessToken.mockReset();
     mockGetAccessToken.mockResolvedValue("test-access-token");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
-    ));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input, init) => {
+        const url = String(input);
+        if (url.endsWith("/content-directories") && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                ok: true,
+                data: {
+                  id: "dir-test",
+                  parentId: null,
+                  name: "Docs",
+                  pathSegment: "docs",
+                },
+              }),
+              { status: 201 },
+            ),
+          );
+        }
+
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), {
+            status: 200,
+          }),
+        );
+      }),
+    );
 
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
@@ -226,23 +251,31 @@ describe("CmsDashboardShell", () => {
   it("loads content directory tree from gateway content-types API", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            data: [
-              {
-                id: "ct-1",
-                name: "Blog",
-                slug: "blog-post",
-                routeSegment: "blog",
-                templateKey: "blog_post",
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
-      ),
+      vi.fn((input) => {
+        const url = String(input);
+        if (url.endsWith("/content-types")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                ok: true,
+                data: [
+                  {
+                    id: "ct-1",
+                    name: "Blog",
+                    slug: "blog-post",
+                    routeSegment: "blog",
+                    templateKey: "blog_post",
+                  },
+                ],
+              }),
+              { status: 200 },
+            ),
+          );
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
+      }),
     );
 
     render(
@@ -278,6 +311,167 @@ describe("CmsDashboardShell", () => {
     );
   });
 
+  it("loads persisted custom content directories from gateway API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input) => {
+        const url = String(input);
+        if (url.endsWith("/content-types")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: true, data: [] }), {
+              status: 200,
+            }),
+          );
+        }
+        if (url.endsWith("/content-directories")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                ok: true,
+                data: [
+                  {
+                    id: "dir-1",
+                    parentId: null,
+                    name: "Docs",
+                    pathSegment: "docs",
+                  },
+                ],
+              }),
+              { status: 200 },
+            ),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+      }),
+    );
+
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/ws-1/content-directories",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-access-token",
+        }),
+      }),
+    );
+
+    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    expect(props.directorySection?.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "dir-1",
+          label: "Docs",
+          href: "/dashboard/acme/content/docs",
+        }),
+      ]),
+    );
+  });
+
+  it("persists directory creation via gateway content-directories API", async () => {
+    let hasCreated = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input, init) => {
+        const url = String(input);
+        if (url.endsWith("/content-types")) {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        }
+        if (url.endsWith("/content-directories") && init?.method === "GET") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                ok: true,
+                data: hasCreated
+                  ? [
+                      {
+                        id: "dir-1",
+                        parentId: null,
+                        name: "Docs",
+                        pathSegment: "docs",
+                      },
+                    ]
+                  : [],
+              }),
+              { status: 200 },
+            ),
+          );
+        }
+        if (url.endsWith("/content-directories") && init?.method === "POST") {
+          hasCreated = true;
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                ok: true,
+                data: {
+                  id: "dir-1",
+                  parentId: null,
+                  name: "Docs",
+                  pathSegment: "docs",
+                },
+              }),
+              { status: 201 },
+            ),
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+      }),
+    );
+
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    act(() => {
+      props.directorySection?.onCreateDirectory({
+        parentId: null,
+        name: "Docs",
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/ws-1/content-directories",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-access-token",
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          parentId: null,
+          name: "Docs",
+        }),
+      }),
+    );
+
+    props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    expect(props.directorySection?.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Docs",
+        }),
+      ]),
+    );
+  });
+
   it("resets API-backed root nodes when workspace changes to avoid cross-workspace leakage", async () => {
     pathnameState.value = "/dashboard/acme/content";
 
@@ -306,41 +500,58 @@ describe("CmsDashboardShell", () => {
       ],
     });
 
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            data: [
-              {
-                id: "ct-1",
-                name: "Blog",
-                slug: "blog-post",
-                routeSegment: "blog",
-                templateKey: "blog_post",
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            data: [
-              {
-                id: "ct-2",
-                name: "Events",
-                slug: "event",
-                routeSegment: "events",
-                templateKey: "event",
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
+    const fetchMock = vi.fn((input) => {
+      const url = String(input);
+      if (url.includes("/workspaces/ws-1/content-types")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: [
+                {
+                  id: "ct-1",
+                  name: "Blog",
+                  slug: "blog-post",
+                  routeSegment: "blog",
+                  templateKey: "blog_post",
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.includes("/workspaces/ws-2/content-types")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: [
+                {
+                  id: "ct-2",
+                  name: "Events",
+                  slug: "event",
+                  routeSegment: "events",
+                  templateKey: "event",
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.endsWith("/content-directories")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
+      }
+
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
       );
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const { rerender } = render(
@@ -399,28 +610,15 @@ describe("CmsDashboardShell", () => {
     });
 
     const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
-    const rootNode = props.directorySection?.nodes[0];
-    const childNode = rootNode?.children?.[0];
 
     expect((props.directorySection as { activeHref?: string } | undefined)?.activeHref).toBe(
       "/dashboard/acme/content/tests/guides",
     );
-    expect(rootNode).toEqual(
-      expect.objectContaining({
-        label: "tests",
-        href: "/dashboard/acme/content/tests",
-      }),
-    );
-    expect(childNode).toEqual(
-      expect.objectContaining({
-        label: "guides",
-        href: "/dashboard/acme/content/tests/guides",
-      }),
-    );
-    expect(props.directorySection?.expandedIds.length).toBeGreaterThanOrEqual(2);
+    expect(props.directorySection?.nodes).toEqual([]);
+    expect(props.directorySection?.expandedIds).toEqual([]);
   });
 
-  it("merges route-derived expansion ids on navigation without dropping manual expansions", async () => {
+  it("preserves manual expansions on navigation when route path has no persisted nodes", async () => {
     const { rerender } = render(
       <CmsDashboardShell workspaceSlug="acme">
         <div>CMS content</div>
@@ -456,13 +654,7 @@ describe("CmsDashboardShell", () => {
     });
 
     props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
-    expect(props.directorySection?.expandedIds).toEqual(
-      expect.arrayContaining([
-        blogsId as string,
-        "content-path-tests",
-        "content-path-tests--guides",
-      ]),
-    );
+    expect(props.directorySection?.expandedIds).toEqual([blogsId as string]);
   });
 
   it("falls back workspace switching to canonical content route when active path is non-dashboard", () => {

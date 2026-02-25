@@ -113,13 +113,21 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 - API route:
   - `GET /workspaces/:workspaceId/content-types`
   - gateway action key: `cms.content_types.listForWorkspace`
+  - `GET /workspaces/:workspaceId/content-directories`
+  - gateway action key: `cms.content_directories.listForWorkspace`
+  - `POST /workspaces/:workspaceId/content-directories`
+  - gateway action key: `cms.content_directories.create`
 - Frontend integration ownership:
   - `src/lib/dashboard/content-types-client.ts`: API request + envelope unwrapping + strict runtime shape validation
+  - `src/lib/dashboard/content-directories-client.ts`: persisted directory list/create API client + strict runtime shape validation
   - `src/components/dashboard/CmsDashboardShell.tsx`: effect orchestration + workspace-scoped synchronization into `DashboardShell.directorySection`
 - Security and fail-closed rules:
   - Require bearer token from `useAuth().getAccessToken()` for content type requests.
+  - Require bearer token from `useAuth().getAccessToken()` for content directory list/create requests.
   - Never trust API payload shape implicitly; validate before rendering.
   - If content-types fetch fails or is malformed, keep shell stable and avoid crashing the dashboard.
+  - If content-directories fetch/create fails or is malformed, keep shell stable and avoid crashing the dashboard.
+  - Persistent directory tree source of truth is backend API (`GET /content-directories`); do not treat URL-only path segments as persisted nodes.
 - No-redundancy routing rule:
   - Treat `routeSegment` from API as the source of truth for directory path generation.
   - Do not derive path segments from labels when `routeSegment` is available.
@@ -139,7 +147,25 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 - Folder segregation:
   - Pure data/client helpers in `src/lib/dashboard/*`.
   - UI composition/state ownership in `src/components/dashboard/*`.
-  - Route segments remain thin under `app/dashboard/*`.
+- Route segments remain thin under `app/dashboard/*`.
+
+### Content Directory Persistence Standards (Next.js + React)
+
+- Next.js route ownership:
+  - Keep route files in `app/*` orchestration-only; do not call content-directories API directly from route files.
+  - Keep directory API client logic in `src/lib/dashboard/*` and shell state orchestration in `src/components/dashboard/*`.
+- React client orchestration:
+  - `CmsDashboardShell` is the single owner of directory tree fetch/sync and optimistic create behavior.
+  - Persisted directory reads and writes must stay effect/callback-driven with auth token acquisition via `useAuth().getAccessToken()`.
+  - URL path remains source of truth for active/expanded route-derived nodes.
+- Redundancy and tech-debt controls:
+  - Reuse shared gateway client helpers from `src/lib/dashboard/gateway-client-utils.ts`.
+  - Avoid duplicating envelope unwrapping, primitive guards, and common API input normalization across client modules.
+  - Keep new directory tree transforms in pure helpers (`content-directory-tree.ts`) with Tier 1 tests.
+- Security and resilience:
+  - Treat all API payloads as untrusted; validate runtime shape before rendering.
+  - Fail closed on malformed responses and keep shell stable.
+  - Never persist route-derived ephemeral `content-path-*` parent IDs.
 
 ### Dashboard Design Standardization (Auth Parity)
 

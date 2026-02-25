@@ -2,7 +2,7 @@
 
 import type { ComponentProps } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DashboardShell,
   type DashboardNavItem as LumiaDashboardNavItem,
@@ -10,13 +10,16 @@ import {
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import {
   addContentDirectory,
-  ensureContentDirectoryPath,
   getContentDirectoryPathIds,
   getContentDirectoryPathSegment,
   maxContentDirectoryNameLength,
-  mergeContentDirectoryRoots,
+  materializePersistedContentDirectories,
   type ContentDirectoryNode,
 } from "../../lib/dashboard/content-directory-tree";
+import {
+  createWorkspaceContentDirectory,
+  listWorkspaceContentDirectories,
+} from "../../lib/dashboard/content-directories-client";
 import {
   listWorkspaceContentTypes,
   mapContentTypesToDirectoryNodes,
@@ -119,15 +122,10 @@ export function CmsDashboardShell({
     () => (contentTailKey ? contentTailKey.split("/") : []),
     [contentTailKey],
   );
-  const initialDirectoryTree = ensureContentDirectoryPath({
-    nodes: [],
-    pathSegments: activeContentTailSegments,
-    createId: createRouteDirectoryId,
-  });
-  const [contentDirectories, setContentDirectories] = useState<ContentDirectoryNode[]>(
-    initialDirectoryTree,
-  );
-  const lastSyncedWorkspaceIdRef = useRef<string | null>(null);
+  const initialDirectoryTree: ContentDirectoryNode[] = [];
+  const [contentDirectories, setContentDirectories] =
+    useState<ContentDirectoryNode[]>(initialDirectoryTree);
+  const [directoryDataRevision, setDirectoryDataRevision] = useState(0);
   const [expandedDirectoryIds, setExpandedDirectoryIds] = useState<string[]>(
     getContentDirectoryPathIds({
       nodes: initialDirectoryTree,
@@ -161,33 +159,29 @@ export function CmsDashboardShell({
           return;
         }
 
-        const contentTypes = await listWorkspaceContentTypes({
-          apiBaseUrl,
-          workspaceId: contentDirectoryWorkspaceId,
-          accessToken,
-          signal: abortController.signal,
-        });
+        const [contentTypes, persistedDirectories] = await Promise.all([
+          listWorkspaceContentTypes({
+            apiBaseUrl,
+            workspaceId: contentDirectoryWorkspaceId,
+            accessToken,
+            signal: abortController.signal,
+          }),
+          listWorkspaceContentDirectories({
+            apiBaseUrl,
+            workspaceId: contentDirectoryWorkspaceId,
+            accessToken,
+            signal: abortController.signal,
+          }),
+        ]);
         if (abortController.signal.aborted) {
           return;
         }
 
-        const apiDirectoryNodes = mapContentTypesToDirectoryNodes(contentTypes);
-        setContentDirectories((previous) => {
-          const previousWorkspaceId = lastSyncedWorkspaceIdRef.current;
-          const isWorkspaceChanged =
-            previousWorkspaceId !== null &&
-            previousWorkspaceId !== contentDirectoryWorkspaceId;
-          lastSyncedWorkspaceIdRef.current = contentDirectoryWorkspaceId;
-
-          if (isWorkspaceChanged) {
-            return apiDirectoryNodes;
-          }
-
-          return mergeContentDirectoryRoots({
-            primaryNodes: apiDirectoryNodes,
-            secondaryNodes: previous,
-          });
+        const apiDirectoryNodes = materializePersistedContentDirectories({
+          baseNodes: mapContentTypesToDirectoryNodes(contentTypes),
+          directories: persistedDirectories,
         });
+        setContentDirectories(apiDirectoryNodes);
       } catch (error) {
         if (!abortController.signal.aborted) {
           console.error("Failed to load workspace content directory tree", error);
@@ -200,6 +194,7 @@ export function CmsDashboardShell({
     };
   }, [
     contentDirectoryWorkspaceId,
+    directoryDataRevision,
     getAccessToken,
     isAuthLoading,
     isAuthenticated,
@@ -216,15 +211,7 @@ export function CmsDashboardShell({
   const contentsHref =
     navItems.find((item) => item.id === "contents")?.href ?? fallbackContentPath;
   const currentDashboardPath = safeActivePath;
-  const materializedContentDirectories = useMemo(
-    () =>
-      ensureContentDirectoryPath({
-        nodes: contentDirectories,
-        pathSegments: activeContentTailSegments,
-        createId: createRouteDirectoryId,
-      }),
-    [activeContentTailSegments, contentDirectories],
-  );
+  const materializedContentDirectories = contentDirectories;
   const routeExpandedDirectoryIds = useMemo(
     () =>
       getContentDirectoryPathIds({
@@ -266,17 +253,54 @@ export function CmsDashboardShell({
       : undefined;
 
   const handleCreateDirectory = (input: { parentId: string | null; name: string }) => {
+    const optimisticDirectoryId = `content-pending-${createRouteDirectoryId([
+      ...(input.parentId ? [input.parentId] : []),
+      input.name.trim().toLowerCase(),
+      Date.now().toString(),
+    ])}`;
+
     setContentDirectories((previous) =>
       addContentDirectory({
-        nodes: ensureContentDirectoryPath({
-          nodes: previous,
-          pathSegments: activeContentTailSegments,
-          createId: createRouteDirectoryId,
-        }),
+        nodes: previous,
         parentId: input.parentId,
         rawName: input.name,
+        createId: () => optimisticDirectoryId,
       }),
     );
+
+    if (isAuthLoading || !isAuthenticated || !contentDirectoryWorkspaceId) {
+      return;
+    }
+
+    if (input.parentId?.startsWith("content-path-")) {
+      return;
+    }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+    if (!apiBaseUrl) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const accessToken = await getAccessToken();
+        if (!accessToken) {
+          return;
+        }
+
+        await createWorkspaceContentDirectory({
+          apiBaseUrl,
+          workspaceId: contentDirectoryWorkspaceId,
+          accessToken,
+          parentId: input.parentId,
+          name: input.name,
+        });
+        setDirectoryDataRevision((previous) => previous + 1);
+      } catch (error) {
+        console.error("Failed to persist workspace content directory", error);
+        setDirectoryDataRevision((previous) => previous + 1);
+      }
+    })();
   };
 
   const handleWorkspaceSelect = (workspaceId: string) => {
