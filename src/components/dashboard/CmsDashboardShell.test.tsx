@@ -245,6 +245,51 @@ describe("CmsDashboardShell", () => {
     expect(props.directorySection?.expandedIds.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("merges route-derived expansion ids on navigation without dropping manual expansions", async () => {
+    const { rerender } = render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+
+    act(() => {
+      props.directorySection?.onCreateDirectory({
+        parentId: null,
+        name: "Blogs",
+      });
+    });
+
+    props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const blogsId = props.directorySection?.nodes[0]?.id;
+    expect(blogsId).toBeTruthy();
+
+    act(() => {
+      props.directorySection?.onExpandedIdsChange([blogsId as string]);
+    });
+
+    pathnameState.value = "/dashboard/acme/content/tests/guides";
+    rerender(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    expect(props.directorySection?.expandedIds).toEqual(
+      expect.arrayContaining([
+        blogsId as string,
+        "content-path-tests",
+        "content-path-tests--guides",
+      ]),
+    );
+  });
+
   it("falls back workspace switching to canonical content route when active path is non-dashboard", () => {
     pathnameState.value = "/settings";
 

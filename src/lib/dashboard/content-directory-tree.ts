@@ -8,9 +8,6 @@ export type ContentDirectoryNode = {
 
 export const maxContentDirectoryNameLength = 80;
 
-const normalizeForCompare = (value: string) =>
-  value.trim().toLocaleLowerCase();
-
 export const normalizeContentDirectoryName = (value: string) => value.trim();
 
 export const getContentDirectoryPathSegment = (node: ContentDirectoryNode) =>
@@ -57,14 +54,14 @@ export const isUniqueContentDirectoryName = ({
   parentId: string | null;
   name: string;
 }) => {
-  const normalizedTarget = normalizeForCompare(name);
+  const normalizedTarget = normalizeContentPathSegment(name);
   if (!normalizedTarget) {
     return false;
   }
 
   const siblings = getSiblingNodes(nodes, parentId);
   return !siblings.some(
-    (node) => normalizeForCompare(node.label) === normalizedTarget,
+    (node) => normalizeContentPathSegment(node.label) === normalizedTarget,
   );
 };
 

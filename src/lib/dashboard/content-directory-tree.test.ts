@@ -53,6 +53,20 @@ describe("content-directory-tree", () => {
     ).toBe(true);
   });
 
+  it("treats URL-segment-equivalent sibling names as duplicates", () => {
+    const nodes: ContentDirectoryNode[] = [
+      { id: "foo-hyphen", label: "Foo-Bar" },
+    ];
+
+    expect(
+      isUniqueContentDirectoryName({
+        nodes,
+        parentId: null,
+        name: "Foo Bar",
+      }),
+    ).toBe(false);
+  });
+
   it("adds directories at root and nested levels", () => {
     const nextRoot = addContentDirectory({
       nodes: fixture,

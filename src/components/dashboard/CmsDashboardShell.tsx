@@ -143,6 +143,28 @@ export function CmsDashboardShell({
       }),
     [activeContentTailSegments, contentDirectories],
   );
+  const routeExpandedDirectoryIds = useMemo(
+    () =>
+      getContentDirectoryPathIds({
+        nodes: materializedContentDirectories,
+        pathSegments: activeContentTailSegments,
+      }),
+    [activeContentTailSegments, materializedContentDirectories],
+  );
+  const effectiveExpandedDirectoryIds = useMemo(() => {
+    if (routeExpandedDirectoryIds.length === 0) {
+      return expandedDirectoryIds;
+    }
+
+    const merged = [...expandedDirectoryIds];
+    routeExpandedDirectoryIds.forEach((id) => {
+      if (!merged.includes(id)) {
+        merged.push(id);
+      }
+    });
+
+    return merged;
+  }, [expandedDirectoryIds, routeExpandedDirectoryIds]);
 
   const directoryNodes = useMemo(
     () =>
@@ -255,7 +277,7 @@ export function CmsDashboardShell({
         rootHref: contentsHref,
         activeHref: activeDirectoryHref,
         nodes: directoryNodes,
-        expandedIds: expandedDirectoryIds,
+        expandedIds: effectiveExpandedDirectoryIds,
         onExpandedIdsChange: setExpandedDirectoryIds,
         onCreateDirectory: handleCreateDirectory,
         maxNameLength: maxContentDirectoryNameLength,
