@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { IconSprite } from "@lumia-ui/icons";
 import "./globals.css";
 import { Providers } from "../src/app/providers";
 
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background antialiased`}
       >
+        <IconSprite />
         <Providers>{children}</Providers>
       </body>
     </html>

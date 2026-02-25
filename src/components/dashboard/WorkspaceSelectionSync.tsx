@@ -25,10 +25,10 @@ export function WorkspaceSelectionSync({
       (workspace) => workspace.slug?.trim().toLowerCase() === targetSlug,
     );
 
-    if (matchingWorkspace?.id) {
+    if (matchingWorkspace?.id && matchingWorkspace.id !== currentWorkspace?.id) {
       selectWorkspace(matchingWorkspace.id);
     }
-  }, [currentWorkspace?.slug, selectWorkspace, workspaceSlug, workspaces]);
+  }, [currentWorkspace?.id, currentWorkspace?.slug, selectWorkspace, workspaceSlug, workspaces]);
 
   return null;
 }

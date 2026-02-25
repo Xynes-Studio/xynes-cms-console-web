@@ -1,7 +1,5 @@
-import {
-  CmsDashboardShell,
-  DashboardComingSoonPanel,
-} from "../../../src/components/dashboard";
+import { redirect } from "next/navigation";
+import { buildDashboardSectionPath } from "../../../src/lib/dashboard/dashboard-section-route";
 
 export default async function WorkspaceDashboardPage({
   params,
@@ -9,10 +7,11 @@ export default async function WorkspaceDashboardPage({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
+  const targetPath =
+    buildDashboardSectionPath({
+      workspaceSlug,
+      section: "content",
+    }) ?? "/dashboard";
 
-  return (
-    <CmsDashboardShell workspaceSlug={workspaceSlug}>
-      <DashboardComingSoonPanel sectionLabel="Contents" />
-    </CmsDashboardShell>
-  );
+  redirect(targetPath);
 }

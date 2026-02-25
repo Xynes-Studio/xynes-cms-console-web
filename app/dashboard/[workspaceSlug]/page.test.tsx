@@ -1,37 +1,34 @@
-import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import WorkspaceDashboardPage from "./page";
 
-vi.mock("../../../src/components/dashboard", () => ({
-  CmsDashboardShell: ({
-    children,
-    workspaceSlug,
-  }: {
-    children: ReactNode;
-    workspaceSlug: string;
-  }) => (
-    <div data-testid="cms-dashboard-shell" data-workspace-slug={workspaceSlug}>
-      {children}
-    </div>
-  ),
-  DashboardComingSoonPanel: ({ sectionLabel }: { sectionLabel: string }) => (
-    <section data-testid="coming-soon-panel">{sectionLabel}</section>
-  ),
+const redirectMock = vi.hoisted(() =>
+  vi.fn((href: string) => {
+    throw new Error(`NEXT_REDIRECT:${href}`);
+  }),
+);
+
+vi.mock("next/navigation", () => ({
+  redirect: redirectMock,
 }));
 
 describe("Workspace Dashboard Page", () => {
-  it("renders contents dashboard shell with coming soon panel", async () => {
-    const element = await WorkspaceDashboardPage({
-      params: Promise.resolve({ workspaceSlug: "acme" }),
-    });
+  it("redirects legacy workspace root to canonical content route", async () => {
+    await expect(
+      WorkspaceDashboardPage({
+        params: Promise.resolve({ workspaceSlug: "acme" }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT:/dashboard/acme/content");
 
-    render(element);
+    expect(redirectMock).toHaveBeenCalledWith("/dashboard/acme/content");
+  });
 
-    expect(screen.getByTestId("cms-dashboard-shell")).toHaveAttribute(
-      "data-workspace-slug",
-      "acme",
-    );
-    expect(screen.getByTestId("coming-soon-panel")).toHaveTextContent("Contents");
+  it("fails closed to /dashboard when workspace slug is unsafe", async () => {
+    await expect(
+      WorkspaceDashboardPage({
+        params: Promise.resolve({ workspaceSlug: "../evil" }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+
+    expect(redirectMock).toHaveBeenCalledWith("/dashboard");
   });
 });

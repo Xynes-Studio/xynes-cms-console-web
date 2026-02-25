@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import WorkspaceIntegrationsPage from "./page";
+import WorkspaceContentPage from "./page";
 
 vi.mock("../../../../src/components/dashboard", () => ({
   DashboardComingSoonPanel: ({ sectionLabel }: { sectionLabel: string }) => (
@@ -8,12 +8,10 @@ vi.mock("../../../../src/components/dashboard", () => ({
   ),
 }));
 
-describe("Workspace Integrations Page", () => {
-  it("renders integrations coming soon panel", () => {
-    render(<WorkspaceIntegrationsPage />);
+describe("Workspace Content Page", () => {
+  it("renders content coming soon panel", () => {
+    render(<WorkspaceContentPage />);
 
-    expect(screen.getByTestId("coming-soon-panel")).toHaveTextContent(
-      "Integrations",
-    );
+    expect(screen.getByTestId("coming-soon-panel")).toHaveTextContent("Contents");
   });
 });

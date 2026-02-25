@@ -1,3 +1,4 @@
+/* stylelint-disable at-rule-no-unknown */
 @import "tailwindcss";
 @source "../app/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../src/**/*.{js,ts,jsx,tsx,mdx}";
@@ -51,37 +52,4 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-[data-testid="dashboard-workspace-trigger"]:not(.flex-col) {
-  display: flex;
-  width: 100% !important;
-  align-items: center;
-  justify-content: space-between !important;
-}
-
-[data-testid="dashboard-workspace-trigger"]:not(.flex-col) > span.contents {
-  display: contents;
-}
-
-[data-testid="dashboard-workspace-trigger"]:not(.flex-col)
-  > span.contents
-  > span:first-child {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  align-items: center;
-}
-
-[data-testid="dashboard-workspace-trigger"]:not(.flex-col)
-  > span.contents
-  > svg {
-  margin-left: auto;
-}
-
-[aria-label="Dashboard navigation"] [data-active="true"] {
-  background-color: rgb(15 23 42 / 10%);
-  color: rgb(55 48 163);
-}
-
-[aria-label="Dashboard navigation"] [data-active="true"] svg {
-  color: rgb(55 48 163);
-}
+/* stylelint-enable at-rule-no-unknown */

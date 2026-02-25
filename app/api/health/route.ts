@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  return NextResponse.json({
-    status: "ok",
-    service: "xynes-cms-console-web",
-  });
+  return NextResponse.json(
+    {
+      status: "ok",
+      service: "xynes-cms-console-web",
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    },
+  );
 }

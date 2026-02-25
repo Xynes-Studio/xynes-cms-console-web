@@ -129,4 +129,62 @@ describe("CMS middleware auth protection", () => {
 
     expect(response.status).toBe(200);
   });
+
+  it("allows protected routes when Supabase SSR cookie payload is base64url encoded", () => {
+    setMiddlewareEnv();
+    const validToken = createJwt({
+      exp: Math.floor(Date.now() / 1000) + 300,
+    });
+    const encodedPayload = `base64-${toBase64Url(
+      JSON.stringify([validToken, "refresh-token"])
+    )}`;
+    const request = {
+      nextUrl: new URL("http://localhost:3000/acme/content"),
+      cookies: {
+        getAll: () => [
+          {
+            name: "sb-localhost-auth-token",
+            value: encodedPayload,
+          },
+        ],
+      },
+      headers: new Headers(),
+    } as unknown as NextRequest;
+
+    const response = middleware(request);
+
+    expect(response.status).toBe(200);
+  });
+
+  it("allows protected routes when chunked auth cookies appear in both request stores", () => {
+    setMiddlewareEnv();
+    const validToken = createJwt({
+      exp: Math.floor(Date.now() / 1000) + 300,
+    });
+    const encodedPayload = `base64-${toBase64Url(
+      JSON.stringify([validToken, "refresh-token"])
+    )}`;
+    const splitIndex = Math.floor(encodedPayload.length / 2);
+    const chunk0 = encodedPayload.slice(0, splitIndex);
+    const chunk1 = encodedPayload.slice(splitIndex);
+    const headers = new Headers();
+    headers.set(
+      "cookie",
+      `sb-localhost-auth-token.0=${chunk0}; sb-localhost-auth-token.1=${chunk1}`
+    );
+    const request = {
+      nextUrl: new URL("http://localhost:3000/acme/content"),
+      cookies: {
+        getAll: () => [
+          { name: "sb-localhost-auth-token.0", value: chunk0 },
+          { name: "sb-localhost-auth-token.1", value: chunk1 },
+        ],
+      },
+      headers,
+    } as unknown as NextRequest;
+
+    const response = middleware(request);
+
+    expect(response.status).toBe(200);
+  });
 });
