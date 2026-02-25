@@ -442,24 +442,23 @@ export function CmsDashboardShell({
       return;
     }
 
-    let previousTree: ContentDirectoryNode[] | null = null;
-
-    setContentDirectories((previous) => {
-      previousTree = previous;
-      return updateContentDirectoryName({
-        nodes: previous,
-        nodeId: input.nodeId,
-        rawName: input.name,
-      });
+    const previousTree = contentDirectories;
+    const nextTree = updateContentDirectoryName({
+      nodes: previousTree,
+      nodeId: input.nodeId,
+      rawName: input.name,
     });
+    if (nextTree === previousTree) {
+      return;
+    }
+
+    setContentDirectories(nextTree);
 
     void (async () => {
       try {
         const accessToken = await getAccessToken();
         if (!accessToken) {
-          if (previousTree) {
-            setContentDirectories(previousTree);
-          }
+          setContentDirectories(previousTree);
           notifyDirectoryActionFailed("Could not rename directory");
           return;
         }
@@ -474,9 +473,7 @@ export function CmsDashboardShell({
         setDirectoryDataRevision((previous) => previous + 1);
       } catch (error) {
         console.error("Failed to persist workspace content directory rename", error);
-        if (previousTree) {
-          setContentDirectories(previousTree);
-        }
+        setContentDirectories(previousTree);
         notifyDirectoryActionFailed("Could not rename directory");
         setDirectoryDataRevision((previous) => previous + 1);
       }
@@ -506,36 +503,33 @@ export function CmsDashboardShell({
       return;
     }
 
-    let previousTree: ContentDirectoryNode[] | null = null;
+    const previousTree = contentDirectories;
     const previousExpandedIds = expandedDirectoryIds;
+    const removedSubtreeIds = new Set(
+      collectSubtreeIdsByNodeId({
+        nodes: previousTree,
+        nodeId: input.nodeId,
+      }),
+    );
+    if (removedSubtreeIds.size === 0) {
+      return;
+    }
 
-    setContentDirectories((previous) => {
-      previousTree = previous;
-      const removedSubtreeIds = new Set(
-        collectSubtreeIdsByNodeId({
-          nodes: previous,
-          nodeId: input.nodeId,
-        }),
-      );
-      if (removedSubtreeIds.size > 0) {
-        setExpandedDirectoryIds((current) =>
-          current.filter((id) => !removedSubtreeIds.has(id)),
-        );
-      }
-
-      return removeContentDirectory({
+    setExpandedDirectoryIds((current) =>
+      current.filter((id) => !removedSubtreeIds.has(id)),
+    );
+    setContentDirectories((previous) =>
+      removeContentDirectory({
         nodes: previous,
         nodeId: input.nodeId,
-      });
-    });
+      }),
+    );
 
     void (async () => {
       try {
         const accessToken = await getAccessToken();
         if (!accessToken) {
-          if (previousTree) {
-            setContentDirectories(previousTree);
-          }
+          setContentDirectories(previousTree);
           setExpandedDirectoryIds(previousExpandedIds);
           notifyDirectoryActionFailed("Could not delete directory");
           return;
@@ -550,9 +544,7 @@ export function CmsDashboardShell({
         setDirectoryDataRevision((previous) => previous + 1);
       } catch (error) {
         console.error("Failed to persist workspace content directory delete", error);
-        if (previousTree) {
-          setContentDirectories(previousTree);
-        }
+        setContentDirectories(previousTree);
         setExpandedDirectoryIds(previousExpandedIds);
         notifyDirectoryActionFailed("Could not delete directory");
         setDirectoryDataRevision((previous) => previous + 1);

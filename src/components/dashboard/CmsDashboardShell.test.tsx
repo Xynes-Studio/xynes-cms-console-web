@@ -743,6 +743,117 @@ describe("CmsDashboardShell", () => {
     expect(props.directorySection?.nodes).toEqual([]);
   });
 
+  it("skips rename API request when local rename is a no-op", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/content-types")) {
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+      }
+      if (url.endsWith("/content-directories") && init?.method === "GET") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: [
+                {
+                  id: "dir-1",
+                  parentId: null,
+                  name: "Docs",
+                  pathSegment: "docs",
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    fetchMock.mockClear();
+
+    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    act(() => {
+      props.directorySection?.onRenameDirectory?.({
+        nodeId: "dir-1",
+        name: "Docs",
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("skips delete API request when local delete target is not found", async () => {
+    const fetchMock = vi.fn((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/content-types")) {
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+      }
+      if (url.endsWith("/content-directories") && init?.method === "GET") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: [
+                {
+                  id: "dir-1",
+                  parentId: null,
+                  name: "Docs",
+                  pathSegment: "docs",
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    fetchMock.mockClear();
+
+    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    act(() => {
+      props.directorySection?.onDeleteDirectory?.({
+        nodeId: "missing-dir",
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("shows error toast when directory creation fails", async () => {
     vi.stubGlobal(
       "fetch",
