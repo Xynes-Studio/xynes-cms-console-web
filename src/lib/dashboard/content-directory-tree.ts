@@ -3,6 +3,7 @@ import { normalizeContentPathSegment } from "./dashboard-section-route";
 export type ContentDirectoryNode = {
   id: string;
   label: string;
+  pathSegment?: string;
   children?: ContentDirectoryNode[];
 };
 
@@ -11,6 +12,7 @@ export const maxContentDirectoryNameLength = 80;
 export const normalizeContentDirectoryName = (value: string) => value.trim();
 
 export const getContentDirectoryPathSegment = (node: ContentDirectoryNode) =>
+  normalizeContentPathSegment(node.pathSegment ?? "") ||
   normalizeContentPathSegment(node.label) ||
   normalizeContentPathSegment(node.id) ||
   "directory";
@@ -243,6 +245,7 @@ const ensureContentDirectoryPathRecursively = ({
           {
             id: createIdFromPath(currentPathSegments),
             label: currentSegment,
+            pathSegment: currentSegment,
             children: [],
           },
         ],
@@ -263,6 +266,7 @@ const ensureContentDirectoryPathRecursively = ({
         {
           id: createIdFromPath(currentPathSegments),
           label: currentSegment,
+          pathSegment: currentSegment,
           children: nestedResult.nodes,
         },
       ],
@@ -321,4 +325,28 @@ export const ensureContentDirectoryPath = ({
   });
 
   return result.changed ? result.nodes : nodes;
+};
+
+export const mergeContentDirectoryRoots = ({
+  primaryNodes,
+  secondaryNodes,
+}: {
+  primaryNodes: ContentDirectoryNode[];
+  secondaryNodes: ContentDirectoryNode[];
+}) => {
+  const seenSegments = new Set(
+    primaryNodes.map((node) => getContentDirectoryPathSegment(node)),
+  );
+
+  const merged = [...primaryNodes];
+  for (const node of secondaryNodes) {
+    const segment = getContentDirectoryPathSegment(node);
+    if (seenSegments.has(segment)) {
+      continue;
+    }
+    seenSegments.add(segment);
+    merged.push(node);
+  }
+
+  return merged;
 };

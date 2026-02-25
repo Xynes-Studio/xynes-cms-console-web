@@ -4,6 +4,7 @@ import {
   ensureContentDirectoryPath,
   getContentDirectoryPathIds,
   getContentDirectoryPathSegment,
+  mergeContentDirectoryRoots,
   isUniqueContentDirectoryName,
   normalizeContentDirectoryName,
   type ContentDirectoryNode,
@@ -33,6 +34,16 @@ describe("content-directory-tree", () => {
         label: " Blogs & Drafts ",
       }),
     ).toBe("blogs-drafts");
+  });
+
+  it("prefers explicit pathSegment over derived label segment", () => {
+    expect(
+      getContentDirectoryPathSegment({
+        id: "node-id",
+        label: "Blog Posts",
+        pathSegment: "blog",
+      }),
+    ).toBe("blog");
   });
 
   it("enforces sibling-level case-insensitive uniqueness", () => {
@@ -153,8 +164,58 @@ describe("content-directory-tree", () => {
       {
         id: "new-2",
         label: "how-to",
-        children: [{ id: "new-1", label: "intro", children: [] }],
+        pathSegment: "how-to",
+        children: [
+          {
+            id: "new-1",
+            label: "intro",
+            pathSegment: "intro",
+            children: [],
+          },
+        ],
       },
+    ]);
+  });
+
+  it("merges root nodes by normalized path segment without duplicating existing segments", () => {
+    const primaryNodes: ContentDirectoryNode[] = [
+      {
+        id: "ct-blog",
+        label: "Blog Posts",
+        pathSegment: "blog",
+        children: [],
+      },
+      {
+        id: "ct-programs",
+        label: "Programs",
+        pathSegment: "programs",
+        children: [],
+      },
+    ];
+
+    const secondaryNodes: ContentDirectoryNode[] = [
+      {
+        id: "legacy-blog-node",
+        label: "Blog",
+        pathSegment: "blog",
+        children: [{ id: "legacy-child", label: "Legacy Child" }],
+      },
+      {
+        id: "custom-manual",
+        label: "Custom",
+        children: [],
+      },
+    ];
+
+    expect(
+      mergeContentDirectoryRoots({
+        primaryNodes,
+        secondaryNodes,
+      }),
+    ).toEqual([
+      primaryNodes[0],
+      primaryNodes[1],
+      secondaryNodes[1],
     ]);
   });
 });

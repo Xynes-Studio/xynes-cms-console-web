@@ -8,6 +8,7 @@ const mockUseWorkspace = vi.fn();
 const mockPush = vi.fn();
 const mockDashboardShell = vi.fn();
 const mockRedirectToLogin = vi.fn();
+const mockGetAccessToken = vi.fn();
 
 const pathnameState = vi.hoisted(() => ({
   value: "/dashboard/acme/plugins",
@@ -40,11 +41,17 @@ describe("CmsDashboardShell", () => {
     mockPush.mockReset();
     mockDashboardShell.mockReset();
     mockRedirectToLogin.mockReset();
+    mockGetAccessToken.mockReset();
+    mockGetAccessToken.mockResolvedValue("test-access-token");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+    ));
 
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
       redirectToLogin: mockRedirectToLogin,
+      getAccessToken: mockGetAccessToken,
       user: {
         displayName: "Archie",
         email: "archie@xynes.com",
@@ -54,7 +61,7 @@ describe("CmsDashboardShell", () => {
         {
           id: "ws-1",
           name: "Xynes",
-          slug: "xynes",
+          slug: "acme",
         },
         {
           id: "ws-2",
@@ -68,10 +75,16 @@ describe("CmsDashboardShell", () => {
       currentWorkspace: {
         id: "ws-1",
         name: "Xynes",
-        slug: "xynes",
+        slug: "acme",
       },
       selectWorkspace: vi.fn(),
     });
+
+    process.env.NEXT_PUBLIC_API_URL = "http://localhost:4100";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("provides the required nav items and identity data to Lumia DashboardShell", () => {
@@ -210,6 +223,168 @@ describe("CmsDashboardShell", () => {
     );
   });
 
+  it("loads content directory tree from gateway content-types API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: [
+              {
+                id: "ct-1",
+                name: "Blog",
+                slug: "blog-post",
+                routeSegment: "blog",
+                templateKey: "blog_post",
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockGetAccessToken).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/ws-1/content-types",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-access-token",
+        }),
+      }),
+    );
+
+    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    expect(props.directorySection?.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Blog",
+          href: "/dashboard/acme/content/blog",
+        }),
+      ]),
+    );
+  });
+
+  it("resets API-backed root nodes when workspace changes to avoid cross-workspace leakage", async () => {
+    pathnameState.value = "/dashboard/acme/content";
+
+    const workspaceState = {
+      currentWorkspace: {
+        id: "ws-1",
+        name: "Workspace One",
+        slug: "acme",
+      },
+      selectWorkspace: vi.fn(),
+    };
+    mockUseWorkspace.mockImplementation(() => workspaceState);
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      redirectToLogin: mockRedirectToLogin,
+      getAccessToken: mockGetAccessToken,
+      user: {
+        displayName: "Archie",
+        email: "archie@xynes.com",
+        avatarUrl: null,
+      },
+      workspaces: [
+        { id: "ws-1", name: "Workspace One", slug: "acme" },
+        { id: "ws-2", name: "Workspace Two", slug: "beta" },
+      ],
+    });
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: [
+              {
+                id: "ct-1",
+                name: "Blog",
+                slug: "blog-post",
+                routeSegment: "blog",
+                templateKey: "blog_post",
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: [
+              {
+                id: "ct-2",
+                name: "Events",
+                slug: "event",
+                routeSegment: "events",
+                templateKey: "event",
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { rerender } = render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    expect(props.directorySection?.nodes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "Blog" })]),
+    );
+
+    workspaceState.currentWorkspace = {
+      id: "ws-2",
+      name: "Workspace Two",
+      slug: "beta",
+    };
+    pathnameState.value = "/dashboard/beta/content";
+    rerender(
+      <CmsDashboardShell workspaceSlug="beta">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    expect(props.directorySection?.nodes).toEqual([
+      expect.objectContaining({
+        label: "Events",
+        href: "/dashboard/beta/content/events",
+      }),
+    ]);
+  });
+
   it("materializes nested directories from direct content URL and marks active href", async () => {
     pathnameState.value = "/dashboard/acme/content/tests/guides";
 
@@ -311,6 +486,7 @@ describe("CmsDashboardShell", () => {
       isAuthenticated: false,
       isLoading: false,
       redirectToLogin: mockRedirectToLogin,
+      getAccessToken: mockGetAccessToken,
       user: null,
       workspaces: [],
     });
@@ -331,6 +507,7 @@ describe("CmsDashboardShell", () => {
       isAuthenticated: false,
       isLoading: true,
       redirectToLogin: mockRedirectToLogin,
+      getAccessToken: mockGetAccessToken,
       user: null,
       workspaces: [],
     });
