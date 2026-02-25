@@ -28,6 +28,12 @@ vi.mock("@xynes/auth-sdk", () => ({
   ),
 }));
 
+vi.mock("@lumia-ui/components", () => ({
+  ToastProvider: ({ children }: { children: ReactNode }) => (
+    <div data-testid="toast-provider">{children}</div>
+  ),
+}));
+
 describe("Providers", () => {
   it("composes AuthProvider and WorkspaceProvider at app root", () => {
     render(
@@ -42,6 +48,7 @@ describe("Providers", () => {
       "http://localhost:3100"
     );
     expect(screen.getByTestId("workspace-provider")).toBeInTheDocument();
+    expect(screen.getByTestId("toast-provider")).toBeInTheDocument();
     expect(screen.getByTestId("child")).toBeInTheDocument();
     expect(getCmsAuthConfigMock).toHaveBeenCalledTimes(1);
   });

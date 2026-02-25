@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createWorkspaceContentDirectory,
+  deleteWorkspaceContentDirectory,
   listWorkspaceContentDirectories,
+  updateWorkspaceContentDirectory,
 } from "./content-directories-client";
 
 describe("content-directories-client", () => {
@@ -156,5 +158,77 @@ describe("content-directories-client", () => {
         fetchImpl: fetchMock,
       }),
     ).rejects.toThrow(/Invalid content directories response/);
+  });
+
+  it("updates a workspace content directory by id", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            id: "dir-1",
+            parentId: null,
+            name: "Articles",
+            pathSegment: "articles",
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await updateWorkspaceContentDirectory({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      directoryId: "dir-1",
+      accessToken: "jwt-token",
+      name: "Articles",
+      fetchImpl: fetchMock,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/workspace-1/content-directories/dir-1",
+      expect.objectContaining({
+        method: "PATCH",
+        headers: expect.objectContaining({
+          Accept: "application/json",
+          Authorization: "Bearer jwt-token",
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({ name: "Articles" }),
+      }),
+    );
+    expect(result).toEqual({
+      id: "dir-1",
+      parentId: null,
+      name: "Articles",
+      pathSegment: "articles",
+    });
+  });
+
+  it("deletes a workspace content directory by id", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: { deleted: true } }), {
+        status: 200,
+      }),
+    );
+
+    await deleteWorkspaceContentDirectory({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      directoryId: "dir-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/workspace-1/content-directories/dir-1",
+      expect.objectContaining({
+        method: "DELETE",
+        headers: expect.objectContaining({
+          Accept: "application/json",
+          Authorization: "Bearer jwt-token",
+        }),
+      }),
+    );
   });
 });

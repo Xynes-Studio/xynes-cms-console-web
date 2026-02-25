@@ -117,16 +117,21 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
     - gateway action key: `cms.content_directories.listForWorkspace`
   - `POST /workspaces/:workspaceId/content-directories`
     - gateway action key: `cms.content_directories.create`
+  - `PATCH /workspaces/:workspaceId/content-directories/:directoryId`
+    - gateway action key: `cms.content_directories.update`
+  - `DELETE /workspaces/:workspaceId/content-directories/:directoryId`
+    - gateway action key: `cms.content_directories.delete`
 - Frontend integration ownership:
   - `src/lib/dashboard/content-types-client.ts`: API request + envelope unwrapping + strict runtime shape validation
-  - `src/lib/dashboard/content-directories-client.ts`: persisted directory list/create API client + strict runtime shape validation
+  - `src/lib/dashboard/content-directories-client.ts`: persisted directory list/create/update/delete API client + strict runtime shape validation
   - `src/components/dashboard/CmsDashboardShell.tsx`: effect orchestration + workspace-scoped synchronization into `DashboardShell.directorySection`
 - Security and fail-closed rules:
   - Require bearer token from `useAuth().getAccessToken()` for content type requests.
-  - Require bearer token from `useAuth().getAccessToken()` for content directory list/create requests.
+  - Require bearer token from `useAuth().getAccessToken()` for content directory list/create/update/delete requests.
   - Never trust API payload shape implicitly; validate before rendering.
   - If content-types fetch fails or is malformed, keep shell stable and avoid crashing the dashboard.
-  - If content-directories fetch/create fails or is malformed, keep shell stable and avoid crashing the dashboard.
+  - If content-directories fetch/create/update/delete fails or is malformed, keep shell stable and avoid crashing the dashboard.
+  - Surface user-visible error feedback via Lumia toast for failed create/rename/delete mutations.
   - Persistent directory tree source of truth is backend API (`GET /content-directories`); do not treat URL-only path segments as persisted nodes.
 - No-redundancy routing rule:
   - Treat `routeSegment` from API as the source of truth for directory path generation.
@@ -134,6 +139,22 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 - Workspace isolation rule:
   - Reset API-backed root directory nodes on workspace changes to prevent cross-workspace sidebar leakage.
   - Preserve manual same-workspace nodes by merging non-conflicting roots only.
+
+### Directory CRUD UX + Role Guard Standards
+
+- Directory management is owner-gated in current phase:
+  - `workspace_owner`: create/rename/delete enabled.
+  - all other roles: actions visible but disabled.
+- Disabled-action UX:
+  - Right-click context menu remains available.
+  - Disabled actions open a lower-left explanatory pop-up.
+  - "Request access" and related escalation actions remain disabled until access-request backend is implemented.
+- Rename UX:
+  - Rename input is inline at node level.
+  - `Escape` cancels rename without mutating state.
+- Delete UX:
+  - Delete requires confirmation dialog.
+  - Dialog must include directory breadcrumb context and cascade-impact warning for nested subdirectories/content.
 
 ### Dashboard API Integration Standards (Next.js + React)
 

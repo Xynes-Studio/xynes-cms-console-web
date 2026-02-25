@@ -8,6 +8,8 @@ import {
   mergeContentDirectoryRoots,
   isUniqueContentDirectoryName,
   normalizeContentDirectoryName,
+  removeContentDirectory,
+  updateContentDirectoryName,
   type ContentDirectoryNode,
   type PersistedContentDirectory,
 } from "./content-directory-tree";
@@ -105,6 +107,50 @@ describe("content-directory-tree", () => {
     expect(nextNested[0]?.children).toEqual([
       { id: "guides", label: "Guides" },
       { id: "blogs-child", label: "Blogs", children: [] },
+    ]);
+  });
+
+  it("renames directories while preserving nested children", () => {
+    const next = updateContentDirectoryName({
+      nodes: fixture,
+      nodeId: "blogs",
+      rawName: "Articles",
+    });
+
+    expect(next[0]).toEqual({
+      id: "blogs",
+      label: "Articles",
+      pathSegment: "articles",
+      children: [{ id: "guides", label: "Guides" }],
+    });
+  });
+
+  it("fails closed when rename collides with sibling names", () => {
+    const next = updateContentDirectoryName({
+      nodes: fixture,
+      nodeId: "docs",
+      rawName: " blogs ",
+    });
+
+    expect(next).toBe(fixture);
+  });
+
+  it("removes nested directories recursively by id", () => {
+    const next = removeContentDirectory({
+      nodes: fixture,
+      nodeId: "guides",
+    });
+
+    expect(next).toEqual([
+      {
+        id: "blogs",
+        label: "Blogs",
+        children: [],
+      },
+      {
+        id: "docs",
+        label: "Docs",
+      },
     ]);
   });
 

@@ -42,6 +42,30 @@ const findNodeById = (
   return null;
 };
 
+const findNodeContextById = (
+  nodes: ContentDirectoryNode[],
+  nodeId: string,
+  parentId: string | null = null,
+): { node: ContentDirectoryNode; parentId: string | null } | null => {
+  for (const node of nodes) {
+    if (node.id === nodeId) {
+      return {
+        node,
+        parentId,
+      };
+    }
+
+    const nested = node.children?.length
+      ? findNodeContextById(node.children, nodeId, node.id)
+      : null;
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
+};
+
 const getSiblingNodes = (
   nodes: ContentDirectoryNode[],
   parentId: string | null,
@@ -58,10 +82,12 @@ export const isUniqueContentDirectoryName = ({
   nodes,
   parentId,
   name,
+  excludeNodeId,
 }: {
   nodes: ContentDirectoryNode[];
   parentId: string | null;
   name: string;
+  excludeNodeId?: string;
 }) => {
   const normalizedTarget = normalizeContentPathSegment(name);
   if (!normalizedTarget) {
@@ -70,7 +96,9 @@ export const isUniqueContentDirectoryName = ({
 
   const siblings = getSiblingNodes(nodes, parentId);
   return !siblings.some(
-    (node) => normalizeContentPathSegment(node.label) === normalizedTarget,
+    (node) =>
+      node.id !== excludeNodeId &&
+      normalizeContentPathSegment(node.label) === normalizedTarget,
   );
 };
 
@@ -181,6 +209,118 @@ export const addContentDirectory = ({
   const result = insertNodeRecursively(nodes, parentId, newNode);
   return result.inserted ? result.nodes : nodes;
 };
+
+const updateNodeLabelRecursively = ({
+  nodes,
+  nodeId,
+  nextLabel,
+}: {
+  nodes: ContentDirectoryNode[];
+  nodeId: string;
+  nextLabel: string;
+}): { nodes: ContentDirectoryNode[]; updated: boolean } => {
+  let updated = false;
+
+  const nextNodes = nodes.map((node) => {
+    if (node.id === nodeId) {
+      updated = true;
+      const normalizedSegment = normalizeContentPathSegment(nextLabel);
+      return {
+        ...node,
+        label: nextLabel,
+        ...(normalizedSegment ? { pathSegment: normalizedSegment } : {}),
+      };
+    }
+
+    if (!node.children?.length) {
+      return node;
+    }
+
+    const nested = updateNodeLabelRecursively({
+      nodes: node.children,
+      nodeId,
+      nextLabel,
+    });
+    if (!nested.updated) {
+      return node;
+    }
+
+    updated = true;
+    return {
+      ...node,
+      children: nested.nodes,
+    };
+  });
+
+  return {
+    nodes: nextNodes,
+    updated,
+  };
+};
+
+export const updateContentDirectoryName = ({
+  nodes,
+  nodeId,
+  rawName,
+  maxNameLength = maxContentDirectoryNameLength,
+}: {
+  nodes: ContentDirectoryNode[];
+  nodeId: string;
+  rawName: string;
+  maxNameLength?: number;
+}) => {
+  const normalizedName = normalizeContentDirectoryName(rawName);
+  if (!normalizedName || normalizedName.length > maxNameLength) {
+    return nodes;
+  }
+
+  const currentContext = findNodeContextById(nodes, nodeId);
+  if (!currentContext) {
+    return nodes;
+  }
+
+  if (currentContext.node.label === normalizedName) {
+    return nodes;
+  }
+
+  if (
+    !isUniqueContentDirectoryName({
+      nodes,
+      parentId: currentContext.parentId,
+      name: normalizedName,
+      excludeNodeId: nodeId,
+    })
+  ) {
+    return nodes;
+  }
+
+  const updated = updateNodeLabelRecursively({
+    nodes,
+    nodeId,
+    nextLabel: normalizedName,
+  });
+
+  return updated.updated ? updated.nodes : nodes;
+};
+
+export const removeContentDirectory = ({
+  nodes,
+  nodeId,
+}: {
+  nodes: ContentDirectoryNode[];
+  nodeId: string;
+}) =>
+  nodes
+    .filter((node) => node.id !== nodeId)
+    .map((node) => ({
+      ...node,
+      children: node.children?.length
+        ? removeContentDirectory({
+            nodes: node.children,
+            nodeId,
+          })
+        : node.children,
+    }));
 
 export const materializePersistedContentDirectories = ({
   baseNodes,

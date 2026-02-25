@@ -13,6 +13,14 @@ export interface WorkspaceContentDirectory {
   pathSegment: string;
 }
 
+const normalizeDirectoryId = (directoryId: string) => {
+  const normalized = directoryId.trim();
+  if (!normalized) {
+    throw new Error("Directory id is required");
+  }
+  return normalized;
+};
+
 const isWorkspaceContentDirectory = (
   value: unknown,
 ): value is WorkspaceContentDirectory => {
@@ -156,4 +164,110 @@ export async function createWorkspaceContentDirectory({
     name: unwrapped.name.trim(),
     pathSegment: unwrapped.pathSegment.trim(),
   };
+}
+
+export async function updateWorkspaceContentDirectory({
+  apiBaseUrl,
+  workspaceId,
+  directoryId,
+  accessToken,
+  name,
+  fetchImpl = fetch,
+  signal,
+}: {
+  apiBaseUrl: string;
+  workspaceId: string;
+  directoryId: string;
+  accessToken: string;
+  name: string;
+  fetchImpl?: FetchLike;
+  signal?: AbortSignal;
+}): Promise<WorkspaceContentDirectory> {
+  const normalized = normalizeGatewayClientInputs({
+    apiBaseUrl,
+    workspaceId,
+    accessToken,
+    errorContext: "content directory update",
+  });
+  const normalizedName = name.trim();
+  const normalizedDirectoryId = normalizeDirectoryId(directoryId);
+  if (!normalizedName) {
+    throw new Error("Directory name is required");
+  }
+
+  const endpoint = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}/content-directories/${encodeURIComponent(normalizedDirectoryId)}`;
+  const response = await fetchImpl(endpoint, {
+    method: "PATCH",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${normalized.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name: normalizedName }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to update content directory: HTTP ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const responseJson = (await response.json()) as unknown;
+  const unwrapped = unwrapGatewayEnvelope(responseJson);
+  if (!isWorkspaceContentDirectory(unwrapped)) {
+    throw new Error("Invalid content directory update response");
+  }
+
+  return {
+    id: unwrapped.id.trim(),
+    parentId:
+      unwrapped.parentId && unwrapped.parentId.trim().length > 0
+        ? unwrapped.parentId.trim()
+        : null,
+    name: unwrapped.name.trim(),
+    pathSegment: unwrapped.pathSegment.trim(),
+  };
+}
+
+export async function deleteWorkspaceContentDirectory({
+  apiBaseUrl,
+  workspaceId,
+  directoryId,
+  accessToken,
+  fetchImpl = fetch,
+  signal,
+}: {
+  apiBaseUrl: string;
+  workspaceId: string;
+  directoryId: string;
+  accessToken: string;
+  fetchImpl?: FetchLike;
+  signal?: AbortSignal;
+}): Promise<void> {
+  const normalized = normalizeGatewayClientInputs({
+    apiBaseUrl,
+    workspaceId,
+    accessToken,
+    errorContext: "content directory delete",
+  });
+  const normalizedDirectoryId = normalizeDirectoryId(directoryId);
+
+  const endpoint = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}/content-directories/${encodeURIComponent(normalizedDirectoryId)}`;
+  const response = await fetchImpl(endpoint, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${normalized.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to delete content directory: HTTP ${response.status} ${response.statusText}`,
+    );
+  }
 }
