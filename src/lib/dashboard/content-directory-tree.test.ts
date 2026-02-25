@@ -4,10 +4,12 @@ import {
   ensureContentDirectoryPath,
   getContentDirectoryPathIds,
   getContentDirectoryPathSegment,
+  materializePersistedContentDirectories,
   mergeContentDirectoryRoots,
   isUniqueContentDirectoryName,
   normalizeContentDirectoryName,
   type ContentDirectoryNode,
+  type PersistedContentDirectory,
 } from "./content-directory-tree";
 
 const fixture: ContentDirectoryNode[] = [
@@ -216,6 +218,121 @@ describe("content-directory-tree", () => {
       primaryNodes[0],
       primaryNodes[1],
       secondaryNodes[1],
+    ]);
+  });
+
+  it("materializes persisted directories under matching parent IDs", () => {
+    const baseNodes: ContentDirectoryNode[] = [
+      {
+        id: "content-type-1",
+        label: "Blog",
+        pathSegment: "blog",
+        children: [],
+      },
+    ];
+    const persisted: PersistedContentDirectory[] = [
+      {
+        id: "dir-1",
+        parentId: null,
+        name: "Docs",
+        pathSegment: "docs",
+      },
+      {
+        id: "dir-2",
+        parentId: "content-type-1",
+        name: "Drafts",
+        pathSegment: "drafts",
+      },
+    ];
+
+    expect(
+      materializePersistedContentDirectories({
+        baseNodes,
+        directories: persisted,
+      }),
+    ).toEqual([
+      {
+        id: "content-type-1",
+        label: "Blog",
+        pathSegment: "blog",
+        children: [
+          {
+            id: "dir-2",
+            label: "Drafts",
+            pathSegment: "drafts",
+            children: [],
+          },
+        ],
+      },
+      {
+        id: "dir-1",
+        label: "Docs",
+        pathSegment: "docs",
+        children: [],
+      },
+    ]);
+  });
+
+  it("falls back orphaned persisted directories to root", () => {
+    const persisted: PersistedContentDirectory[] = [
+      {
+        id: "dir-1",
+        parentId: "missing-parent",
+        name: "Docs",
+        pathSegment: "docs",
+      },
+    ];
+
+    expect(
+      materializePersistedContentDirectories({
+        baseNodes: [],
+        directories: persisted,
+      }),
+    ).toEqual([
+      {
+        id: "dir-1",
+        label: "Docs",
+        pathSegment: "docs",
+        children: [],
+      },
+    ]);
+  });
+
+  it("attaches children even when API order returns child before parent", () => {
+    const persisted: PersistedContentDirectory[] = [
+      {
+        id: "dir-child",
+        parentId: "dir-parent",
+        name: "Child",
+        pathSegment: "child",
+      },
+      {
+        id: "dir-parent",
+        parentId: null,
+        name: "Parent",
+        pathSegment: "parent",
+      },
+    ];
+
+    expect(
+      materializePersistedContentDirectories({
+        baseNodes: [],
+        directories: persisted,
+      }),
+    ).toEqual([
+      {
+        id: "dir-parent",
+        label: "Parent",
+        pathSegment: "parent",
+        children: [
+          {
+            id: "dir-child",
+            label: "Child",
+            pathSegment: "child",
+            children: [],
+          },
+        ],
+      },
     ]);
   });
 });

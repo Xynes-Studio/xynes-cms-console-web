@@ -7,6 +7,13 @@ export type ContentDirectoryNode = {
   children?: ContentDirectoryNode[];
 };
 
+export type PersistedContentDirectory = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  pathSegment: string;
+};
+
 export const maxContentDirectoryNameLength = 80;
 
 export const normalizeContentDirectoryName = (value: string) => value.trim();
@@ -135,12 +142,14 @@ export const addContentDirectory = ({
   rawName,
   maxNameLength = maxContentDirectoryNameLength,
   createId = defaultIdFactory,
+  pathSegment,
 }: {
   nodes: ContentDirectoryNode[];
   parentId: string | null;
   rawName: string;
   maxNameLength?: number;
   createId?: () => string;
+  pathSegment?: string;
 }) => {
   const normalizedName = normalizeContentDirectoryName(rawName);
 
@@ -161,6 +170,7 @@ export const addContentDirectory = ({
   const newNode: ContentDirectoryNode = {
     id: createId(),
     label: normalizedName,
+    ...(pathSegment ? { pathSegment } : {}),
     children: [],
   };
 
@@ -170,6 +180,83 @@ export const addContentDirectory = ({
 
   const result = insertNodeRecursively(nodes, parentId, newNode);
   return result.inserted ? result.nodes : nodes;
+};
+
+export const materializePersistedContentDirectories = ({
+  baseNodes,
+  directories,
+}: {
+  baseNodes: ContentDirectoryNode[];
+  directories: PersistedContentDirectory[];
+}) => {
+  let nodes = baseNodes;
+  const idToParentId = new Map(
+    directories.map((directory) => [directory.id, directory.parentId]),
+  );
+  const depthMemo = new Map<string, number>();
+  const getDepth = (directoryId: string, trail = new Set<string>()): number => {
+    const cached = depthMemo.get(directoryId);
+    if (typeof cached === "number") {
+      return cached;
+    }
+
+    const parentId = idToParentId.get(directoryId) ?? null;
+    if (!parentId || !idToParentId.has(parentId) || trail.has(directoryId)) {
+      depthMemo.set(directoryId, 0);
+      return 0;
+    }
+
+    trail.add(directoryId);
+    const depth = getDepth(parentId, trail) + 1;
+    trail.delete(directoryId);
+    depthMemo.set(directoryId, depth);
+    return depth;
+  };
+
+  const orderedDirectories = directories
+    .map((directory, index) => ({
+      directory,
+      index,
+      depth: getDepth(directory.id),
+      rootRank: directory.parentId === null ? 0 : 1,
+    }))
+    .sort((left, right) => {
+      if (left.rootRank !== right.rootRank) {
+        return left.rootRank - right.rootRank;
+      }
+      if (left.depth !== right.depth) {
+        return left.depth - right.depth;
+      }
+      return left.index - right.index;
+    })
+    .map((entry) => entry.directory);
+
+  for (const directory of orderedDirectories) {
+    const withParent = addContentDirectory({
+      nodes,
+      parentId: directory.parentId,
+      rawName: directory.name,
+      createId: () => directory.id,
+      pathSegment: directory.pathSegment,
+    });
+
+    if (withParent !== nodes) {
+      nodes = withParent;
+      continue;
+    }
+
+    if (directory.parentId !== null) {
+      nodes = addContentDirectory({
+        nodes,
+        parentId: null,
+        rawName: directory.name,
+        createId: () => directory.id,
+        pathSegment: directory.pathSegment,
+      });
+    }
+  }
+
+  return nodes;
 };
 
 export const getContentDirectoryPathNodes = ({
