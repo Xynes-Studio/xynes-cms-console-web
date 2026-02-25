@@ -297,4 +297,42 @@ describe("content-directory-tree", () => {
       },
     ]);
   });
+
+  it("attaches children even when API order returns child before parent", () => {
+    const persisted: PersistedContentDirectory[] = [
+      {
+        id: "dir-child",
+        parentId: "dir-parent",
+        name: "Child",
+        pathSegment: "child",
+      },
+      {
+        id: "dir-parent",
+        parentId: null,
+        name: "Parent",
+        pathSegment: "parent",
+      },
+    ];
+
+    expect(
+      materializePersistedContentDirectories({
+        baseNodes: [],
+        directories: persisted,
+      }),
+    ).toEqual([
+      {
+        id: "dir-parent",
+        label: "Parent",
+        pathSegment: "parent",
+        children: [
+          {
+            id: "dir-child",
+            label: "Child",
+            pathSegment: "child",
+            children: [],
+          },
+        ],
+      },
+    ]);
+  });
 });

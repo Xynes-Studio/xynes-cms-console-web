@@ -115,6 +115,7 @@ export async function createWorkspaceContentDirectory({
     errorContext: "content directories lookup",
   });
   const normalizedName = name.trim();
+  const normalizedParentId = parentId?.trim() ? parentId.trim() : null;
   if (!normalizedName) {
     throw new Error("Directory name is required");
   }
@@ -128,7 +129,7 @@ export async function createWorkspaceContentDirectory({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      parentId,
+      parentId: normalizedParentId,
       name: normalizedName,
     }),
     signal,

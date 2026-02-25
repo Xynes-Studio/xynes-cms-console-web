@@ -112,11 +112,11 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 
 - API route:
   - `GET /workspaces/:workspaceId/content-types`
-  - gateway action key: `cms.content_types.listForWorkspace`
+    - gateway action key: `cms.content_types.listForWorkspace`
   - `GET /workspaces/:workspaceId/content-directories`
-  - gateway action key: `cms.content_directories.listForWorkspace`
+    - gateway action key: `cms.content_directories.listForWorkspace`
   - `POST /workspaces/:workspaceId/content-directories`
-  - gateway action key: `cms.content_directories.create`
+    - gateway action key: `cms.content_directories.create`
 - Frontend integration ownership:
   - `src/lib/dashboard/content-types-client.ts`: API request + envelope unwrapping + strict runtime shape validation
   - `src/lib/dashboard/content-directories-client.ts`: persisted directory list/create API client + strict runtime shape validation

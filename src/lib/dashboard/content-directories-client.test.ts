@@ -105,6 +105,42 @@ describe("content-directories-client", () => {
     });
   });
 
+  it("normalizes parentId to trimmed string or null before POST", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            id: "dir-2",
+            parentId: null,
+            name: "Nested",
+            pathSegment: "nested",
+          },
+        }),
+        { status: 201 },
+      ),
+    );
+
+    await createWorkspaceContentDirectory({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      name: "Nested",
+      parentId: "   ",
+      fetchImpl: fetchMock,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/workspace-1/content-directories",
+      expect.objectContaining({
+        body: JSON.stringify({
+          parentId: null,
+          name: "Nested",
+        }),
+      }),
+    );
+  });
+
   it("fails closed for malformed responses", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, data: [{ id: "dir-1" }] }), {

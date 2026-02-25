@@ -190,8 +190,48 @@ export const materializePersistedContentDirectories = ({
   directories: PersistedContentDirectory[];
 }) => {
   let nodes = baseNodes;
+  const idToParentId = new Map(
+    directories.map((directory) => [directory.id, directory.parentId]),
+  );
+  const depthMemo = new Map<string, number>();
+  const getDepth = (directoryId: string, trail = new Set<string>()): number => {
+    const cached = depthMemo.get(directoryId);
+    if (typeof cached === "number") {
+      return cached;
+    }
 
-  for (const directory of directories) {
+    const parentId = idToParentId.get(directoryId) ?? null;
+    if (!parentId || !idToParentId.has(parentId) || trail.has(directoryId)) {
+      depthMemo.set(directoryId, 0);
+      return 0;
+    }
+
+    trail.add(directoryId);
+    const depth = getDepth(parentId, trail) + 1;
+    trail.delete(directoryId);
+    depthMemo.set(directoryId, depth);
+    return depth;
+  };
+
+  const orderedDirectories = directories
+    .map((directory, index) => ({
+      directory,
+      index,
+      depth: getDepth(directory.id),
+      rootRank: directory.parentId === null ? 0 : 1,
+    }))
+    .sort((left, right) => {
+      if (left.rootRank !== right.rootRank) {
+        return left.rootRank - right.rootRank;
+      }
+      if (left.depth !== right.depth) {
+        return left.depth - right.depth;
+      }
+      return left.index - right.index;
+    })
+    .map((entry) => entry.directory);
+
+  for (const directory of orderedDirectories) {
     const withParent = addContentDirectory({
       nodes,
       parentId: directory.parentId,

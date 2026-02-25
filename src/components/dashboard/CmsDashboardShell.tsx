@@ -47,6 +47,58 @@ type ContentTreeNavNode = ContentDirectoryNode & {
 const createRouteDirectoryId = (pathSegments: string[]) =>
   `content-path-${pathSegments.join("--")}`;
 
+const replaceDirectoryNode = ({
+  nodes,
+  optimisticId,
+  nextNode,
+}: {
+  nodes: ContentDirectoryNode[];
+  optimisticId: string;
+  nextNode: ContentDirectoryNode;
+}): ContentDirectoryNode[] =>
+  nodes.map((node) => {
+    if (node.id === optimisticId) {
+      return {
+        ...node,
+        id: nextNode.id,
+        label: nextNode.label,
+        pathSegment: nextNode.pathSegment,
+      };
+    }
+
+    if (!node.children?.length) {
+      return node;
+    }
+
+    return {
+      ...node,
+      children: replaceDirectoryNode({
+        nodes: node.children,
+        optimisticId,
+        nextNode,
+      }),
+    };
+  });
+
+const removeDirectoryNode = ({
+  nodes,
+  nodeId,
+}: {
+  nodes: ContentDirectoryNode[];
+  nodeId: string;
+}): ContentDirectoryNode[] =>
+  nodes
+    .filter((node) => node.id !== nodeId)
+    .map((node) => ({
+      ...node,
+      children: node.children?.length
+        ? removeDirectoryNode({
+            nodes: node.children,
+            nodeId,
+          })
+        : node.children,
+    }));
+
 const mapDirectoryNodesWithHref = ({
   nodes,
   workspaceSlug,
@@ -253,6 +305,19 @@ export function CmsDashboardShell({
       : undefined;
 
   const handleCreateDirectory = (input: { parentId: string | null; name: string }) => {
+    if (isAuthLoading || !isAuthenticated || !contentDirectoryWorkspaceId) {
+      return;
+    }
+
+    if (input.parentId?.startsWith("content-path-")) {
+      return;
+    }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+    if (!apiBaseUrl) {
+      return;
+    }
+
     const optimisticDirectoryId = `content-pending-${createRouteDirectoryId([
       ...(input.parentId ? [input.parentId] : []),
       input.name.trim().toLowerCase(),
@@ -268,36 +333,47 @@ export function CmsDashboardShell({
       }),
     );
 
-    if (isAuthLoading || !isAuthenticated || !contentDirectoryWorkspaceId) {
-      return;
-    }
-
-    if (input.parentId?.startsWith("content-path-")) {
-      return;
-    }
-
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
-    if (!apiBaseUrl) {
-      return;
-    }
-
     void (async () => {
       try {
         const accessToken = await getAccessToken();
         if (!accessToken) {
+          setContentDirectories((previous) =>
+            removeDirectoryNode({
+              nodes: previous,
+              nodeId: optimisticDirectoryId,
+            }),
+          );
           return;
         }
 
-        await createWorkspaceContentDirectory({
+        const createdDirectory = await createWorkspaceContentDirectory({
           apiBaseUrl,
           workspaceId: contentDirectoryWorkspaceId,
           accessToken,
           parentId: input.parentId,
           name: input.name,
         });
+
+        setContentDirectories((previous) =>
+          replaceDirectoryNode({
+            nodes: previous,
+            optimisticId: optimisticDirectoryId,
+            nextNode: {
+              id: createdDirectory.id,
+              label: createdDirectory.name,
+              pathSegment: createdDirectory.pathSegment,
+            },
+          }),
+        );
         setDirectoryDataRevision((previous) => previous + 1);
       } catch (error) {
         console.error("Failed to persist workspace content directory", error);
+        setContentDirectories((previous) =>
+          removeDirectoryNode({
+            nodes: previous,
+            nodeId: optimisticDirectoryId,
+          }),
+        );
         setDirectoryDataRevision((previous) => previous + 1);
       }
     })();
