@@ -236,6 +236,25 @@ Rules:
 - Testing:
   - include collaborator overflow formatting, metadata fallback, action callback assertions, and keyboard open assertions.
 
+### CMS Content Toolbar Standards
+
+- Component ownership:
+  - `src/components/dashboard/CmsContentToolbar.tsx`
+- State model:
+  - controlled props for `query`, `sortBy`, `view`, `followingOnly`, `favoritesOnly`.
+  - URL/query synchronization should be owned by a dedicated hook in `src/lib/dashboard/*`.
+- Rendering:
+  - row 1: path label + item count (left), create/search controls (right).
+  - row 2: following/favorites/filter chips (left), sort/view controls (right).
+- Accessibility:
+  - search is form-submittable with keyboard enter.
+  - toggle chips expose toggle semantics through DS chip behavior.
+  - create/search/sort/view controls must keep explicit accessible names.
+- DS usage:
+  - use Lumia DS controls (`Button`, `Input`, `Select`, `ViewToggle`, `Chip`) and Lumia icon primitives.
+- Security:
+  - treat user-entered query as untrusted input and delegate sanitization/validation to API boundary.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.

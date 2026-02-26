@@ -1,0 +1,150 @@
+import type React from "react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CmsContentToolbar } from "./CmsContentToolbar";
+
+vi.mock("@lumia-ui/components", () => ({
+  Button: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children?: React.ReactNode }) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
+  Chip: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    children?: React.ReactNode;
+    toggle?: boolean;
+    active?: boolean;
+    leadingIcon?: React.ReactNode;
+    trailingContent?: React.ReactNode;
+  }) => {
+    const domProps = { ...props };
+    delete (domProps as Record<string, unknown>).toggle;
+    delete (domProps as Record<string, unknown>).active;
+    delete (domProps as Record<string, unknown>).leadingIcon;
+    delete (domProps as Record<string, unknown>).trailingContent;
+
+    return (
+      <button type="button" {...domProps}>
+        {children}
+      </button>
+    );
+  },
+  Input: ({
+    ...props
+  }: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  Select: ({
+    children,
+    ...props
+  }: React.SelectHTMLAttributes<HTMLSelectElement> & { children?: React.ReactNode }) => (
+    <select {...props}>{children}</select>
+  ),
+  ViewToggle: ({
+    mode,
+    onChange,
+  }: {
+    mode: "grid" | "list";
+    onChange: (mode: "grid" | "list") => void;
+  }) => (
+    <div>
+      <button type="button" aria-label="Grid view" onClick={() => onChange("grid")}>
+        {mode === "grid" ? "grid-active" : "grid"}
+      </button>
+      <button type="button" aria-label="List view" onClick={() => onChange("list")}>
+        {mode === "list" ? "list-active" : "list"}
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock("@lumia-ui/icons", () => ({
+  Icon: ({ name }: { name: string }) => <span aria-hidden="true">{name}</span>,
+}));
+
+afterEach(() => {
+  cleanup();
+});
+
+const buildProps = () => ({
+  pathLabel: "workspace-id/contents/level1/level2",
+  itemCount: 44,
+  query: "",
+  sortBy: "date" as const,
+  view: "grid" as const,
+  followingOnly: false,
+  favoritesOnly: true,
+  filterDisabled: true,
+  onCreate: vi.fn(),
+  onQueryChange: vi.fn(),
+  onSearchSubmit: vi.fn(),
+  onSortChange: vi.fn(),
+  onViewChange: vi.fn(),
+  onFollowingToggle: vi.fn(),
+  onFavoritesToggle: vi.fn(),
+  onFilterClick: vi.fn(),
+});
+
+describe("CmsContentToolbar", () => {
+  it("renders path, item count, and core controls", () => {
+    render(<CmsContentToolbar {...buildProps()} />);
+
+    expect(screen.getByText("workspace-id/contents/level1/level2")).toBeInTheDocument();
+    expect(screen.getByText("44 Items")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create content" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Search for contents" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Search contents" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Sort content" })).toBeInTheDocument();
+  });
+
+  it("emits create, query, and search events", () => {
+    const props = buildProps();
+    render(<CmsContentToolbar {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create content" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Search for contents" }), {
+      target: { value: "release notes" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Search contents" }).closest("form")!);
+
+    expect(props.onCreate).toHaveBeenCalledTimes(1);
+    expect(props.onQueryChange).toHaveBeenCalledWith("release notes");
+    expect(props.onSearchSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits chip and sort callbacks", () => {
+    const props = buildProps();
+    render(<CmsContentToolbar {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle following filter" }));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle favorites filter" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Sort content" }), {
+      target: { value: "title" },
+    });
+
+    expect(props.onFollowingToggle).toHaveBeenCalledTimes(1);
+    expect(props.onFavoritesToggle).toHaveBeenCalledTimes(1);
+    expect(props.onSortChange).toHaveBeenCalledWith("title");
+  });
+
+  it("keeps advanced filter disabled by default", () => {
+    const props = buildProps();
+    render(<CmsContentToolbar {...props} />);
+
+    const filterButton = screen.getByRole("button", { name: "Open advanced filters" });
+    expect(filterButton).toBeDisabled();
+    fireEvent.click(filterButton);
+    expect(props.onFilterClick).toHaveBeenCalledTimes(0);
+  });
+
+  it("emits view change callback from view toggle", () => {
+    const props = buildProps();
+    render(<CmsContentToolbar {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "List view" }));
+    expect(props.onViewChange).toHaveBeenCalledWith("list");
+  });
+});
