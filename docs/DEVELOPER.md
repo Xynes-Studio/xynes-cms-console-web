@@ -217,6 +217,25 @@ Rules:
   - keep Tier 2 interaction coverage in component test file.
   - include metadata fallback and keyboard activation assertions.
 
+### CMS Content List Card Standards
+
+- Component ownership:
+  - `src/components/dashboard/CmsContentCardList.tsx`
+- Rendering rules:
+  - row 1: avatar + title + draft badge (draft only).
+  - row 2: owner + created date + collaborator summary.
+  - collaborator summary displays up to 3 names, then `+N`.
+  - row 3 description remains max three visual lines.
+  - row 4 action row includes delete/share/favourite controls.
+- Accessibility:
+  - open region supports keyboard activation with Enter/Space.
+  - action controls expose explicit `aria-label` values with content context.
+  - favourite control must expose `aria-pressed`.
+- DS usage:
+  - keep primitives in Lumia DS (`Card`, `Avatar`, `Badge`, `Button`).
+- Testing:
+  - include collaborator overflow formatting, metadata fallback, action callback assertions, and keyboard open assertions.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
