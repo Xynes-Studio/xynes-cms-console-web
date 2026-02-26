@@ -278,6 +278,29 @@ Rules:
   - generated link and metadata values are treated as untrusted user data.
   - generated link is clickable only for internal paths (relative or same-origin absolute); external/unsafe URLs render as plain text.
 
+### CMS Entry Data Layer Standards
+
+- Ownership:
+  - `src/lib/dashboard/content-entries-client.ts`
+  - `src/lib/dashboard/use-cms-content-query-state.ts`
+  - `src/lib/dashboard/use-cms-content-entries.ts`
+  - `src/lib/dashboard/use-cms-entry-autosave.ts`
+- API contract:
+  - use gateway workspace routes under `/workspaces/:workspaceId/content/entries*`.
+  - include bearer token on every request.
+  - treat all responses as untrusted and fail closed on invalid shape.
+- Query state:
+  - keep toolbar/list query state URL-backed.
+  - normalize invalid query values to safe defaults (`date`, `desc`, `list`, `all`).
+- Autosave:
+  - debounce save calls (default 2s).
+  - maintain local snapshot cache for draft recovery.
+  - guard browser storage access (`window.localStorage`) for SSR/runtime safety.
+  - expose explicit retry path on save failure.
+- Testing:
+  - Tier 1 tests for client normalization/validation and hook state logic.
+  - maintain >=80% statements/branches in touched modules.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
