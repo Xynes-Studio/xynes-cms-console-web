@@ -255,6 +255,29 @@ Rules:
 - Security:
   - treat user-entered query as untrusted input and delegate sanitization/validation to API boundary.
 
+### CMS Editor Layout Standards
+
+- Component ownership:
+  - `src/components/dashboard/CmsEditorLayout.tsx`
+- Layout contract:
+  - desktop uses two-column split (`20%` metadata, `80%` editor canvas).
+  - tablet/mobile uses drawer access for metadata editing.
+- Metadata sections:
+  - path preview, generated link, title, description, tags, status badge.
+- Top actions:
+  - back navigation (optional), save draft, publish.
+  - save status messaging supports idle/saving/saved/error states.
+  - optional retry action can be surfaced when save state is `error`.
+- Navigation resilience:
+  - optional `hasUnsavedChanges` guard registers a `beforeunload` prompt to prevent accidental tab close refresh loss.
+- Accessibility:
+  - save status message uses `aria-live="polite"`.
+  - all action buttons and metadata inputs must have explicit labels.
+  - metadata drawer trigger must remain keyboard accessible.
+- Security:
+  - generated link and metadata values are treated as untrusted user data.
+  - generated link is clickable only for internal paths (relative or same-origin absolute); external/unsafe URLs render as plain text.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
