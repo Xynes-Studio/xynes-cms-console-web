@@ -199,6 +199,24 @@ Rules:
 - Do not introduce app-local re-implementations of shell internals.
 - If shell internals need adjustment (for example, workspace trigger alignment), fix in `lumia-ds` and consume the updated package in apps.
 
+### CMS Content Grid Card Standards
+
+- Component ownership:
+  - `src/components/dashboard/CmsContentCardGrid.tsx`
+- Rendering rules:
+  - title must stay one-line truncated.
+  - description must stay max three visual lines for grid consistency.
+  - draft badge only renders for draft status.
+- Accessibility:
+  - card root remains keyboard focusable with `role="button"` and `tabIndex={0}`.
+  - Enter/Space keyboard activation must match click behavior.
+  - avatar uses accessible alt and initials fallback.
+- DS usage:
+  - use Lumia primitives (`Card`, `Avatar`, `Badge`) instead of app-local duplicates.
+- Testing:
+  - keep Tier 2 interaction coverage in component test file.
+  - include metadata fallback and keyboard activation assertions.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
