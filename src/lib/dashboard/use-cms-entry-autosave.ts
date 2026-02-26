@@ -111,6 +111,31 @@ export function useCmsEntryAutosave<TValue>({
   useEffect(() => {
     latestValueRef.current = value;
   }, [value]);
+  useEffect(() => {
+    let isCancelled = false;
+    const cached = readSnapshot(storageKey);
+    if (!cached) {
+      lastSnapshotSerializedRef.current = null;
+      queueMicrotask(() => {
+        if (!isCancelled) {
+          setPendingSnapshot(null);
+        }
+      });
+      return () => {
+        isCancelled = true;
+      };
+    }
+    lastSnapshotSerializedRef.current = cached;
+    const parsed = parseSnapshot<TValue>(cached);
+    queueMicrotask(() => {
+      if (!isCancelled) {
+        setPendingSnapshot(parsed);
+      }
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, [storageKey]);
 
   const clearSnapshot = useCallback(() => {
     removeSnapshot(storageKey);
@@ -156,6 +181,14 @@ export function useCmsEntryAutosave<TValue>({
   );
 
   useEffect(() => {
+    if (saveState === "error") {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      return;
+    }
+
     if (!enabled) {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
@@ -190,7 +223,7 @@ export function useCmsEntryAutosave<TValue>({
         saveTimer.current = null;
       }
     };
-  }, [delayMs, enabled, pendingSnapshot, runSave, storageKey, value]);
+  }, [delayMs, enabled, pendingSnapshot, runSave, saveState, storageKey, value]);
 
   const retry = useCallback(async () => {
     const snapshot = pendingSnapshot ?? latestValueRef.current;

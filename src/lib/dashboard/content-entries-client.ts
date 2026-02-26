@@ -135,6 +135,8 @@ const normalizeStringArray = (value: unknown): string[] => {
     .filter((item): item is string => isNonEmptyString(item))
     .map((item) => item.trim());
 };
+const isOptionalNonEmptyString = (value: unknown): boolean =>
+  value === undefined || value === null || isNonEmptyString(value);
 
 const isWorkspaceContentEntryStatus = (
   value: unknown,
@@ -151,7 +153,7 @@ const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
     !isNonEmptyString(value.workspaceId) ||
     !isNonEmptyString(value.contentTypeId) ||
     !isNonEmptyString(value.title) ||
-    !isNonEmptyString(value.description) ||
+    !isOptionalNonEmptyString(value.description) ||
     !isWorkspaceContentEntryStatus(value.status) ||
     !isNonEmptyString(value.createdAt) ||
     !isNonEmptyString(value.updatedAt) ||
@@ -164,6 +166,7 @@ const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
   const ownerName = normalizeOptionalString(value.ownerName);
   const avatarUrl = normalizeOptionalString(value.avatarUrl);
   const publishedAt = normalizeOptionalString(value.publishedAt);
+  const description = normalizeOptionalString(value.description) ?? "";
 
   return {
     id: value.id.trim(),
@@ -171,7 +174,7 @@ const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
     contentTypeId: value.contentTypeId.trim(),
     directoryId,
     title: value.title.trim(),
-    description: value.description.trim(),
+    description,
     body: value.body,
     tags: normalizeStringArray(value.tags),
     ownerName,

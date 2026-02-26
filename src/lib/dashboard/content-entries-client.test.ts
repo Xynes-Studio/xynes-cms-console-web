@@ -95,6 +95,35 @@ describe("content-entries-client", () => {
     ).rejects.toThrow(/Invalid/);
   });
 
+  it("accepts optional description when omitted", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            items: [
+              {
+                ...sampleEntry,
+                description: undefined,
+              },
+            ],
+            count: 1,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+
+    expect(result.items[0]?.description).toBe("");
+  });
+
   it("creates and returns entry", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, data: { entry: sampleEntry } }), { status: 201 }),

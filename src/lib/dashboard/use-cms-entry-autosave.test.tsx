@@ -156,4 +156,68 @@ describe("useCmsEntryAutosave", () => {
     expect(result.current.pendingSnapshot).toBeNull();
     expect(result.current.restoreSnapshot()).toBeNull();
   });
+
+  it("rehydrates snapshot when cacheKey changes", async () => {
+    localStorage.setItem("cms-entry-autosave:entry-a", JSON.stringify({ title: "A" }));
+    localStorage.setItem("cms-entry-autosave:entry-b", JSON.stringify({ title: "B" }));
+
+    const { result, rerender } = renderHook(
+      ({ cacheKey }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey,
+          value: { title: "live" },
+          delayMs: 100,
+          saveDraft: vi.fn().mockResolvedValue(undefined),
+        }),
+      { initialProps: { cacheKey: "entry-a" } },
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.pendingSnapshot).toEqual({ title: "A" });
+
+    rerender({ cacheKey: "entry-b" });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.pendingSnapshot).toEqual({ title: "B" });
+  });
+
+  it("does not auto-retry after save error until state is cleared", async () => {
+    const saveDraft = vi.fn().mockRejectedValue(new Error("fail"));
+
+    const { rerender } = renderHook(
+      ({ value }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey: "entry-6",
+          value,
+          delayMs: 50,
+          saveDraft,
+        }),
+      { initialProps: { value: { title: "first" } } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(50);
+      await Promise.resolve();
+    });
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+
+    rerender({ value: { title: "second" } });
+    await act(async () => {
+      vi.advanceTimersByTime(50);
+      await Promise.resolve();
+    });
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+  });
 });

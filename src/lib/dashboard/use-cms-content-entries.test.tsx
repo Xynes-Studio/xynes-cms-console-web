@@ -27,6 +27,16 @@ const sampleListResult = {
 };
 
 describe("useCmsContentEntries", () => {
+  const deferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+
   it("loads entries and exposes success state", async () => {
     const listEntries = vi.fn().mockResolvedValue(sampleListResult);
 
@@ -100,5 +110,47 @@ describe("useCmsContentEntries", () => {
 
     expect(listEntries).not.toHaveBeenCalled();
     expect(result.current.items).toEqual([]);
+  });
+
+  it("ignores stale responses and keeps latest request result", async () => {
+    const first = deferred<typeof sampleListResult>();
+    const second = deferred<typeof sampleListResult>();
+    const listEntries = vi
+      .fn()
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+
+    const { result, rerender } = renderHook(
+      ({ search }) =>
+        useCmsContentEntries({
+          apiBaseUrl: "http://localhost:4100",
+          workspaceId: "workspace-1",
+          accessToken: "jwt-token",
+          query: { sortBy: "date", sortDirection: "desc", view: "list", search },
+          listEntries,
+        }),
+      { initialProps: { search: "a" } },
+    );
+
+    rerender({ search: "b" });
+
+    await act(async () => {
+      second.resolve({
+        items: [{ ...sampleListResult.items[0], id: "entry-new", title: "New" }],
+        count: 1,
+      });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.items[0]?.id).toBe("entry-new");
+    });
+
+    await act(async () => {
+      first.resolve(sampleListResult);
+      await Promise.resolve();
+    });
+
+    expect(result.current.items[0]?.id).toBe("entry-new");
   });
 });

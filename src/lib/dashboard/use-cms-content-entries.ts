@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   listWorkspaceContentEntries,
   type WorkspaceContentEntriesListQuery,
@@ -41,6 +41,7 @@ export function useCmsContentEntries({
   const [result, setResult] = useState<WorkspaceContentEntriesListResult>(emptyResult);
   const [isLoading, setIsLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<Error | null>(null);
+  const requestIdRef = useRef(0);
 
   const stableQuery = useMemo<WorkspaceContentEntriesListQuery>(
     () => ({
@@ -65,12 +66,15 @@ export function useCmsContentEntries({
 
   const runLoad = useCallback(async () => {
     if (!enabled) {
+      requestIdRef.current += 1;
       setResult(emptyResult);
       setIsLoading(false);
       setError(null);
       return;
     }
 
+    requestIdRef.current += 1;
+    const localRequestId = requestIdRef.current;
     setIsLoading(true);
     setError(null);
 
@@ -81,11 +85,20 @@ export function useCmsContentEntries({
         accessToken,
         query: stableQuery,
       });
+      if (localRequestId !== requestIdRef.current) {
+        return;
+      }
       setResult(next);
     } catch (loadError) {
+      if (localRequestId !== requestIdRef.current) {
+        return;
+      }
       setError(loadError instanceof Error ? loadError : new Error("Failed to load entries"));
       setResult(emptyResult);
     } finally {
+      if (localRequestId !== requestIdRef.current) {
+        return;
+      }
       setIsLoading(false);
     }
   }, [accessToken, apiBaseUrl, enabled, listEntries, stableQuery, workspaceId]);
