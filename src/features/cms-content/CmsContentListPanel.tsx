@@ -1,10 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { BreadcrumbItem } from "@lumia-ui/components";
 import { Card } from "@lumia-ui/components";
 import { useCmsContentQueryState } from "../../lib/dashboard/use-cms-content-query-state";
 import { CmsContentToolbar } from "../../components/dashboard/CmsContentToolbar";
+
+const QUERY_REPLACE_DEBOUNCE_MS = 300;
 
 const safeDecodePathSegment = (segment: string) => {
   try {
@@ -18,6 +21,33 @@ export function CmsContentListPanel() {
   const pathname = usePathname();
   const router = useRouter();
   const { state, setState } = useCmsContentQueryState();
+  const [queryDraft, setQueryDraft] = useState(state.query);
+  const [isQueryEditing, setIsQueryEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isQueryEditing) {
+      return;
+    }
+
+    const normalizedQuery = queryDraft.trim();
+    if (normalizedQuery === state.query) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setState(
+        {
+          query: normalizedQuery,
+          offset: 0,
+        },
+        { navigation: "replace" },
+      );
+    }, QUERY_REPLACE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isQueryEditing, queryDraft, setState, state.query]);
 
   const pathParts = pathname
     .split("/")
@@ -61,7 +91,7 @@ export function CmsContentListPanel() {
       <CmsContentToolbar
         breadcrumbItems={breadcrumbItems}
         itemCount={0}
-        query={state.query}
+        query={isQueryEditing ? queryDraft : state.query}
         sortBy={state.sortBy}
         view={state.view}
         followingOnly={state.followingOnly}
@@ -70,10 +100,14 @@ export function CmsContentListPanel() {
           return;
         }}
         onQueryChange={(query) => {
-          setState({ query: query.trim(), offset: 0 });
+          setQueryDraft(query);
+          setIsQueryEditing(true);
         }}
         onSearchSubmit={() => {
-          setState({ query: state.query, offset: 0 });
+          const normalizedQuery = (isQueryEditing ? queryDraft : state.query).trim();
+          setQueryDraft(normalizedQuery);
+          setIsQueryEditing(false);
+          setState({ query: normalizedQuery, offset: 0 });
         }}
         onSortChange={(sortBy) => {
           setState({ sortBy, offset: 0 });

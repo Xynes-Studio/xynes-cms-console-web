@@ -3,17 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCmsContentQueryState } from "./use-cms-content-query-state";
 
 const push = vi.fn();
+const replace = vi.fn();
 let search = "";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard/acme/content",
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace }),
   useSearchParams: () => new URLSearchParams(search),
 }));
 
 describe("useCmsContentQueryState", () => {
   beforeEach(() => {
     push.mockReset();
+    replace.mockReset();
     search = "";
   });
 
@@ -159,6 +161,25 @@ describe("useCmsContentQueryState", () => {
       });
     });
 
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("uses router.replace when replace navigation is requested", () => {
+    const { result } = renderHook(() => useCmsContentQueryState());
+
+    act(() => {
+      result.current.setState(
+        {
+          query: "debounced",
+          offset: 0,
+        },
+        { navigation: "replace" },
+      );
+    });
+
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace.mock.calls[0][0]).toContain("q=debounced");
     expect(push).not.toHaveBeenCalled();
   });
 });

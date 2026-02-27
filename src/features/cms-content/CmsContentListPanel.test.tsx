@@ -1,6 +1,6 @@
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsContentListPanel } from "./CmsContentListPanel";
 
 const push = vi.fn();
@@ -133,6 +133,7 @@ vi.mock("@lumia-ui/components", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   push.mockReset();
   setState.mockReset();
   mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
@@ -148,6 +149,10 @@ afterEach(() => {
     limit: 20,
     offset: 0,
   };
+});
+
+beforeEach(() => {
+  vi.useFakeTimers();
 });
 
 describe("CmsContentListPanel", () => {
@@ -221,6 +226,21 @@ describe("CmsContentListPanel", () => {
     expect(setState).toHaveBeenCalledWith({ view: "grid" });
     expect(setState).toHaveBeenCalledWith({ followingOnly: true, offset: 0 });
     expect(setState).toHaveBeenCalledWith({ favoritesOnly: true, offset: 0 });
+  });
+
+  it("debounces query typing and uses replace navigation", () => {
+    render(<CmsContentListPanel />);
+
+    fireEvent.click(screen.getByRole("button", { name: "update query" }));
+
+    expect(setState).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(350);
+
+    expect(setState).toHaveBeenCalledWith(
+      { query: "updated query", offset: 0 },
+      { navigation: "replace" },
+    );
   });
 
   it("falls back to dashboard root path when content segment is absent", () => {

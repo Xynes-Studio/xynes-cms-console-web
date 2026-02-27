@@ -23,6 +23,10 @@ export type CmsContentQueryState = {
   offset: number;
 };
 
+export type CmsContentQueryUpdateOptions = {
+  navigation?: "push" | "replace";
+};
+
 const clampInt = (
   value: string | null,
   fallback: number,
@@ -85,7 +89,10 @@ export function useCmsContentQueryState() {
   }, [searchParams]);
 
   const setState = useCallback(
-    (patch: Partial<CmsContentQueryState>) => {
+    (
+      patch: Partial<CmsContentQueryState>,
+      options?: CmsContentQueryUpdateOptions,
+    ) => {
       const nextState: CmsContentQueryState = {
         ...state,
         ...patch,
@@ -116,6 +123,11 @@ export function useCmsContentQueryState() {
         : pathname;
 
       if (nextUrl === currentUrl) {
+        return;
+      }
+
+      if (options?.navigation === "replace") {
+        router.replace(nextUrl);
         return;
       }
 
