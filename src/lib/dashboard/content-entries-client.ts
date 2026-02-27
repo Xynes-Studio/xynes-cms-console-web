@@ -46,7 +46,6 @@ export interface WorkspaceContentEntriesListQuery {
 }
 
 export interface WorkspaceContentEntryCreatePayload {
-  contentTypeId: string;
   directoryId?: string | null;
   title: string;
   description?: string;

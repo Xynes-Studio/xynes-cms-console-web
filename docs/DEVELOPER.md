@@ -111,8 +111,6 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 ### CMS Content Directory API Contract
 
 - API route:
-  - `GET /workspaces/:workspaceId/content-types`
-    - gateway action key: `cms.content_types.listForWorkspace`
   - `GET /workspaces/:workspaceId/content-directories`
     - gateway action key: `cms.content_directories.listForWorkspace`
   - `POST /workspaces/:workspaceId/content-directories`
@@ -122,14 +120,11 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
   - `DELETE /workspaces/:workspaceId/content-directories/:directoryId`
     - gateway action key: `cms.content_directories.delete`
 - Frontend integration ownership:
-  - `src/lib/dashboard/content-types-client.ts`: API request + envelope unwrapping + strict runtime shape validation
   - `src/lib/dashboard/content-directories-client.ts`: persisted directory list/create/update/delete API client + strict runtime shape validation
   - `src/components/dashboard/CmsDashboardShell.tsx`: effect orchestration + workspace-scoped synchronization into `DashboardShell.directorySection`
 - Security and fail-closed rules:
-  - Require bearer token from `useAuth().getAccessToken()` for content type requests.
   - Require bearer token from `useAuth().getAccessToken()` for content directory list/create/update/delete requests.
   - Never trust API payload shape implicitly; validate before rendering.
-  - If content-types fetch fails or is malformed, keep shell stable and avoid crashing the dashboard.
   - If content-directories fetch/create/update/delete fails or is malformed, keep shell stable and avoid crashing the dashboard.
   - Surface user-visible error feedback via Lumia toast for failed create/rename/delete mutations.
   - Persistent directory tree source of truth is backend API (`GET /content-directories`); do not treat URL-only path segments as persisted nodes.

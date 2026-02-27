@@ -353,25 +353,17 @@ describe("CmsDashboardShell", () => {
     );
   });
 
-  it("loads content directory tree from gateway content-types API", async () => {
+  it("loads content directory tree from gateway content-directories API", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((input) => {
         const url = String(input);
-        if (url.endsWith("/content-types")) {
+        if (url.endsWith("/content-directories")) {
           return Promise.resolve(
             new Response(
               JSON.stringify({
                 ok: true,
-                data: [
-                  {
-                    id: "ct-1",
-                    name: "Blog",
-                    slug: "blog-post",
-                    routeSegment: "blog",
-                    templateKey: "blog_post",
-                  },
-                ],
+                data: [{ id: "dir-1", parentId: null, name: "Docs", pathSegment: "docs" }],
               }),
               { status: 200 },
             ),
@@ -396,7 +388,7 @@ describe("CmsDashboardShell", () => {
 
     expect(mockGetAccessToken).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:4100/workspaces/ws-1/content-types",
+      "http://localhost:4100/workspaces/ws-1/content-directories",
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
@@ -409,8 +401,8 @@ describe("CmsDashboardShell", () => {
     expect(props.directorySection?.nodes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          label: "Blog",
-          href: "/dashboard/acme/content/blog",
+          label: "Docs",
+          href: "/dashboard/acme/content/docs",
         }),
       ]),
     );
@@ -1046,18 +1038,17 @@ describe("CmsDashboardShell", () => {
 
     const fetchMock = vi.fn((input) => {
       const url = String(input);
-      if (url.includes("/workspaces/ws-1/content-types")) {
+      if (url.includes("/workspaces/ws-1/content-directories")) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
               ok: true,
               data: [
                 {
-                  id: "ct-1",
-                  name: "Blog",
-                  slug: "blog-post",
-                  routeSegment: "blog",
-                  templateKey: "blog_post",
+                  id: "dir-1",
+                  parentId: null,
+                  name: "Docs",
+                  pathSegment: "docs",
                 },
               ],
             }),
@@ -1066,29 +1057,22 @@ describe("CmsDashboardShell", () => {
         );
       }
 
-      if (url.includes("/workspaces/ws-2/content-types")) {
+      if (url.includes("/workspaces/ws-2/content-directories")) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
               ok: true,
               data: [
                 {
-                  id: "ct-2",
+                  id: "dir-2",
+                  parentId: null,
                   name: "Events",
-                  slug: "event",
-                  routeSegment: "events",
-                  templateKey: "event",
+                  pathSegment: "events",
                 },
               ],
             }),
             { status: 200 },
           ),
-        );
-      }
-
-      if (url.endsWith("/content-directories")) {
-        return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
         );
       }
 
@@ -1111,7 +1095,7 @@ describe("CmsDashboardShell", () => {
 
     let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
     expect(props.directorySection?.nodes).toEqual(
-      expect.arrayContaining([expect.objectContaining({ label: "Blog" })]),
+      expect.arrayContaining([expect.objectContaining({ label: "Docs" })]),
     );
 
     workspaceState.currentWorkspace = {
