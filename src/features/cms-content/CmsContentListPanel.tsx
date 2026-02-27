@@ -2,10 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import type { BreadcrumbItem } from "@lumia-ui/components";
 import { Card } from "@lumia-ui/components";
 import { useCmsContentQueryState } from "../../lib/dashboard/use-cms-content-query-state";
+import { useCmsContentEntries } from "../../lib/dashboard/use-cms-content-entries";
 import { CmsContentToolbar } from "../../components/dashboard/CmsContentToolbar";
+import {
+  CmsContentListState,
+  resolveCmsContentListState,
+} from "./CmsContentListState";
 
 const QUERY_REPLACE_DEBOUNCE_MS = 300;
 
@@ -20,9 +26,47 @@ const safeDecodePathSegment = (segment: string) => {
 export function CmsContentListPanel() {
   const pathname = usePathname();
   const router = useRouter();
+  const {
+    getAccessToken,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+  } = useAuth();
+  const { currentWorkspace } = useWorkspace();
   const { state, setState } = useCmsContentQueryState();
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [queryDraft, setQueryDraft] = useState(state.query);
   const [isQueryEditing, setIsQueryEditing] = useState(false);
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      if (isAuthLoading || !isAuthenticated || !currentWorkspace?.id) {
+        if (!cancelled) {
+          setAccessToken(null);
+        }
+        return;
+      }
+
+      try {
+        const token = await getAccessToken();
+        if (cancelled) {
+          return;
+        }
+
+        setAccessToken(token?.trim() ? token.trim() : null);
+      } catch {
+        if (!cancelled) {
+          setAccessToken(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentWorkspace?.id, getAccessToken, isAuthenticated, isAuthLoading]);
 
   useEffect(() => {
     if (!isQueryEditing) {
@@ -83,6 +127,36 @@ export function CmsContentListPanel() {
     });
   });
 
+  const { items, count, isLoading, error, refresh } = useCmsContentEntries({
+    apiBaseUrl,
+    workspaceId: currentWorkspace?.id ?? "",
+    accessToken: accessToken ?? "",
+    query: {
+      directoryId: state.directoryId,
+      search: state.query,
+      sortBy: state.sortBy,
+      sortDirection: state.sortDirection,
+      status: state.status,
+      limit: state.limit,
+      offset: state.offset,
+      view: state.view,
+    },
+    enabled:
+      !isAuthLoading &&
+      isAuthenticated &&
+      Boolean(currentWorkspace?.id) &&
+      Boolean(accessToken) &&
+      Boolean(apiBaseUrl),
+  });
+
+  const listViewState = resolveCmsContentListState({
+    isLoading,
+    error,
+    count,
+    query: state.query,
+    breadcrumbParts,
+  });
+
   return (
     <section
       className="flex h-full min-h-0 flex-col"
@@ -90,7 +164,7 @@ export function CmsContentListPanel() {
     >
       <CmsContentToolbar
         breadcrumbItems={breadcrumbItems}
-        itemCount={0}
+        itemCount={count}
         query={isQueryEditing ? queryDraft : state.query}
         sortBy={state.sortBy}
         view={state.view}
@@ -125,11 +199,29 @@ export function CmsContentListPanel() {
         }}
       />
 
-      <Card className="m-4 flex min-h-[280px] items-center justify-center border border-border bg-muted/20 p-6 text-center">
-        <p className="text-sm text-muted-foreground" aria-live="polite">
-          Content entries will appear here.
-        </p>
-      </Card>
+      <CmsContentListState
+        state={listViewState}
+        onRetry={() => void refresh()}
+      />
+
+      {listViewState.kind === "ready" ? (
+        <Card className="m-4 border border-border bg-background p-4">
+          <ul aria-label="Content entries" className="space-y-3">
+            {items.map((item) => (
+              <li key={item.id} className="rounded-md border border-border p-3">
+                <p className="text-sm font-medium text-foreground">
+                  {item.title}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {(item.ownerName?.trim() || "Unknown owner") +
+                    " · " +
+                    item.status}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
     </section>
   );
 }

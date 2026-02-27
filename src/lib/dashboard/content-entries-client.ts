@@ -118,6 +118,48 @@ const normalizeSortDirection = (
   return sortDirection === "asc" ? "asc" : "desc";
 };
 
+const buildEntriesListParams = ({
+  query,
+  includeSorting,
+  includePaging,
+}: {
+  query: WorkspaceContentEntriesListQuery | undefined;
+  includeSorting: boolean;
+  includePaging: boolean;
+}) => {
+  const params = new URLSearchParams();
+  const normalizedSearch = query?.search?.trim();
+  if (normalizedSearch) params.set("search", normalizedSearch);
+
+  const normalizedDirectoryId = query?.directoryId?.trim();
+  if (normalizedDirectoryId) params.set("directoryId", normalizedDirectoryId);
+
+  const normalizedStatus = normalizeStatus(query?.status);
+  if (normalizedStatus !== "all") {
+    params.set("status", normalizedStatus);
+  }
+
+  const normalizedSortBy = normalizeSortBy(query?.sortBy);
+  const normalizedSortDirection = normalizeSortDirection(query?.sortDirection);
+  if (includeSorting && normalizedSortBy !== "date") {
+    params.set("sortBy", normalizedSortBy);
+  }
+  if (includeSorting && normalizedSortDirection !== "desc") {
+    params.set("sortDirection", normalizedSortDirection);
+  }
+
+  const normalizedLimit = normalizeLimit(query?.limit, 20);
+  const normalizedOffset = normalizeOffset(query?.offset, 0);
+  if (includePaging && normalizedLimit !== 20) {
+    params.set("limit", String(normalizedLimit));
+  }
+  if (includePaging && normalizedOffset > 0) {
+    params.set("offset", String(normalizedOffset));
+  }
+
+  return params;
+};
+
 const normalizeOptionalString = (value: unknown): string | null => {
   if (!isNonEmptyString(value)) {
     return null;
@@ -243,28 +285,39 @@ export async function listWorkspaceContentEntries({
     errorContext: "content entries lookup",
   });
 
-  const params = new URLSearchParams();
-  const normalizedSearch = query?.search?.trim();
-  if (normalizedSearch) params.set("search", normalizedSearch);
+  const endpointBase = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}/content/entries`;
+  const primaryParams = buildEntriesListParams({
+    query,
+    includeSorting: true,
+    includePaging: true,
+  });
 
-  const normalizedDirectoryId = query?.directoryId?.trim();
-  if (normalizedDirectoryId) params.set("directoryId", normalizedDirectoryId);
+  const buildEndpoint = (params: URLSearchParams) => {
+    const queryString = params.toString();
+    return queryString ? `${endpointBase}?${queryString}` : endpointBase;
+  };
 
-  params.set("sortBy", normalizeSortBy(query?.sortBy));
-  params.set("sortDirection", normalizeSortDirection(query?.sortDirection));
-  const normalizedStatus = normalizeStatus(query?.status);
-  if (normalizedStatus !== "all") {
-    params.set("status", normalizedStatus);
-  }
-  params.set("limit", String(normalizeLimit(query?.limit, 20)));
-  params.set("offset", String(normalizeOffset(query?.offset, 0)));
-
-  const endpoint = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}/content/entries?${params.toString()}`;
-  const response = await fetchImpl(endpoint, {
+  let response = await fetchImpl(buildEndpoint(primaryParams), {
     method: "GET",
     headers: createReadHeaders(normalized.accessToken),
     signal,
   });
+
+  if (response.status === 400) {
+    const compatibilityParams = buildEntriesListParams({
+      query,
+      includeSorting: false,
+      includePaging: false,
+    });
+
+    if (compatibilityParams.toString() !== primaryParams.toString()) {
+      response = await fetchImpl(buildEndpoint(compatibilityParams), {
+        method: "GET",
+        headers: createReadHeaders(normalized.accessToken),
+        signal,
+      });
+    }
+  }
 
   if (!response.ok) {
     if (response.status === 404) {
@@ -423,7 +476,10 @@ export async function publishWorkspaceContentEntry({
     signal,
   });
 
-  return parseEntryResponse({ response, errorContext: "publish content entry" });
+  return parseEntryResponse({
+    response,
+    errorContext: "publish content entry",
+  });
 }
 
 export async function deleteWorkspaceContentEntry({
