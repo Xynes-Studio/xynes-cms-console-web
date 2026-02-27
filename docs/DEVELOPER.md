@@ -287,6 +287,13 @@ Rules:
 - Query state:
   - keep toolbar/list query state URL-backed.
   - normalize invalid query values to safe defaults (`date`, `desc`, `list`, `all`).
+  - avoid redundant history writes: do not push router state when computed URL is unchanged.
+  - reset pagination offset to `0` when query/sort/filter changes to prevent stale paged views.
+- CMS-UI-002 container wiring (Next.js + React):
+  - keep route files (`app/dashboard/[workspaceSlug]/content/**/page.tsx`) thin and delegate orchestration to `src/features/cms-content/CmsContentListPanel.tsx`.
+  - preserve directory context from pathname segments; never duplicate this parsing logic across route files.
+  - wire toolbar controls through `useCmsContentQueryState` as the single source of truth for URL/query params.
+  - keep presentational components (`CmsContentToolbar`, cards) stateless and reusable; integration logic stays in feature container/hooks.
 - Autosave:
   - debounce save calls (default 2s).
   - maintain local snapshot cache for draft recovery.

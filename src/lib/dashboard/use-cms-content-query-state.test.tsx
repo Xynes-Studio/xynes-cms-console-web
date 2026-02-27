@@ -34,7 +34,8 @@ describe("useCmsContentQueryState", () => {
   });
 
   it("normalizes malformed values from query", () => {
-    search = "?q=%20hello%20&sortBy=bad&sortDirection=bad&view=unknown&following=1&favorites=true&status=nope&limit=999&offset=-4&directoryId=%20";
+    search =
+      "?q=%20hello%20&sortBy=bad&sortDirection=bad&view=unknown&following=1&favorites=true&status=nope&limit=999&offset=-4&directoryId=%20";
     const { result } = renderHook(() => useCmsContentQueryState());
 
     expect(result.current.state).toMatchObject({
@@ -48,6 +49,25 @@ describe("useCmsContentQueryState", () => {
       limit: 100,
       offset: 0,
       directoryId: null,
+    });
+  });
+
+  it("parses valid query values", () => {
+    search =
+      "?q=hello&sortBy=popularity&sortDirection=asc&view=grid&following=true&favorites=1&status=published&limit=7&offset=14&directoryId=dir-123";
+    const { result } = renderHook(() => useCmsContentQueryState());
+
+    expect(result.current.state).toMatchObject({
+      query: "hello",
+      sortBy: "popularity",
+      sortDirection: "asc",
+      view: "grid",
+      followingOnly: true,
+      favoritesOnly: true,
+      status: "published",
+      limit: 7,
+      offset: 14,
+      directoryId: "dir-123",
     });
   });
 
@@ -70,5 +90,75 @@ describe("useCmsContentQueryState", () => {
     expect(nextUrl).toContain("sortBy=title");
     expect(nextUrl).toContain("view=grid");
     expect(nextUrl).toContain("favorites=1");
+  });
+
+  it("serializes non-default values and omits defaults", () => {
+    const { result } = renderHook(() => useCmsContentQueryState());
+
+    act(() => {
+      result.current.setState({
+        query: "abc",
+        directoryId: "dir-1",
+        sortBy: "popularity",
+        sortDirection: "asc",
+        view: "grid",
+        followingOnly: true,
+        favoritesOnly: true,
+        status: "draft",
+        limit: 50,
+        offset: 40,
+      });
+    });
+
+    expect(push).toHaveBeenCalledTimes(1);
+    const nextUrl = push.mock.calls[0][0] as string;
+    expect(nextUrl).toContain("q=abc");
+    expect(nextUrl).toContain("directoryId=dir-1");
+    expect(nextUrl).toContain("sortBy=popularity");
+    expect(nextUrl).toContain("sortDirection=asc");
+    expect(nextUrl).toContain("view=grid");
+    expect(nextUrl).toContain("following=1");
+    expect(nextUrl).toContain("favorites=1");
+    expect(nextUrl).toContain("status=draft");
+    expect(nextUrl).toContain("limit=50");
+    expect(nextUrl).toContain("offset=40");
+  });
+
+  it("can clear all params back to defaults", () => {
+    search =
+      "?q=abc&directoryId=dir-1&sortBy=title&sortDirection=asc&view=grid&following=1&favorites=1&status=archived&limit=25&offset=10";
+    const { result } = renderHook(() => useCmsContentQueryState());
+
+    act(() => {
+      result.current.setState({
+        query: "",
+        directoryId: null,
+        sortBy: "date",
+        sortDirection: "desc",
+        view: "list",
+        followingOnly: false,
+        favoritesOnly: false,
+        status: "all",
+        limit: 20,
+        offset: 0,
+      });
+    });
+
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push.mock.calls[0][0]).toBe("/dashboard/acme/content");
+  });
+
+  it("does not push when resulting URL is unchanged", () => {
+    search = "?q=stable&view=grid";
+    const { result } = renderHook(() => useCmsContentQueryState());
+
+    act(() => {
+      result.current.setState({
+        query: "stable",
+        view: "grid",
+      });
+    });
+
+    expect(push).not.toHaveBeenCalled();
   });
 });
