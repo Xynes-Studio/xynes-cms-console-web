@@ -12,6 +12,9 @@
     "test:coverage": "node ../infra/scripts/with-env.mjs vitest run --coverage"
   },
   "dependencies": {
+    "@lumia-ui/components": "link:../lumia-ds/packages/components",
+    "@lumia-ui/icons": "link:../lumia-ds/packages/icons",
+    "@lumia-ui/layout": "link:../lumia-ds/packages/layout",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-avatar": "^1.1.2",
     "@radix-ui/react-context-menu": "^2.1.6",
@@ -24,31 +27,28 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.89.0",
+    "@xynes/auth-sdk": "link:../xynes-auth-sdk",
     "date-fns": "^4.1.0",
     "dompurify": "^3.3.1",
     "lucide-react": "^0.474.0",
-    "@lumia-ui/components": "link:../lumia-ds/packages/components",
-    "@lumia-ui/icons": "link:../lumia-ds/packages/icons",
-    "@lumia-ui/layout": "link:../lumia-ds/packages/layout",
-    "@xynes/auth-sdk": "link:../xynes-auth-sdk",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
-    "@vitest/coverage-v8": "^2.1.9",
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "happy-dom": "^20.0.10",
-    "vitest": "^2.1.9",
+    "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "happy-dom": "^20.0.10",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

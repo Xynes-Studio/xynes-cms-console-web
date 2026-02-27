@@ -2,16 +2,18 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import WorkspaceContentPage from "./page";
 
-vi.mock("../../../../src/components/dashboard", () => ({
-  DashboardComingSoonPanel: ({ sectionLabel }: { sectionLabel: string }) => (
-    <section data-testid="coming-soon-panel">{sectionLabel}</section>
+vi.mock("../../../../src/features/cms-content/CmsContentListPanel", () => ({
+  CmsContentListPanel: () => (
+    <section data-testid="cms-content-list-panel">
+      cms-content-list-panel
+    </section>
   ),
 }));
 
 describe("Workspace Content Page", () => {
-  it("renders content coming soon panel", () => {
+  it("renders cms content list panel", () => {
     render(<WorkspaceContentPage />);
 
-    expect(screen.getByTestId("coming-soon-panel")).toHaveTextContent("Contents");
+    expect(screen.getByTestId("cms-content-list-panel")).toBeInTheDocument();
   });
 });
