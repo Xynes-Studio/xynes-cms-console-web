@@ -7,6 +7,8 @@ const push = vi.fn();
 const setState = vi.fn();
 const refreshEntries = vi.fn();
 const mockGetAccessToken = vi.fn();
+const renderGridItem = vi.fn();
+const renderListItem = vi.fn();
 let mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
 let mockedQueryState = {
   query: "",
@@ -161,6 +163,28 @@ vi.mock("../../components/dashboard/CmsContentToolbar", () => ({
   ),
 }));
 
+vi.mock("../../components/dashboard/CmsContentCardGrid", () => ({
+  CmsContentCardGrid: (props: { entryId: string; title: string }) => {
+    renderGridItem(props);
+    return (
+      <article data-testid={`grid-card-${props.entryId}`}>
+        {props.title}
+      </article>
+    );
+  },
+}));
+
+vi.mock("../../components/dashboard/CmsContentCardList", () => ({
+  CmsContentCardList: (props: { entryId: string; title: string }) => {
+    renderListItem(props);
+    return (
+      <article data-testid={`list-card-${props.entryId}`}>
+        {props.title}
+      </article>
+    );
+  },
+}));
+
 vi.mock("@lumia-ui/components", () => ({
   Card: ({
     children,
@@ -183,6 +207,8 @@ afterEach(() => {
   setState.mockReset();
   refreshEntries.mockReset();
   mockGetAccessToken.mockReset();
+  renderGridItem.mockReset();
+  renderListItem.mockReset();
   mockGetAccessToken.mockResolvedValue("jwt-token");
   mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
   mockedQueryState = {
@@ -386,5 +412,71 @@ describe("CmsContentListPanel", () => {
     expect(screen.getByText("About us")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
     expect(screen.getByText("2 Items")).toBeInTheDocument();
+  });
+
+  it("renders list cards in single-column layout when view=list", () => {
+    mockedQueryState = {
+      ...mockedQueryState,
+      view: "list",
+    };
+    mockedEntriesState = {
+      ...mockedEntriesState,
+      items: [
+        {
+          id: "entry-list-1",
+          title: "List article",
+          description: "list mode",
+          status: "draft",
+          ownerName: "Owner",
+          isFavorite: true,
+        },
+      ],
+      count: 1,
+    };
+
+    render(<CmsContentListPanel />);
+
+    const listContainer = screen.getByRole("list", { name: "Content entries" });
+    expect(listContainer.className).toContain("grid-cols-1");
+    expect(screen.getByTestId("list-card-entry-list-1")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("grid-card-entry-list-1"),
+    ).not.toBeInTheDocument();
+    expect(renderListItem).toHaveBeenCalledTimes(1);
+    expect(renderGridItem).not.toHaveBeenCalled();
+  });
+
+  it("renders grid cards with responsive 1/2/3 columns when view=grid", () => {
+    mockedQueryState = {
+      ...mockedQueryState,
+      view: "grid",
+    };
+    mockedEntriesState = {
+      ...mockedEntriesState,
+      items: [
+        {
+          id: "entry-grid-1",
+          title: "Grid article",
+          description: "grid mode",
+          status: "published",
+          ownerName: "Owner",
+          isFavorite: false,
+        },
+      ],
+      count: 1,
+    };
+
+    render(<CmsContentListPanel />);
+
+    const gridContainer = screen.getByRole("list", { name: "Content entries" });
+    expect(gridContainer.className).toContain("grid-cols-1");
+    expect(gridContainer.className).toContain("md:grid-cols-2");
+    expect(gridContainer.className).toContain("xl:grid-cols-3");
+    expect(screen.getByTestId("grid-card-entry-grid-1")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("list-card-entry-grid-1"),
+    ).not.toBeInTheDocument();
+    expect(renderGridItem).toHaveBeenCalledTimes(1);
+    expect(renderListItem).not.toHaveBeenCalled();
   });
 });

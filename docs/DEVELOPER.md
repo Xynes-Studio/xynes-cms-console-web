@@ -310,6 +310,26 @@ Rules:
   - Tier 1 tests for client normalization/validation and hook state logic.
   - maintain >=80% statements/branches in touched modules.
 
+### CMS-UI-004 Grid/List Renderer Standards
+
+- Ownership:
+  - `src/features/cms-content/CmsContentListPanel.tsx`
+  - `src/features/cms-content/mappers.ts`
+- Segregation rules:
+  - keep presentational rendering in Lumia components (`CmsContentCardGrid`, `CmsContentCardList`).
+  - keep entry-to-card prop adaptation in `mappers.ts` (no duplicate mapping logic in route files).
+  - keep route files thin (`app/dashboard/[workspaceSlug]/content/**/page.tsx` delegates to feature container).
+- Layout contract:
+  - `view=grid` renders responsive `1/2/3` columns (mobile/tablet/desktop).
+  - `view=list` renders a single-column list.
+- Redundancy + tech-debt controls:
+  - reuse shared entry action handler references while CMS-UI-005 wiring is pending.
+  - avoid per-item inline action object creation in render loops.
+- TDD + coverage (ADR-001):
+  - add/maintain Tier 2 container tests for view-mode branch rendering.
+  - add/maintain Tier 1 mapper tests for data transformation behavior.
+  - keep touched module coverage >=80% statements/branches.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
