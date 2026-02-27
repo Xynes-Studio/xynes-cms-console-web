@@ -1,5 +1,5 @@
-import { DashboardComingSoonPanel } from "../../../../../src/components/dashboard";
+import { CmsContentListPanel } from "../../../../../src/features/cms-content/CmsContentListPanel";
 
 export default function WorkspaceNestedContentPage() {
-  return <DashboardComingSoonPanel sectionLabel="Contents" />;
+  return <CmsContentListPanel />;
 }

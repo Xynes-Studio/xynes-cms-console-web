@@ -1,12 +1,21 @@
 import type { FormEvent } from "react";
-import { Button, Chip, Input, Select, ViewToggle } from "@lumia-ui/components";
+import {
+  Breadcrumbs,
+  Button,
+  Chip,
+  Input,
+  Select,
+  ViewToggle,
+  type BreadcrumbItem,
+} from "@lumia-ui/components";
+import { Star } from "lucide-react";
 import { Icon } from "@lumia-ui/icons";
 
 export type CmsContentSortBy = "date" | "title" | "popularity";
 export type CmsContentView = "grid" | "list";
 
 export type CmsContentToolbarProps = {
-  pathLabel: string;
+  breadcrumbItems: BreadcrumbItem[];
   itemCount: number;
   query: string;
   sortBy: CmsContentSortBy;
@@ -31,7 +40,7 @@ const sortOptions: Array<{ label: string; value: CmsContentSortBy }> = [
 ];
 
 export function CmsContentToolbar({
-  pathLabel,
+  breadcrumbItems,
   itemCount,
   query,
   sortBy,
@@ -60,18 +69,22 @@ export function CmsContentToolbar({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span
-            className="max-w-[420px] truncate rounded-full border border-border bg-muted/50 px-3 py-1 text-sm text-foreground"
-            title={pathLabel}
-          >
-            {pathLabel}
-          </span>
+          <Breadcrumbs
+            items={breadcrumbItems}
+            maxItems={5}
+            className="min-w-0 rounded-full border border-border px-3 py-1 [&_a]:cursor-pointer [&_button]:cursor-pointer"
+          />
           <span className="text-sm text-foreground/90">{itemCount} Items</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={onCreate} aria-label="Create content">
-            <Icon name="add" size="sm" />
+            <Icon
+              name="add"
+              size="sm"
+              color="currentColor"
+              aria-hidden="true"
+            />
             Create
           </Button>
           <form className="flex items-center gap-2" onSubmit={handleSubmit}>
@@ -81,7 +94,12 @@ export function CmsContentToolbar({
               value={query}
               onChange={(event) => onQueryChange(event.currentTarget.value)}
             />
-            <Button type="submit" size="sm" variant="primary" aria-label="Search contents">
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              aria-label="Search contents"
+            >
               Search
             </Button>
           </form>
@@ -91,29 +109,32 @@ export function CmsContentToolbar({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Chip
+            size="sm"
             toggle
             active={followingOnly}
             onClick={onFollowingToggle}
-            leadingIcon={<Icon name="users" size="sm" />}
+            iconName="users"
             aria-label="Toggle following filter"
           >
             Following
           </Chip>
           <Chip
+            size="sm"
             toggle
             active={favoritesOnly}
             onClick={onFavoritesToggle}
-            leadingIcon={<Icon name="check" size="sm" />}
+            icon={<Star className="h-4 w-4" aria-hidden="true" />}
             aria-label="Toggle favorites filter"
           >
             Favorites
           </Chip>
           <Chip
+            size="sm"
             toggle
             active={false}
             disabled={filterDisabled}
             onClick={onFilterClick}
-            leadingIcon={<Icon name="filter" size="sm" />}
+            iconName="filter"
             aria-label="Open advanced filters"
           >
             Filter
@@ -140,4 +161,3 @@ export function CmsContentToolbar({
     </section>
   );
 }
-
