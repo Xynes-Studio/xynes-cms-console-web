@@ -66,8 +66,18 @@ describe("content-entries-client", () => {
       fetchImpl: fetchMock,
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:4100/workspaces/workspace-1/content/entries?search=hello&sortBy=title&sortDirection=asc&status=draft&limit=30&offset=10",
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, requestInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(url)).toContain(
+      "http://localhost:4100/workspaces/workspace-1/content/entries?",
+    );
+    expect(String(url)).toContain("search=hello");
+    expect(String(url)).toContain("sortBy=title");
+    expect(String(url)).toContain("sortDirection=asc");
+    expect(String(url)).toContain("status=draft");
+    expect(String(url)).toContain("limit=30");
+    expect(String(url)).toContain("offset=10");
+    expect(requestInit).toEqual(
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
@@ -80,9 +90,12 @@ describe("content-entries-client", () => {
 
   it("fails closed on malformed list payload", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data: { items: [{ id: "x" }] } }), {
-        status: 200,
-      }),
+      new Response(
+        JSON.stringify({ ok: true, data: { items: [{ id: "x" }] } }),
+        {
+          status: 200,
+        },
+      ),
     );
 
     await expect(
@@ -93,6 +106,91 @@ describe("content-entries-client", () => {
         fetchImpl: fetchMock,
       }),
     ).rejects.toThrow(/Invalid/);
+  });
+
+  it("omits default sort and paging query parameters", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            items: [sampleEntry],
+            count: 1,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      query: {
+        sortBy: "date",
+        sortDirection: "desc",
+        status: "all",
+        limit: 20,
+        offset: 0,
+      },
+      fetchImpl: fetchMock,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/workspace-1/content/entries",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("retries with compatibility query when strict payload returns 400", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: { code: "VALIDATION_ERROR", message: "Invalid payload" },
+          }),
+          { status: 400, statusText: "Bad Request" },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              items: [sampleEntry],
+              count: 1,
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+
+    const result = await listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      query: {
+        sortBy: "title",
+        sortDirection: "asc",
+        limit: 40,
+        offset: 5,
+      },
+      fetchImpl: fetchMock,
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:4100/workspaces/workspace-1/content/entries?sortBy=title&sortDirection=asc&limit=40&offset=5",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:4100/workspaces/workspace-1/content/entries",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(result.items).toHaveLength(1);
   });
 
   it("accepts optional description when omitted", async () => {
@@ -125,9 +223,14 @@ describe("content-entries-client", () => {
   });
 
   it("creates and returns entry", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data: { entry: sampleEntry } }), { status: 201 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ ok: true, data: { entry: sampleEntry } }),
+          { status: 201 },
+        ),
+      );
 
     const result = await createWorkspaceContentEntry({
       apiBaseUrl: "http://localhost:4100",
@@ -147,9 +250,14 @@ describe("content-entries-client", () => {
   });
 
   it("gets entry by id", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data: { entry: sampleEntry } }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ ok: true, data: { entry: sampleEntry } }),
+          { status: 200 },
+        ),
+      );
 
     const result = await getWorkspaceContentEntryById({
       apiBaseUrl: "http://localhost:4100",
@@ -167,9 +275,14 @@ describe("content-entries-client", () => {
   });
 
   it("updates entry by id", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data: { entry: sampleEntry } }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ ok: true, data: { entry: sampleEntry } }),
+          { status: 200 },
+        ),
+      );
 
     await updateWorkspaceContentEntry({
       apiBaseUrl: "http://localhost:4100",
@@ -187,14 +300,23 @@ describe("content-entries-client", () => {
   });
 
   it("publishes and deletes entry", async () => {
-    const publishFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data: { entry: sampleEntry } }), { status: 200 }),
-    );
+    const publishFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ ok: true, data: { entry: sampleEntry } }),
+          { status: 200 },
+        ),
+      );
     const deleteFetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           ok: true,
-          data: { success: true, entryId: "entry-1", deletedAt: "2026-02-26T11:00:00.000Z" },
+          data: {
+            success: true,
+            entryId: "entry-1",
+            deletedAt: "2026-02-26T11:00:00.000Z",
+          },
         }),
         { status: 200 },
       ),
@@ -231,12 +353,17 @@ describe("content-entries-client", () => {
         { status: 200 },
       ),
     );
-    const favoriteFetch = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({ ok: true, data: { entryId: "entry-1", isFavorite: true } }),
-        { status: 200 },
-      ),
-    );
+    const favoriteFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { entryId: "entry-1", isFavorite: true },
+          }),
+          { status: 200 },
+        ),
+      );
 
     const collaborators = await setWorkspaceEntryCollaborators({
       apiBaseUrl: "http://localhost:4100",
@@ -244,7 +371,10 @@ describe("content-entries-client", () => {
       entryId: "entry-1",
       accessToken: "jwt-token",
       collaborators: [
-        { userId: "00000000-0000-0000-0000-000000000001", displayName: "Alpha" },
+        {
+          userId: "00000000-0000-0000-0000-000000000001",
+          displayName: "Alpha",
+        },
       ],
       fetchImpl: collaboratorsFetch,
     });
@@ -262,12 +392,17 @@ describe("content-entries-client", () => {
   });
 
   it("lists favorite entries and generates internal share links", async () => {
-    const favoritesFetch = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({ ok: true, data: { items: [sampleEntry], count: 1 } }),
-        { status: 200 },
-      ),
-    );
+    const favoritesFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { items: [sampleEntry], count: 1 },
+          }),
+          { status: 200 },
+        ),
+      );
     const shareFetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({

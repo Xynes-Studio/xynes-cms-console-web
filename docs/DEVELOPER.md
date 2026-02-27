@@ -280,10 +280,13 @@ Rules:
   - `src/lib/dashboard/use-cms-content-query-state.ts`
   - `src/lib/dashboard/use-cms-content-entries.ts`
   - `src/lib/dashboard/use-cms-entry-autosave.ts`
+  - `src/features/cms-content/CmsContentListPanel.tsx`
+  - `src/features/cms-content/CmsContentListState.tsx`
 - API contract:
   - use gateway workspace routes under `/workspaces/:workspaceId/content/entries*`.
   - include bearer token on every request.
   - treat all responses as untrusted and fail closed on invalid shape.
+  - for list API compatibility, avoid sending default query values and allow one compatibility retry path on `400` before surfacing user-facing error state.
 - Query state:
   - keep toolbar/list query state URL-backed.
   - normalize invalid query values to safe defaults (`date`, `desc`, `list`, `all`).
@@ -294,6 +297,10 @@ Rules:
   - preserve directory context from pathname segments; never duplicate this parsing logic across route files.
   - wire toolbar controls through `useCmsContentQueryState` as the single source of truth for URL/query params.
   - keep presentational components (`CmsContentToolbar`, cards) stateless and reusable; integration logic stays in feature container/hooks.
+- CMS-UI-003 state wiring (Next.js + React):
+  - all deterministic list states (`loading`, `error`, `empty`, `ready`) are resolved through `resolveCmsContentListState` to keep route/container branches consistent.
+  - keep error copy sanitized and generic (no raw backend payload leakage in UI).
+  - retry action should call hook refresh without duplicating fetch orchestration in presentational components.
 - Autosave:
   - debounce save calls (default 2s).
   - maintain local snapshot cache for draft recovery.

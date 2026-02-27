@@ -5,6 +5,8 @@ import { CmsContentListPanel } from "./CmsContentListPanel";
 
 const push = vi.fn();
 const setState = vi.fn();
+const refreshEntries = vi.fn();
+const mockGetAccessToken = vi.fn();
 let mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
 let mockedQueryState = {
   query: "",
@@ -17,6 +19,19 @@ let mockedQueryState = {
   directoryId: null,
   limit: 20,
   offset: 0,
+};
+let mockedEntriesState = {
+  items: [] as Array<{
+    id: string;
+    title: string;
+    description: string;
+    status: "draft" | "published" | "archived";
+    ownerName: string | null;
+    isFavorite: boolean;
+  }>,
+  count: 0,
+  isLoading: false,
+  error: null as Error | null,
 };
 
 vi.mock("next/navigation", () => ({
@@ -31,9 +46,31 @@ vi.mock("../../lib/dashboard/use-cms-content-query-state", () => ({
   }),
 }));
 
+vi.mock("../../lib/dashboard/use-cms-content-entries", () => ({
+  useCmsContentEntries: () => ({
+    ...mockedEntriesState,
+    refresh: refreshEntries,
+  }),
+}));
+
+vi.mock("@xynes/auth-sdk", () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    getAccessToken: mockGetAccessToken,
+  }),
+  useWorkspace: () => ({
+    currentWorkspace: {
+      id: "workspace-1",
+      slug: "xynes-studio-llp",
+    },
+  }),
+}));
+
 vi.mock("../../components/dashboard/CmsContentToolbar", () => ({
   CmsContentToolbar: ({
     breadcrumbItems,
+    itemCount,
     onSearchSubmit,
     onCreate,
     onQueryChange,
@@ -48,6 +85,7 @@ vi.mock("../../components/dashboard/CmsContentToolbar", () => ({
     favoritesOnly,
   }: {
     breadcrumbItems: Array<{ label: string; onClick?: () => void }>;
+    itemCount: number;
     onSearchSubmit: () => void;
     onCreate: () => void;
     onQueryChange: (value: string) => void;
@@ -63,6 +101,7 @@ vi.mock("../../components/dashboard/CmsContentToolbar", () => ({
   }) => (
     <section data-testid="toolbar">
       <span>{breadcrumbItems.map((item) => item.label).join(" / ")}</span>
+      <span data-testid="toolbar-count">{itemCount} Items</span>
       <span data-testid="toolbar-state">
         {`${query}|${sortBy}|${view}|${followingOnly}|${favoritesOnly}`}
       </span>
@@ -129,6 +168,12 @@ vi.mock("@lumia-ui/components", () => ({
   }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => (
     <div {...props}>{children}</div>
   ),
+  Button: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    children?: React.ReactNode;
+  }) => <button {...props}>{children}</button>,
 }));
 
 afterEach(() => {
@@ -136,6 +181,9 @@ afterEach(() => {
   vi.useRealTimers();
   push.mockReset();
   setState.mockReset();
+  refreshEntries.mockReset();
+  mockGetAccessToken.mockReset();
+  mockGetAccessToken.mockResolvedValue("jwt-token");
   mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
   mockedQueryState = {
     query: "",
@@ -149,6 +197,12 @@ afterEach(() => {
     limit: 20,
     offset: 0,
   };
+  mockedEntriesState = {
+    items: [],
+    count: 0,
+    isLoading: false,
+    error: null,
+  };
 });
 
 beforeEach(() => {
@@ -156,7 +210,7 @@ beforeEach(() => {
 });
 
 describe("CmsContentListPanel", () => {
-  it("renders toolbar with breadcrumb label and list shell", () => {
+  it("renders toolbar with breadcrumb label and contextual empty state", () => {
     render(<CmsContentListPanel />);
 
     expect(
@@ -166,9 +220,7 @@ describe("CmsContentListPanel", () => {
     expect(
       screen.getByRole("region", { name: "Content list panel" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Content entries will appear here."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("This directory is empty")).toBeInTheDocument();
   });
 
   it("keeps toolbar interactions accessible and stable", () => {
@@ -260,5 +312,79 @@ describe("CmsContentListPanel", () => {
 
     expect(() => render(<CmsContentListPanel />)).not.toThrow();
     expect(screen.getByText("Contents / %E0%A4%A")).toBeInTheDocument();
+  });
+
+  it("renders loading state while entries are being fetched", () => {
+    mockedEntriesState = {
+      ...mockedEntriesState,
+      isLoading: true,
+    };
+
+    render(<CmsContentListPanel />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading content entries",
+    );
+  });
+
+  it("renders error panel and retries when requested", () => {
+    mockedEntriesState = {
+      ...mockedEntriesState,
+      error: new Error("network error"),
+    };
+
+    render(<CmsContentListPanel />);
+
+    expect(
+      screen.getByText("Unable to load content entries"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading" }));
+    expect(refreshEntries).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders search-empty copy when query has no results", () => {
+    mockedQueryState = {
+      ...mockedQueryState,
+      query: "nonexistent",
+    };
+
+    render(<CmsContentListPanel />);
+
+    expect(
+      screen.getByText("No content matched your search"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders fetched entries and item count", () => {
+    mockedEntriesState = {
+      items: [
+        {
+          id: "entry-1",
+          title: "About us",
+          description: "draft document",
+          status: "draft",
+          ownerName: "Owner",
+          isFavorite: false,
+        },
+        {
+          id: "entry-2",
+          title: "Contact",
+          description: "published document",
+          status: "published",
+          ownerName: null,
+          isFavorite: true,
+        },
+      ],
+      count: 2,
+      isLoading: false,
+      error: null,
+    };
+
+    render(<CmsContentListPanel />);
+
+    expect(screen.getByText("About us")).toBeInTheDocument();
+    expect(screen.getByText("Contact")).toBeInTheDocument();
+    expect(screen.getByText("2 Items")).toBeInTheDocument();
   });
 });
