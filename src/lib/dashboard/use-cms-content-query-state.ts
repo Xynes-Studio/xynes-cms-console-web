@@ -23,7 +23,16 @@ export type CmsContentQueryState = {
   offset: number;
 };
 
-const clampInt = (value: string | null, fallback: number, min: number, max: number) => {
+export type CmsContentQueryUpdateOptions = {
+  navigation?: "push" | "replace";
+};
+
+const clampInt = (
+  value: string | null,
+  fallback: number,
+  min: number,
+  max: number,
+) => {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return fallback;
@@ -80,7 +89,10 @@ export function useCmsContentQueryState() {
   }, [searchParams]);
 
   const setState = useCallback(
-    (patch: Partial<CmsContentQueryState>) => {
+    (
+      patch: Partial<CmsContentQueryState>,
+      options?: CmsContentQueryUpdateOptions,
+    ) => {
       const nextState: CmsContentQueryState = {
         ...state,
         ...patch,
@@ -88,7 +100,8 @@ export function useCmsContentQueryState() {
 
       const params = new URLSearchParams();
       if (nextState.query) params.set("q", nextState.query);
-      if (nextState.directoryId) params.set("directoryId", nextState.directoryId);
+      if (nextState.directoryId)
+        params.set("directoryId", nextState.directoryId);
       if (nextState.sortBy !== "date") params.set("sortBy", nextState.sortBy);
       if (nextState.sortDirection !== "desc") {
         params.set("sortDirection", nextState.sortDirection);
@@ -103,9 +116,24 @@ export function useCmsContentQueryState() {
       if (nextState.offset > 0) params.set("offset", String(nextState.offset));
 
       const queryString = params.toString();
-      router.push(queryString ? `${pathname}?${queryString}` : pathname);
+      const nextUrl = queryString ? `${pathname}?${queryString}` : pathname;
+      const currentQueryString = searchParams.toString();
+      const currentUrl = currentQueryString
+        ? `${pathname}?${currentQueryString}`
+        : pathname;
+
+      if (nextUrl === currentUrl) {
+        return;
+      }
+
+      if (options?.navigation === "replace") {
+        router.replace(nextUrl);
+        return;
+      }
+
+      router.push(nextUrl);
     },
-    [pathname, router, state],
+    [pathname, router, searchParams, state],
   );
 
   return {
