@@ -104,7 +104,9 @@ export function CmsContentListPanel() {
           setIsQueryEditing(true);
         }}
         onSearchSubmit={() => {
-          const normalizedQuery = (isQueryEditing ? queryDraft : state.query).trim();
+          const normalizedQuery = (
+            isQueryEditing ? queryDraft : state.query
+          ).trim();
           setQueryDraft(normalizedQuery);
           setIsQueryEditing(false);
           setState({ query: normalizedQuery, offset: 0 });
