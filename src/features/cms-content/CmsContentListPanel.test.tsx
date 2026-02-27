@@ -4,9 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CmsContentListPanel } from "./CmsContentListPanel";
 
 const push = vi.fn();
+let mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard/xynes-studio-llp/content/level-1-2/level-2",
+  usePathname: () => mockedPathname,
   useRouter: () => ({ push }),
 }));
 
@@ -48,6 +49,7 @@ vi.mock("@lumia-ui/components", () => ({
 afterEach(() => {
   cleanup();
   push.mockReset();
+  mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
 });
 
 describe("CmsContentListPanel", () => {
@@ -75,5 +77,13 @@ describe("CmsContentListPanel", () => {
     expect(
       screen.getByRole("region", { name: "Content list panel" }),
     ).toBeInTheDocument();
+  });
+
+  it("uses last content segment for breadcrumb derivation", () => {
+    mockedPathname = "/dashboard/content/content/level-2";
+
+    render(<CmsContentListPanel />);
+
+    expect(screen.getByText("Contents / level-2")).toBeInTheDocument();
   });
 });

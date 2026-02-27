@@ -23,7 +23,7 @@ export function CmsContentListPanel() {
     .split("/")
     .filter(Boolean)
     .map((segment) => decodeURIComponent(segment));
-  const contentIndex = pathParts.indexOf("content");
+  const contentIndex = pathParts.lastIndexOf("content");
   const breadcrumbParts =
     contentIndex >= 0 ? pathParts.slice(contentIndex + 1) : [];
   const workspaceSlug =
