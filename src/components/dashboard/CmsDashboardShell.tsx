@@ -26,10 +26,6 @@ import {
   updateWorkspaceContentDirectory,
 } from "../../lib/dashboard/content-directories-client";
 import {
-  listWorkspaceContentTypes,
-  mapContentTypesToDirectoryNodes,
-} from "../../lib/dashboard/content-types-client";
-import {
   buildDashboardSectionPath,
   defaultDashboardSection,
   parseDashboardSectionPath,
@@ -51,7 +47,6 @@ type ContentTreeNavNode = ContentDirectoryNode & {
 
 const createRouteDirectoryId = (pathSegments: string[]) =>
   `content-path-${pathSegments.join("--")}`;
-const contentTypeDirectoryPrefix = "content-type-";
 
 const replaceDirectoryNode = ({
   nodes,
@@ -243,26 +238,18 @@ export function CmsDashboardShell({
           return;
         }
 
-        const [contentTypes, persistedDirectories] = await Promise.all([
-          listWorkspaceContentTypes({
-            apiBaseUrl,
-            workspaceId: contentDirectoryWorkspaceId,
-            accessToken,
-            signal: abortController.signal,
-          }),
-          listWorkspaceContentDirectories({
-            apiBaseUrl,
-            workspaceId: contentDirectoryWorkspaceId,
-            accessToken,
-            signal: abortController.signal,
-          }),
-        ]);
+        const persistedDirectories = await listWorkspaceContentDirectories({
+          apiBaseUrl,
+          workspaceId: contentDirectoryWorkspaceId,
+          accessToken,
+          signal: abortController.signal,
+        });
         if (abortController.signal.aborted) {
           return;
         }
 
         const apiDirectoryNodes = materializePersistedContentDirectories({
-          baseNodes: mapContentTypesToDirectoryNodes(contentTypes),
+          baseNodes: [],
           directories: persistedDirectories,
         });
         setContentDirectories(apiDirectoryNodes);
@@ -429,10 +416,7 @@ export function CmsDashboardShell({
       return;
     }
 
-    if (
-      input.nodeId.startsWith("content-path-") ||
-      input.nodeId.startsWith(contentTypeDirectoryPrefix)
-    ) {
+    if (input.nodeId.startsWith("content-path-")) {
       return;
     }
 
@@ -490,10 +474,7 @@ export function CmsDashboardShell({
       return;
     }
 
-    if (
-      input.nodeId.startsWith("content-path-") ||
-      input.nodeId.startsWith(contentTypeDirectoryPrefix)
-    ) {
+    if (input.nodeId.startsWith("content-path-")) {
       return;
     }
 

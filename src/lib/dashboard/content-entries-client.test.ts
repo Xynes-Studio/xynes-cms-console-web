@@ -134,7 +134,6 @@ describe("content-entries-client", () => {
       workspaceId: "workspace-1",
       accessToken: "jwt-token",
       payload: {
-        contentTypeId: "content-type-1",
         title: "Title",
       },
       fetchImpl: fetchMock,
