@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import type { BreadcrumbItem } from "@lumia-ui/components";
 import { Card } from "@lumia-ui/components";
+import { CmsContentCardGrid } from "../../components/dashboard/CmsContentCardGrid";
+import { CmsContentCardList } from "../../components/dashboard/CmsContentCardList";
 import { useCmsContentQueryState } from "../../lib/dashboard/use-cms-content-query-state";
 import { useCmsContentEntries } from "../../lib/dashboard/use-cms-content-entries";
 import { CmsContentToolbar } from "../../components/dashboard/CmsContentToolbar";
@@ -12,8 +14,18 @@ import {
   CmsContentListState,
   resolveCmsContentListState,
 } from "./CmsContentListState";
+import { mapEntryToGridCardProps, mapEntryToListCardProps } from "./mappers";
 
 const QUERY_REPLACE_DEBOUNCE_MS = 300;
+const noopEntryAction: (entryId: string) => void = () => {
+  return;
+};
+const noopListHandlers = {
+  onOpen: noopEntryAction,
+  onDelete: noopEntryAction,
+  onShare: noopEntryAction,
+  onToggleFavorite: noopEntryAction,
+};
 
 const safeDecodePathSegment = (segment: string) => {
   try {
@@ -206,17 +218,31 @@ export function CmsContentListPanel() {
 
       {listViewState.kind === "ready" ? (
         <Card className="m-4 border border-border bg-background p-4">
-          <ul aria-label="Content entries" className="space-y-3">
+          <ul
+            aria-label="Content entries"
+            className={
+              state.view === "grid"
+                ? "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+                : "grid grid-cols-1 gap-3"
+            }
+          >
             {items.map((item) => (
-              <li key={item.id} className="rounded-md border border-border p-3">
-                <p className="text-sm font-medium text-foreground">
-                  {item.title}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {(item.ownerName?.trim() || "Unknown owner") +
-                    " · " +
-                    item.status}
-                </p>
+              <li key={item.id}>
+                {state.view === "grid" ? (
+                  <CmsContentCardGrid
+                    {...mapEntryToGridCardProps({
+                      entry: item,
+                      onOpen: noopEntryAction,
+                    })}
+                  />
+                ) : (
+                  <CmsContentCardList
+                    {...mapEntryToListCardProps({
+                      entry: item,
+                      handlers: noopListHandlers,
+                    })}
+                  />
+                )}
               </li>
             ))}
           </ul>
