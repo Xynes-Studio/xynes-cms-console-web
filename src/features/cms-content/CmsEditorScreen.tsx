@@ -20,7 +20,8 @@ const API_BASE_URL =
 // Raw API errors (from resolveErrorSuffix) may include internal codes and IDs.
 // These helpers map them to safe user-facing messages.
 
-const EDITOR_PERMISSION_PATTERN = /HTTP\s*403|forbidden|not\s+authorized|permission|authz/i;
+const EDITOR_PERMISSION_PATTERN =
+  /HTTP\s*403|forbidden|not\s+authorized|permission|authz/i;
 const EDITOR_NOT_FOUND_PATTERN = /HTTP\s*404|\bnot\s+found\b/i;
 const EDITOR_SERVICE_UNAVAILABLE_PATTERN =
   /HTTP\s*5\d\d|INTERNAL_ERROR|ECONNREFUSED|fetch\s+failed|network\s+error|Failed\s+to\s+fetch/i;
@@ -56,8 +57,6 @@ function sanitizePublishError(error: unknown): string {
   }
   return "Failed to publish entry. Please try again.";
 }
-
-
 
 type EditorDraftValue = {
   title: string;
@@ -311,13 +310,17 @@ export function CmsEditorScreen({
         lastSavedAt={autosave.lastSavedAt}
         hasUnsavedChanges={hasUnsavedChanges}
         onBack={handleBack}
-        onTitleChange={(value) => setDraft((prev) => ({ ...prev, title: value }))}
+        onTitleChange={(value) =>
+          setDraft((prev) => ({ ...prev, title: value }))
+        }
         onDescriptionChange={(value) =>
           setDraft((prev) => ({ ...prev, description: value }))
         }
         onTagsChange={(value) => setDraft((prev) => ({ ...prev, tags: value }))}
         onSaveDraft={() => void autosave.retry()}
-        onPublish={() => { void handlePublish(); }}
+        onPublish={() => {
+          void handlePublish();
+        }}
         onRetrySave={() => void autosave.retry()}
       >
         <div

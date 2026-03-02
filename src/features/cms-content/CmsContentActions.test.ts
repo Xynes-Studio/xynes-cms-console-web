@@ -236,9 +236,7 @@ describe("debug logging branches", () => {
         createEntry,
       });
 
-      expect(path).toBe(
-        "/dashboard/debug-team/content/entry/entry-dbg/edit",
-      );
+      expect(path).toBe("/dashboard/debug-team/content/entry/entry-dbg/edit");
       expect(debugSpy).toHaveBeenCalledWith(
         "[CMS][create] create start",
         expect.objectContaining({ workspaceId: "ws-debug" }),
@@ -305,4 +303,5 @@ describe("buildContentEntryEditRoute — edge cases", () => {
         entryId: "entry/with/slashes",
       }),
     ).toBe("/dashboard/acme-team/content/entry/entry%2Fwith%2Fslashes/edit");
-  });});
+  });
+});

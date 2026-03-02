@@ -1,5 +1,11 @@
 import type React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsEditorScreen } from "./CmsEditorScreen";
 import type { WorkspaceContentEntry } from "../../lib/dashboard/content-entries-client";
@@ -86,7 +92,11 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     onPublish?: () => void;
     onSaveDraft?: () => void;
   }) => (
-    <div data-testid="cms-editor-layout" data-status={status} data-save-state={saveState}>
+    <div
+      data-testid="cms-editor-layout"
+      data-status={status}
+      data-save-state={saveState}
+    >
       <span data-testid="editor-title">{title}</span>
       {onBack && (
         <button data-testid="back-btn" onClick={onBack}>
@@ -238,7 +248,9 @@ describe("CmsEditorScreen", () => {
 
       // title is hardcoded; description gets the fallback safe message
       expect(screen.getByText("Failed to load entry")).toBeInTheDocument();
-      expect(screen.getByText("Failed to load entry. Please try again.")).toBeInTheDocument();
+      expect(
+        screen.getByText("Failed to load entry. Please try again."),
+      ).toBeInTheDocument();
     });
   });
 
@@ -277,7 +289,10 @@ describe("CmsEditorScreen", () => {
 
     it("renders editor layout with published status for published entries", async () => {
       mockGetWorkspaceContentEntryById.mockResolvedValue(
-        makeEntry({ status: "published", publishedAt: "2026-01-01T00:00:00.000Z" }),
+        makeEntry({
+          status: "published",
+          publishedAt: "2026-01-01T00:00:00.000Z",
+        }),
       );
 
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
@@ -336,9 +351,7 @@ describe("CmsEditorScreen", () => {
     it("uses currentWorkspace slug for back path when available", async () => {
       mockCurrentWorkspace = { id: "ws-1", slug: "real-slug", name: "Team" };
 
-      render(
-        <CmsEditorScreen entryId="entry-1" workspaceSlug="route-slug" />,
-      );
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="route-slug" />);
 
       await waitFor(() => {
         expect(screen.getByTestId("back-btn")).toBeInTheDocument();
@@ -376,7 +389,9 @@ describe("CmsEditorScreen", () => {
       expect(screen.getByText("Publish failed")).toBeInTheDocument();
       // Raw HTTP 5xx errors are sanitized; raw message is not displayed to user
       expect(
-        screen.getByText("CMS service is temporarily unavailable. Please try again."),
+        screen.getByText(
+          "CMS service is temporarily unavailable. Please try again.",
+        ),
       ).toBeInTheDocument();
     });
 
@@ -402,7 +417,10 @@ describe("CmsEditorScreen", () => {
 
     it("updates editor to published status on successful publish", async () => {
       mockPublishWorkspaceContentEntry.mockResolvedValue(
-        makeEntry({ status: "published", publishedAt: "2026-01-01T00:00:00.000Z" }),
+        makeEntry({
+          status: "published",
+          publishedAt: "2026-01-01T00:00:00.000Z",
+        }),
       );
 
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
