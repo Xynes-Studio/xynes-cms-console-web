@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import type { BreadcrumbItem } from "@lumia-ui/components";
@@ -14,21 +14,22 @@ import {
   CmsContentListState,
   resolveCmsContentListState,
 } from "./CmsContentListState";
+import { listWorkspaceContentDirectories } from "../../lib/dashboard/content-directories-client";
 import {
+  getContentDirectoryPathIds,
+  materializePersistedContentDirectories,
+} from "../../lib/dashboard/content-directory-tree";
+import {
+  buildContentEntryEditRoute,
   createDraftEntryAndResolveEditPath,
   getCreateEntryErrorMessage,
 } from "./CmsContentActions";
 import { mapEntryToGridCardProps, mapEntryToListCardProps } from "./mappers";
 
 const QUERY_REPLACE_DEBOUNCE_MS = 300;
+
 const noopEntryAction: (entryId: string) => void = () => {
   return;
-};
-const noopListHandlers = {
-  onOpen: noopEntryAction,
-  onDelete: noopEntryAction,
-  onShare: noopEntryAction,
-  onToggleFavorite: noopEntryAction,
 };
 
 const safeDecodePathSegment = (segment: string) => {
@@ -54,8 +55,27 @@ export function CmsContentListPanel() {
   const [isQueryEditing, setIsQueryEditing] = useState(false);
   const [isCreatingEntry, setIsCreatingEntry] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  // resolvedDirectoryId:
+  //   undefined = actively resolving (directory path exists but UUID not yet looked up)
+  //   null      = root view (no path segments) or resolution completed with no match
+  //   string    = resolved UUID of the leaf directory matching the current URL path
+  const [resolvedDirectoryId, setResolvedDirectoryId] = useState<
+    string | null | undefined
+  >(undefined);
+  const [isDirectoryResolving, setIsDirectoryResolving] = useState(false);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
-
+  // ── breadcrumb derivation (hoisted so it can be used in effects below) ──
+  const pathParts = pathname
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => safeDecodePathSegment(segment));
+  const contentIndex = pathParts.lastIndexOf("content");
+  const breadcrumbParts = useMemo(
+    () => (contentIndex >= 0 ? pathParts.slice(contentIndex + 1) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pathname],
+  );
+  const breadcrumbKey = breadcrumbParts.join("/");
   useEffect(() => {
     let cancelled = false;
 
@@ -86,6 +106,57 @@ export function CmsContentListPanel() {
     };
   }, [currentWorkspace?.id, getAccessToken, isAuthenticated, isAuthLoading]);
 
+  // ── resolve directory UUID from URL path segments ─────────────────────
+  useEffect(() => {
+    if (breadcrumbParts.length === 0) {
+      setResolvedDirectoryId(null);
+      setIsDirectoryResolving(false);
+      return;
+    }
+
+    if (!currentWorkspace?.id || !accessToken || !apiBaseUrl) {
+      // Wait until auth is ready — keep current resolvedDirectoryId as-is
+      return;
+    }
+
+    let cancelled = false;
+    setIsDirectoryResolving(true);
+
+    void (async () => {
+      try {
+        const dirs = await listWorkspaceContentDirectories({
+          apiBaseUrl,
+          workspaceId: currentWorkspace.id,
+          accessToken,
+        });
+        if (cancelled) return;
+
+        const tree = materializePersistedContentDirectories({
+          baseNodes: [],
+          directories: dirs,
+        });
+        const pathIds = getContentDirectoryPathIds({
+          nodes: tree,
+          pathSegments: breadcrumbParts,
+        });
+        // Last ID is the leaf (deepest matching) directory
+        const leafId = pathIds.at(-1) ?? null;
+        setResolvedDirectoryId(leafId);
+      } catch {
+        if (!cancelled) setResolvedDirectoryId(null);
+      } finally {
+        if (!cancelled) setIsDirectoryResolving(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // breadcrumbKey is a stable primitive derived from breadcrumbParts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breadcrumbKey, currentWorkspace?.id, accessToken, apiBaseUrl]);
+
+  // ── URL query debounce ────────────────────────────────────────────────────
   useEffect(() => {
     if (!isQueryEditing) {
       return;
@@ -111,13 +182,6 @@ export function CmsContentListPanel() {
     };
   }, [isQueryEditing, queryDraft, setState, state.query]);
 
-  const pathParts = pathname
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => safeDecodePathSegment(segment));
-  const contentIndex = pathParts.lastIndexOf("content");
-  const breadcrumbParts =
-    contentIndex >= 0 ? pathParts.slice(contentIndex + 1) : [];
   const workspaceSlug =
     contentIndex > 0 && pathParts[contentIndex - 1]
       ? pathParts[contentIndex - 1]
@@ -146,12 +210,58 @@ export function CmsContentListPanel() {
     });
   });
 
+  // ── card action handlers ──────────────────────────────────────────────────
+  const handleOpen = useCallback(
+    (entryId: string) => {
+      if (!resolvedWorkspaceSlug) return;
+      try {
+        const editPath = buildContentEntryEditRoute({
+          workspaceSlug: resolvedWorkspaceSlug,
+          entryId,
+        });
+        router.push(editPath);
+      } catch {
+        // invalid slug or entryId — silently ignore
+      }
+    },
+    [resolvedWorkspaceSlug, router],
+  );
+
+  const handleShare = useCallback(
+    (entryId: string) => {
+      if (!resolvedWorkspaceSlug) return;
+      try {
+        const editPath = buildContentEntryEditRoute({
+          workspaceSlug: resolvedWorkspaceSlug,
+          entryId,
+        });
+        const shareUrl = window.location.origin + editPath;
+        void navigator.clipboard.writeText(shareUrl);
+      } catch {
+        // clipboard unavailable — silently ignore
+      }
+    },
+    [resolvedWorkspaceSlug],
+  );
+
+  const listHandlers = useMemo(
+    () => ({
+      onOpen: handleOpen,
+      onDelete: noopEntryAction,
+      onShare: handleShare,
+      onToggleFavorite: noopEntryAction,
+    }),
+    [handleOpen, handleShare],
+  );
+
   const { items, count, isLoading, error, refresh } = useCmsContentEntries({
     apiBaseUrl,
     workspaceId: currentWorkspace?.id ?? "",
     accessToken: accessToken ?? "",
     query: {
-      directoryId: state.directoryId,
+      // Use the resolved UUID so the API filters by the correct directory.
+      // Falls back to undefined (no filter) when still resolving or at root.
+      directoryId: resolvedDirectoryId ?? undefined,
       search: state.query,
       sortBy: state.sortBy,
       sortDirection: state.sortDirection,
@@ -165,11 +275,16 @@ export function CmsContentListPanel() {
       isAuthenticated &&
       Boolean(currentWorkspace?.id) &&
       Boolean(accessToken) &&
-      Boolean(apiBaseUrl),
+      Boolean(apiBaseUrl) &&
+      // Block fetch until directory UUID is resolved to prevent showing unfiltered results
+      !isDirectoryResolving,
   });
 
+  // Treat directory resolution as a loading phase so the skeleton shows
+  const effectiveIsLoading = isLoading || isDirectoryResolving;
+
   const listViewState = resolveCmsContentListState({
-    isLoading,
+    isLoading: effectiveIsLoading,
     error,
     count,
     query: state.query,
@@ -210,7 +325,9 @@ export function CmsContentListPanel() {
                 workspaceId: currentWorkspace.id,
                 workspaceSlug: resolvedWorkspaceSlug,
                 accessToken,
-                directoryId: state.directoryId,
+                // Use the path-resolved directory UUID so new entries land in
+                // the currently-browsed directory, not the query-param one.
+                directoryId: resolvedDirectoryId,
               });
 
               router.push(editPath);
@@ -291,14 +408,14 @@ export function CmsContentListPanel() {
                   <CmsContentCardGrid
                     {...mapEntryToGridCardProps({
                       entry: item,
-                      onOpen: noopEntryAction,
+                      onOpen: handleOpen,
                     })}
                   />
                 ) : (
                   <CmsContentCardList
                     {...mapEntryToListCardProps({
                       entry: item,
-                      handlers: noopListHandlers,
+                      handlers: listHandlers,
                     })}
                   />
                 )}

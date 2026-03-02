@@ -131,7 +131,7 @@ export function CmsContentCardList({
             onShare(entryId);
           }}
         >
-          <Icon name="info" size="sm" />
+          <Icon name="external-link" size="sm" />
           Share
         </Button>
         <Button
