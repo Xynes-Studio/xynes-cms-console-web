@@ -355,6 +355,86 @@ Rules:
   - add/maintain Tier 2 container tests for create success + failure behavior.
   - maintain touched module coverage >=80% statements/branches.
 
+### CMS-UI-005 Card Action Standards (Open / Share / Delete / Favorite)
+
+- Ownership and segregation:
+  - keep all card action orchestration in `src/features/cms-content/CmsContentListPanel.tsx`.
+  - presentational components (`CmsContentCardGrid`, `CmsContentCardList`) receive typed callbacks only — no orchestration logic.
+  - edit-route URL generation lives exclusively in `CmsContentActions.buildContentEntryEditRoute`.
+- Action semantics:
+  - **Open**: navigate to editor route via `router.push(buildContentEntryEditRoute({workspaceSlug, entryId}))`.
+  - **Share**: copy the full editor URL (`window.location.origin + editPath`) to the clipboard via `navigator.clipboard.writeText`. Silently ignore clipboard errors.
+  - **Delete** (stub — CMS-UI-005 full wiring not yet complete): currently a no-op; implement as confirm-dialog then soft-delete mutation with optimistic list removal when ready.
+  - **Favorite** (stub — CMS-UI-005 full wiring not yet complete): currently a no-op; implement as optimistic toggle with rollback on failure when ready.
+- Resilience and fallback:
+  - wrap `buildContentEntryEditRoute` calls in try/catch; silently ignore errors (invalid slug/entryId should not crash the view).
+  - guard all actions against missing workspace context (`resolvedWorkspaceSlug`); return early and do nothing if absent.
+- Tech-debt controls:
+  - do NOT inline path-template strings in card handlers; always delegate to `buildContentEntryEditRoute`.
+  - do NOT use `state.directoryId` (deprecated URL query-param) in card handler context; use `resolvedDirectoryId` (path-segment-resolved UUID) exclusively.
+  - replace no-op stubs with real implementations incrementally as each action's backend contracts are confirmed.
+- TDD and coverage:
+  - test Open by clicking the card's open button and asserting router.push target.
+  - test Share by clicking the card's share button and asserting clipboard.writeText argument.
+  - test error resilience by making `buildContentEntryEditRoute` throw and asserting no-crash / no router.push.
+  - test noop stubs for delete/favorite by clicking and asserting no throw and no router.push.
+
+### CMS-UI-007 Editor Route Standards (CmsEditorScreen)
+
+- Route ownership:
+  - `app/dashboard/[workspaceSlug]/content/entry/[entryId]/edit/page.tsx`: thin Next.js RSC — awaits async params, passes `workspaceSlug` + `entryId` to `CmsEditorScreen`.
+  - `app/dashboard/[workspaceSlug]/content/entry/[entryId]/edit/layout.tsx`: full-screen overlay layout (`fixed inset-0 z-50`) to escape the dashboard shell chrome.
+- Feature container:
+  - `src/features/cms-content/CmsEditorScreen.tsx`: client component that loads entry by id, orchestrates autosave, publish, and unsaved-change guard.
+- Responsibilities of CmsEditorScreen:
+  - fetch entry by `entryId` on mount.
+  - pass entry data to `CmsEditorLayout` (metadata fields + editor canvas).
+  - integrate `useCmsEntryAutosave` for debounced save.
+  - expose publish action that calls the publish mutation and updates status.
+  - guard browser unload when `hasUnsavedChanges` is true.
+- Next.js standards:
+  - route params (`workspaceSlug`, `entryId`) come from async `params` prop — must be `await`-ed in RSC.
+  - route/layout files must remain thin; no direct data fetching or mutation logic.
+  - the full-screen layout wraps only the editor; it must not affect other dashboard routes.
+- React standards:
+  - keep all stateful logic (autosave, publish, unsaved guard) inside `CmsEditorScreen`; keep `CmsEditorLayout` presentational.
+  - initialize content state from loaded entry; track local draft separately from saved state.
+- Security and resilience:
+  - treat `entryId` as untrusted; validate via API response before rendering content.
+  - do not expose raw error messages in editor UI.
+  - unsaved-change prompt must cover both in-app navigation and browser tab close/refresh.
+- TDD and coverage:
+  - Tier 2 tests for: loading state, entry display, autosave trigger, publish action, unsaved guard.
+  - Tier 2 tests for route page and layout files (thin RSC — assert correct prop passthrough).
+  - maintain >=80% statements/branches for all editor route files.
+
+### Directory-Scoped Content Listing (URL Path Segment → Directory UUID Resolution)
+
+- Problem solved:
+  - The CMS dashboard URL path encodes directories as human-readable segments (e.g. `/content/level-1-2/level-2`). The backend API expects a UUID `directoryId` to filter entries. Without resolution, all entries across every directory were shown regardless of the active path.
+- Resolution pattern:
+  - `listWorkspaceContentDirectories` fetches all persisted directories for the workspace.
+  - `materializePersistedContentDirectories` builds the in-memory directory tree.
+  - `getContentDirectoryPathIds` walks the tree, matching each URL segment by `pathSegment` field, returning a list of matched UUIDs.
+  - The last UUID in the list is the leaf (deepest matching) directory, used as `directoryId` for the entries fetch.
+- Implementation ownership:
+  - Resolution logic lives in `CmsContentListPanel.tsx` (container). Pure helpers live in `src/lib/dashboard/content-directory-tree.ts` (Tier 1 tested).
+- Loading state contract:
+  - `isDirectoryResolving` is `true` while resolution is in progress.
+  - `useCmsContentEntries` is `enabled: false` while `isDirectoryResolving = true` to prevent showing unfiltered results during resolution.
+  - `effectiveIsLoading = isLoading || isDirectoryResolving` — passes the combined loading signal to the list state resolver so skeleton is shown during directory resolution.
+- State semantics:
+  - `resolvedDirectoryId === undefined`: resolution pending (directory path exists but UUID not yet resolved)
+  - `resolvedDirectoryId === null`: root content view (no path segments) or resolution finished with no match
+  - `resolvedDirectoryId === string`: UUID of the leaf directory matching the current URL path
+- Tech-debt rules:
+  - any reference to the deprecated `state.directoryId` (URL query-param) in content listing/create/logging context must be replaced with `resolvedDirectoryId`.
+  - resolution is keyed on `breadcrumbKey` (stable join of path segments) to avoid redundant API calls on unrelated state updates.
+  - `breadcrumbParts` and `breadcrumbKey` must be declared before any `useEffect` that references them (TDZ safety).
+- Testing:
+  - Tier 2: assert that `mockListWorkspaceContentDirectories` is called and the resulting leaf UUID is passed to `useCmsContentEntries`.
+  - Tier 2: assert that root path (no segments) skips API call and passes `undefined` directoryId.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.

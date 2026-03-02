@@ -336,7 +336,8 @@ export function CmsContentListPanel() {
               console.error("[CMS][create] toolbar flow failed", {
                 workspaceId: currentWorkspace.id,
                 workspaceSlug: resolvedWorkspaceSlug,
-                directoryId: state.directoryId,
+                // Use the path-resolved UUID, not the (deprecated) URL query-param directoryId
+                resolvedDirectoryId,
                 errorMessage:
                   error instanceof Error
                     ? error.message

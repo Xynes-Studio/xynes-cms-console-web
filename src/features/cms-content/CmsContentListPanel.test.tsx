@@ -14,11 +14,16 @@ const {
   mockGetCreateEntryErrorMessage,
   mockListWorkspaceContentDirectories,
   mockUseCmsContentEntries,
+  mockBuildContentEntryEditRoute,
 } = vi.hoisted(() => ({
   mockCreateDraftEntryAndResolveEditPath: vi.fn(),
   mockGetCreateEntryErrorMessage: vi.fn(),
   mockListWorkspaceContentDirectories: vi.fn(),
   mockUseCmsContentEntries: vi.fn(),
+  mockBuildContentEntryEditRoute: vi.fn(
+    ({ workspaceSlug, entryId }: { workspaceSlug: string; entryId: string }) =>
+      `/dashboard/${encodeURIComponent(workspaceSlug)}/content/entry/${encodeURIComponent(entryId)}/edit`,
+  ),
 }));
 
 const push = vi.fn();
@@ -40,6 +45,10 @@ let mockedQueryState = {
   directoryId: null,
   limit: 20,
   offset: 0,
+};
+let mockedWorkspace: { id: string; slug: string } | null = {
+  id: "workspace-1",
+  slug: "xynes-studio-llp",
 };
 let mockedEntriesState = {
   items: [] as Array<{
@@ -67,15 +76,8 @@ vi.mock("../../lib/dashboard/content-directories-client", () => ({
 vi.mock("./CmsContentActions", () => ({
   createDraftEntryAndResolveEditPath: mockCreateDraftEntryAndResolveEditPath,
   getCreateEntryErrorMessage: mockGetCreateEntryErrorMessage,
-  // Use a real-like implementation so handleOpen/handleShare build correct URLs in tests
-  buildContentEntryEditRoute: ({
-    workspaceSlug,
-    entryId,
-  }: {
-    workspaceSlug: string;
-    entryId: string;
-  }) =>
-    `/dashboard/${encodeURIComponent(workspaceSlug)}/content/entry/${encodeURIComponent(entryId)}/edit`,
+  buildContentEntryEditRoute: (args: { workspaceSlug: string; entryId: string }) =>
+    mockBuildContentEntryEditRoute(args),
 }));
 
 vi.mock("../../lib/dashboard/use-cms-content-query-state", () => ({
@@ -99,10 +101,7 @@ vi.mock("@xynes/auth-sdk", () => ({
     getAccessToken: mockGetAccessToken,
   }),
   useWorkspace: () => ({
-    currentWorkspace: {
-      id: "workspace-1",
-      slug: "xynes-studio-llp",
-    },
+    currentWorkspace: mockedWorkspace,
   }),
 }));
 
@@ -229,6 +228,8 @@ vi.mock("../../components/dashboard/CmsContentCardList", () => ({
     title: string;
     onOpen?: (id: string) => void;
     onShare?: (id: string) => void;
+    onDelete?: (id: string) => void;
+    onToggleFavorite?: (id: string) => void;
   }) => {
     renderListItem(props);
     return (
@@ -248,6 +249,22 @@ vi.mock("../../components/dashboard/CmsContentCardList", () => ({
             onClick={() => props.onShare!(props.entryId)}
           >
             Share
+          </button>
+        ) : null}
+        {props.onDelete ? (
+          <button
+            data-testid={`list-delete-${props.entryId}`}
+            onClick={() => props.onDelete!(props.entryId)}
+          >
+            Delete
+          </button>
+        ) : null}
+        {props.onToggleFavorite ? (
+          <button
+            data-testid={`list-favorite-${props.entryId}`}
+            onClick={() => props.onToggleFavorite!(props.entryId)}
+          >
+            Favorite
           </button>
         ) : null}
       </article>
@@ -310,9 +327,15 @@ afterEach(() => {
   mockUseCmsContentEntries.mockReset();
   mockClipboardWrite.mockReset();
   // Defaults
+  mockedWorkspace = { id: "workspace-1", slug: "xynes-studio-llp" };
   mockGetAccessToken.mockResolvedValue("jwt-token");
   mockCreateDraftEntryAndResolveEditPath.mockResolvedValue(
     "/dashboard/xynes-studio-llp/content/entry/entry-new/edit",
+  );
+  mockBuildContentEntryEditRoute.mockReset();
+  mockBuildContentEntryEditRoute.mockImplementation(
+    ({ workspaceSlug, entryId }: { workspaceSlug: string; entryId: string }) =>
+      `/dashboard/${encodeURIComponent(workspaceSlug)}/content/entry/${encodeURIComponent(entryId)}/edit`,
   );
   // Default: empty directory list → resolvedDirectoryId = null (no filter)
   mockListWorkspaceContentDirectories.mockResolvedValue([]);
@@ -778,6 +801,135 @@ describe("CmsContentListPanel", () => {
         expect(lastCall?.query?.directoryId).toBeUndefined();
       });
       expect(mockListWorkspaceContentDirectories).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── create guard: missing workspace context ───────────────────────────────
+
+  describe("create guard — missing workspace context", () => {
+    it("shows sign-in error and does not call create when workspace context is absent", async () => {
+      vi.useRealTimers();
+      // Simulate a workspace-less state: no slug from path + null workspace
+      mockedPathname = "/dashboard";
+      mockedWorkspace = null;
+
+      render(<CmsContentListPanel />);
+      // Wait for auth effect to settle with null accessToken
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(0));
+
+      fireEvent.click(screen.getByRole("button", { name: "create content" }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Unable to create content"),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("Please sign in again and retry."),
+        ).toBeInTheDocument();
+      });
+      expect(mockCreateDraftEntryAndResolveEditPath).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── catch branches in handleOpen and handleShare ─────────────────────────
+
+  describe("card action error resilience — handleOpen & handleShare catch", () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+      mockedEntriesState = {
+        ...mockedEntriesState,
+        items: [
+          {
+            id: "entry-err-1",
+            title: "Error Test",
+            description: "",
+            status: "draft",
+            ownerName: null,
+            isFavorite: false,
+          },
+        ],
+        count: 1,
+      };
+    });
+
+    it("silently ignores buildContentEntryEditRoute throw in handleOpen", async () => {
+      mockBuildContentEntryEditRoute.mockImplementationOnce(() => {
+        throw new Error("Invalid workspace slug");
+      });
+      render(<CmsContentListPanel />);
+      const btn = await screen.findByTestId("list-open-entry-err-1");
+      expect(() => fireEvent.click(btn)).not.toThrow();
+      expect(push).not.toHaveBeenCalled();
+    });
+
+    it("silently ignores buildContentEntryEditRoute throw in handleShare", async () => {
+      mockBuildContentEntryEditRoute.mockImplementationOnce(() => {
+        throw new Error("Invalid slug");
+      });
+      render(<CmsContentListPanel />);
+      const btn = await screen.findByTestId("list-share-entry-err-1");
+      expect(() => fireEvent.click(btn)).not.toThrow();
+      expect(mockClipboardWrite).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("create error — non-Error rejection", () => {
+    it("handles a non-Error rejection and shows generic error copy", async () => {
+      vi.useRealTimers();
+      // Throw a plain string (not an Error) to exercise String(error ?? "unknown") branch
+      mockCreateDraftEntryAndResolveEditPath.mockRejectedValueOnce(
+        "service-unavailable",
+      );
+      mockGetCreateEntryErrorMessage.mockReturnValueOnce("Please try again.");
+
+      render(<CmsContentListPanel />);
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByRole("button", { name: "create content" }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Unable to create content"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Please try again.")).toBeInTheDocument();
+      });
+      expect(push).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── noop card actions (delete / favorite) ───────────────────────────────
+
+  describe("noop card actions — delete and toggle-favorite", () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+      mockedEntriesState = {
+        ...mockedEntriesState,
+        items: [
+          {
+            id: "entry-noop-1",
+            title: "Noop test",
+            description: "",
+            status: "draft",
+            ownerName: null,
+            isFavorite: false,
+          },
+        ],
+        count: 1,
+      };
+    });
+
+    it("does not throw or navigate when a list-card Delete is clicked (noop)", async () => {
+      render(<CmsContentListPanel />);
+      const btn = await screen.findByTestId("list-delete-entry-noop-1");
+      expect(() => fireEvent.click(btn)).not.toThrow();
+      expect(push).not.toHaveBeenCalled();
+    });
+
+    it("does not throw or navigate when a list-card Favorite is clicked (noop)", async () => {
+      render(<CmsContentListPanel />);
+      const btn = await screen.findByTestId("list-favorite-entry-noop-1");
+      expect(() => fireEvent.click(btn)).not.toThrow();
+      expect(push).not.toHaveBeenCalled();
     });
   });
 });
