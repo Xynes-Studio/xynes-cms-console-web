@@ -1,11 +1,26 @@
 import type React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsContentListPanel } from "./CmsContentListPanel";
+
+const {
+  mockCreateDraftEntryAndResolveEditPath,
+  mockGetCreateEntryErrorMessage,
+} = vi.hoisted(() => ({
+  mockCreateDraftEntryAndResolveEditPath: vi.fn(),
+  mockGetCreateEntryErrorMessage: vi.fn(),
+}));
 
 const push = vi.fn();
 const setState = vi.fn();
 const refreshEntries = vi.fn();
+const replace = vi.fn();
 const mockGetAccessToken = vi.fn();
 const renderGridItem = vi.fn();
 const renderListItem = vi.fn();
@@ -38,7 +53,12 @@ let mockedEntriesState = {
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockedPathname,
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace }),
+}));
+
+vi.mock("./CmsContentActions", () => ({
+  createDraftEntryAndResolveEditPath: mockCreateDraftEntryAndResolveEditPath,
+  getCreateEntryErrorMessage: mockGetCreateEntryErrorMessage,
 }));
 
 vi.mock("../../lib/dashboard/use-cms-content-query-state", () => ({
@@ -192,6 +212,28 @@ vi.mock("@lumia-ui/components", () => ({
   }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => (
     <div {...props}>{children}</div>
   ),
+  Alert: ({
+    title,
+    description,
+    closable: _closable,
+    onClose: _onClose,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement> & {
+    title?: string;
+    description?: string;
+    closable?: boolean;
+    onClose?: () => void;
+  }) => {
+    void _closable;
+    void _onClose;
+
+    return (
+      <div {...props}>
+        {title ? <p>{title}</p> : null}
+        {description ? <p>{description}</p> : null}
+      </div>
+    );
+  },
   Button: ({
     children,
     ...props
@@ -204,12 +246,21 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   push.mockReset();
+  replace.mockReset();
   setState.mockReset();
   refreshEntries.mockReset();
   mockGetAccessToken.mockReset();
   renderGridItem.mockReset();
   renderListItem.mockReset();
+  mockCreateDraftEntryAndResolveEditPath.mockReset();
+  mockGetCreateEntryErrorMessage.mockReset();
   mockGetAccessToken.mockResolvedValue("jwt-token");
+  mockCreateDraftEntryAndResolveEditPath.mockResolvedValue(
+    "/dashboard/xynes-studio-llp/content/entry/entry-new/edit",
+  );
+  mockGetCreateEntryErrorMessage.mockReturnValue(
+    "Content entry create route is not configured in backend yet. Please contact platform team to map /content/entries to directory-based cms.entry.* actions.",
+  );
   mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
   mockedQueryState = {
     query: "",
@@ -259,6 +310,62 @@ describe("CmsContentListPanel", () => {
       screen.getByRole("region", { name: "Content list panel" }),
     ).toBeInTheDocument();
     expect(setState).toHaveBeenCalledWith({ query: "", offset: 0 });
+  });
+
+  it("creates an entry from toolbar and navigates to editor route", async () => {
+    vi.useRealTimers();
+    mockedQueryState = {
+      ...mockedQueryState,
+      directoryId: "dir-1",
+    };
+
+    render(<CmsContentListPanel />);
+
+    await waitFor(() => {
+      expect(mockGetAccessToken).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "create content" }));
+
+    await waitFor(() => {
+      expect(mockCreateDraftEntryAndResolveEditPath).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: "workspace-1",
+          workspaceSlug: "xynes-studio-llp",
+          accessToken: "jwt-token",
+          directoryId: "dir-1",
+          apiBaseUrl: expect.any(String),
+        }),
+      );
+      expect(push).toHaveBeenCalledWith(
+        "/dashboard/xynes-studio-llp/content/entry/entry-new/edit",
+      );
+    });
+  });
+
+  it("shows an accessible inline error alert when create fails", async () => {
+    vi.useRealTimers();
+    mockCreateDraftEntryAndResolveEditPath.mockRejectedValueOnce(
+      new Error("DIRECTORY_ROUTE_SEGMENT_NOT_FOUND"),
+    );
+
+    render(<CmsContentListPanel />);
+
+    await waitFor(() => {
+      expect(mockGetAccessToken).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "create content" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Unable to create content")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Content entry create route is not configured in backend yet. Please contact platform team to map /content/entries to directory-based cms.entry.* actions.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("uses last content segment for breadcrumb derivation", () => {

@@ -14,7 +14,6 @@ export type WorkspaceContentEntrySortDirection = "asc" | "desc";
 export interface WorkspaceContentEntry {
   id: string;
   workspaceId: string;
-  contentTypeId: string;
   directoryId: string | null;
   title: string;
   description: string;
@@ -176,8 +175,8 @@ const normalizeStringArray = (value: unknown): string[] => {
     .filter((item): item is string => isNonEmptyString(item))
     .map((item) => item.trim());
 };
-const isOptionalNonEmptyString = (value: unknown): boolean =>
-  value === undefined || value === null || isNonEmptyString(value);
+const isOptionalString = (value: unknown): boolean =>
+  value === undefined || value === null || typeof value === "string";
 
 const isWorkspaceContentEntryStatus = (
   value: unknown,
@@ -192,9 +191,8 @@ const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
   if (
     !isNonEmptyString(value.id) ||
     !isNonEmptyString(value.workspaceId) ||
-    !isNonEmptyString(value.contentTypeId) ||
-    !isNonEmptyString(value.title) ||
-    !isOptionalNonEmptyString(value.description) ||
+    !isOptionalString(value.title) ||
+    !isOptionalString(value.description) ||
     !isWorkspaceContentEntryStatus(value.status) ||
     !isNonEmptyString(value.createdAt) ||
     !isNonEmptyString(value.updatedAt) ||
@@ -208,13 +206,13 @@ const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
   const avatarUrl = normalizeOptionalString(value.avatarUrl);
   const publishedAt = normalizeOptionalString(value.publishedAt);
   const description = normalizeOptionalString(value.description) ?? "";
+  const title = normalizeOptionalString(value.title) ?? "Untitled";
 
   return {
     id: value.id.trim(),
     workspaceId: value.workspaceId.trim(),
-    contentTypeId: value.contentTypeId.trim(),
     directoryId,
-    title: value.title.trim(),
+    title,
     description,
     body: value.body,
     tags: normalizeStringArray(value.tags),
@@ -240,6 +238,60 @@ const createReadHeaders = (accessToken: string): Record<string, string> => ({
   Authorization: `Bearer ${accessToken}`,
 });
 
+async function resolveErrorSuffix(response: Response): Promise<string> {
+  try {
+    const responseJson = (await response.json()) as unknown;
+    if (!isRecord(responseJson) || !isRecord(responseJson.error)) {
+      return "";
+    }
+
+    const code = isNonEmptyString(responseJson.error.code)
+      ? responseJson.error.code.trim()
+      : "";
+    const message = isNonEmptyString(responseJson.error.message)
+      ? responseJson.error.message.trim()
+      : "";
+
+    if (code && message) {
+      return ` (${code}: ${message})`;
+    }
+    if (message) {
+      return ` (${message})`;
+    }
+    return code ? ` (${code})` : "";
+  } catch {
+    return "";
+  }
+}
+
+async function resolveErrorDetails(response: Response): Promise<{
+  code?: string;
+  message?: string;
+  requestId?: string;
+}> {
+  try {
+    const responseJson = (await response.clone().json()) as unknown;
+    const envelope = isRecord(responseJson) ? responseJson : null;
+    const error = envelope && isRecord(envelope.error) ? envelope.error : null;
+    const meta = envelope && isRecord(envelope.meta) ? envelope.meta : null;
+
+    const code =
+      error && isNonEmptyString(error.code) ? error.code.trim() : undefined;
+    const message =
+      error && isNonEmptyString(error.message)
+        ? error.message.trim()
+        : undefined;
+    const requestId =
+      meta && isNonEmptyString(meta.requestId)
+        ? meta.requestId.trim()
+        : undefined;
+
+    return { code, message, requestId };
+  } catch {
+    return {};
+  }
+}
+
 async function parseEntryResponse({
   response,
   errorContext,
@@ -248,8 +300,9 @@ async function parseEntryResponse({
   errorContext: string;
 }): Promise<WorkspaceContentEntry> {
   if (!response.ok) {
+    const errorSuffix = await resolveErrorSuffix(response);
     throw new Error(
-      `Failed to ${errorContext}: HTTP ${response.status} ${response.statusText}`,
+      `Failed to ${errorContext}: HTTP ${response.status} ${response.statusText}${errorSuffix}`,
     );
   }
 
@@ -323,6 +376,14 @@ export async function listWorkspaceContentEntries({
     if (response.status === 404) {
       return { items: [], count: 0 };
     }
+    const errorDetails = await resolveErrorDetails(response);
+    console.error("[CMS][list] request failed", {
+      status: response.status,
+      statusText: response.statusText,
+      code: errorDetails.code,
+      requestId: errorDetails.requestId,
+      message: errorDetails.message,
+    });
     throw new Error(
       `Failed to load content entries: HTTP ${response.status} ${response.statusText}`,
     );
@@ -334,11 +395,27 @@ export async function listWorkspaceContentEntries({
     throw new Error("Invalid content entries list response");
   }
 
-  const items = unwrapped.items.map(parseWorkspaceContentEntry);
-  const count =
+  const items = unwrapped.items.flatMap((item) => {
+    try {
+      return [parseWorkspaceContentEntry(item)];
+    } catch (parseError) {
+      console.warn("[CMS][list] dropping malformed entry", {
+        entryId:
+          isRecord(item) && isNonEmptyString(item.id) ? item.id.trim() : null,
+        reason:
+          parseError instanceof Error
+            ? parseError.message
+            : String(parseError ?? "unknown"),
+      });
+      return [];
+    }
+  });
+  const reportedCount =
     typeof unwrapped.count === "number" && Number.isFinite(unwrapped.count)
       ? Math.max(0, Math.trunc(unwrapped.count))
       : items.length;
+
+  const count = items.length === 0 ? 0 : Math.min(reportedCount, items.length);
 
   return { items, count };
 }
@@ -405,6 +482,19 @@ export async function createWorkspaceContentEntry({
     body: JSON.stringify(payload),
     signal,
   });
+
+  if (!response.ok) {
+    const errorDetails = await resolveErrorDetails(response);
+    console.error("[CMS][create] request failed", {
+      workspaceId: normalized.workspaceId,
+      hasDirectoryId: Boolean(payload.directoryId?.trim()),
+      status: response.status,
+      statusText: response.statusText,
+      code: errorDetails.code,
+      requestId: errorDetails.requestId,
+      message: errorDetails.message,
+    });
+  }
 
   return parseEntryResponse({ response, errorContext: "create content entry" });
 }

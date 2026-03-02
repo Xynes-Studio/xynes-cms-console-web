@@ -16,7 +16,6 @@ import {
 const sampleEntry: WorkspaceContentEntry = {
   id: "entry-1",
   workspaceId: "workspace-1",
-  contentTypeId: "content-type-1",
   directoryId: null,
   title: "Entry title",
   description: "Entry description",
@@ -88,7 +87,7 @@ describe("content-entries-client", () => {
     expect(result).toEqual({ items: [sampleEntry], count: 1 });
   });
 
-  it("fails closed on malformed list payload", async () => {
+  it("skips malformed list items instead of failing entire response", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({ ok: true, data: { items: [{ id: "x" }] } }),
@@ -98,14 +97,14 @@ describe("content-entries-client", () => {
       ),
     );
 
-    await expect(
-      listWorkspaceContentEntries({
-        apiBaseUrl: "http://localhost:4100",
-        workspaceId: "workspace-1",
-        accessToken: "jwt-token",
-        fetchImpl: fetchMock,
-      }),
-    ).rejects.toThrow(/Invalid/);
+    const result = await listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+
+    expect(result).toEqual({ items: [], count: 0 });
   });
 
   it("omits default sort and paging query parameters", async () => {
@@ -222,6 +221,61 @@ describe("content-entries-client", () => {
     expect(result.items[0]?.description).toBe("");
   });
 
+  it("normalizes missing title to Untitled for legacy entries", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            items: [
+              {
+                ...sampleEntry,
+                title: "",
+              },
+            ],
+            count: 1,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+
+    expect(result.items[0]?.title).toBe("Untitled");
+  });
+
+  it("returns valid entries when response includes mixed valid and invalid rows", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            items: [sampleEntry, { id: "only-id" }],
+            count: 2,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.id).toBe(sampleEntry.id);
+    expect(result.count).toBe(1);
+  });
+
   it("creates and returns entry", async () => {
     const fetchMock = vi
       .fn()
@@ -247,6 +301,105 @@ describe("content-entries-client", () => {
       expect.objectContaining({ method: "POST" }),
     );
     expect(result.id).toBe("entry-1");
+  });
+
+  it("creates and returns entry when description is empty string", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            entry: {
+              ...sampleEntry,
+              description: "",
+            },
+          },
+        }),
+        { status: 201 },
+      ),
+    );
+
+    const result = await createWorkspaceContentEntry({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      payload: {
+        title: "Title",
+      },
+      fetchImpl: fetchMock,
+    });
+
+    expect(result.description).toBe("");
+  });
+
+  it("includes backend error code and message for create failures", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "DIRECTORY_ROUTE_SEGMENT_NOT_FOUND",
+            message: "Directory route not found for routeSegment: entries",
+          },
+        }),
+        { status: 404, statusText: "Not Found" },
+      ),
+    );
+
+    await expect(
+      createWorkspaceContentEntry({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        accessToken: "jwt-token",
+        payload: {
+          title: "Title",
+        },
+        fetchImpl: fetchMock,
+      }),
+    ).rejects.toThrow(
+      "Failed to create content entry: HTTP 404 Not Found (DIRECTORY_ROUTE_SEGMENT_NOT_FOUND: Directory route not found for routeSegment: entries)",
+    );
+  });
+
+  it("logs create failure metadata with code and requestId", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "CONTENT_TYPE_NOT_FOUND",
+            message: "Content type not found: blog_post",
+          },
+          meta: {
+            requestId: "req-debug-1",
+          },
+        }),
+        { status: 404, statusText: "Not Found" },
+      ),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      createWorkspaceContentEntry({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        accessToken: "jwt-token",
+        payload: {
+          title: "Title",
+        },
+        fetchImpl: fetchMock,
+      }),
+    ).rejects.toThrow("Failed to create content entry: HTTP 404 Not Found");
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[CMS][create] request failed",
+      expect.objectContaining({
+        workspaceId: "workspace-1",
+        status: 404,
+        code: "CONTENT_TYPE_NOT_FOUND",
+        requestId: "req-debug-1",
+      }),
+    );
   });
 
   it("gets entry by id", async () => {
@@ -353,17 +506,15 @@ describe("content-entries-client", () => {
         { status: 200 },
       ),
     );
-    const favoriteFetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            data: { entryId: "entry-1", isFavorite: true },
-          }),
-          { status: 200 },
-        ),
-      );
+    const favoriteFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { entryId: "entry-1", isFavorite: true },
+        }),
+        { status: 200 },
+      ),
+    );
 
     const collaborators = await setWorkspaceEntryCollaborators({
       apiBaseUrl: "http://localhost:4100",
@@ -392,17 +543,15 @@ describe("content-entries-client", () => {
   });
 
   it("lists favorite entries and generates internal share links", async () => {
-    const favoritesFetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            data: { items: [sampleEntry], count: 1 },
-          }),
-          { status: 200 },
-        ),
-      );
+    const favoritesFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { items: [sampleEntry], count: 1 },
+        }),
+        { status: 200 },
+      ),
+    );
     const shareFetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({

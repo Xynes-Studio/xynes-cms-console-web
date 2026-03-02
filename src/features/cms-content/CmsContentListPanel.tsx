@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import type { BreadcrumbItem } from "@lumia-ui/components";
-import { Card } from "@lumia-ui/components";
+import { Alert, Card } from "@lumia-ui/components";
 import { CmsContentCardGrid } from "../../components/dashboard/CmsContentCardGrid";
 import { CmsContentCardList } from "../../components/dashboard/CmsContentCardList";
 import { useCmsContentQueryState } from "../../lib/dashboard/use-cms-content-query-state";
@@ -14,6 +14,10 @@ import {
   CmsContentListState,
   resolveCmsContentListState,
 } from "./CmsContentListState";
+import {
+  createDraftEntryAndResolveEditPath,
+  getCreateEntryErrorMessage,
+} from "./CmsContentActions";
 import { mapEntryToGridCardProps, mapEntryToListCardProps } from "./mappers";
 
 const QUERY_REPLACE_DEBOUNCE_MS = 300;
@@ -48,6 +52,8 @@ export function CmsContentListPanel() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [queryDraft, setQueryDraft] = useState(state.query);
   const [isQueryEditing, setIsQueryEditing] = useState(false);
+  const [isCreatingEntry, setIsCreatingEntry] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
 
   useEffect(() => {
@@ -119,6 +125,7 @@ export function CmsContentListPanel() {
   const contentBasePath = workspaceSlug
     ? `/dashboard/${encodeURIComponent(workspaceSlug)}/content`
     : "/dashboard";
+  const resolvedWorkspaceSlug = currentWorkspace?.slug?.trim() || workspaceSlug;
 
   const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -183,7 +190,47 @@ export function CmsContentListPanel() {
         followingOnly={state.followingOnly}
         favoritesOnly={state.favoritesOnly}
         onCreate={() => {
-          return;
+          setCreateError(null);
+
+          if (isCreatingEntry) {
+            return;
+          }
+
+          if (!currentWorkspace?.id || !accessToken || !resolvedWorkspaceSlug) {
+            setCreateError("Please sign in again and retry.");
+            return;
+          }
+
+          setIsCreatingEntry(true);
+
+          void (async () => {
+            try {
+              const editPath = await createDraftEntryAndResolveEditPath({
+                apiBaseUrl,
+                workspaceId: currentWorkspace.id,
+                workspaceSlug: resolvedWorkspaceSlug,
+                accessToken,
+                directoryId: state.directoryId,
+              });
+
+              router.push(editPath);
+            } catch (error) {
+              const message = getCreateEntryErrorMessage(error);
+              console.error("[CMS][create] toolbar flow failed", {
+                workspaceId: currentWorkspace.id,
+                workspaceSlug: resolvedWorkspaceSlug,
+                directoryId: state.directoryId,
+                errorMessage:
+                  error instanceof Error
+                    ? error.message
+                    : String(error ?? "unknown"),
+                userMessage: message,
+              });
+              setCreateError(message);
+            } finally {
+              setIsCreatingEntry(false);
+            }
+          })();
         }}
         onQueryChange={(query) => {
           setQueryDraft(query);
@@ -210,6 +257,18 @@ export function CmsContentListPanel() {
           setState({ favoritesOnly: !state.favoritesOnly, offset: 0 });
         }}
       />
+
+      {createError ? (
+        <div className="px-4 pt-3">
+          <Alert
+            variant="error"
+            title="Unable to create content"
+            description={createError}
+            closable
+            onClose={() => setCreateError(null)}
+          />
+        </div>
+      ) : null}
 
       <CmsContentListState
         state={listViewState}

@@ -7,7 +7,6 @@ const sampleListResult = {
     {
       id: "entry-1",
       workspaceId: "workspace-1",
-      contentTypeId: "content-type-1",
       directoryId: null,
       title: "Title",
       description: "Desc",
@@ -126,7 +125,12 @@ describe("useCmsContentEntries", () => {
           apiBaseUrl: "http://localhost:4100",
           workspaceId: "workspace-1",
           accessToken: "jwt-token",
-          query: { sortBy: "date", sortDirection: "desc", view: "list", search },
+          query: {
+            sortBy: "date",
+            sortDirection: "desc",
+            view: "list",
+            search,
+          },
           listEntries,
         }),
       { initialProps: { search: "a" } },
@@ -136,7 +140,9 @@ describe("useCmsContentEntries", () => {
 
     await act(async () => {
       second.resolve({
-        items: [{ ...sampleListResult.items[0], id: "entry-new", title: "New" }],
+        items: [
+          { ...sampleListResult.items[0], id: "entry-new", title: "New" },
+        ],
         count: 1,
       });
       await Promise.resolve();

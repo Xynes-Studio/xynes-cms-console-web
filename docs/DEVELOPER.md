@@ -330,6 +330,31 @@ Rules:
   - add/maintain Tier 1 mapper tests for data transformation behavior.
   - keep touched module coverage >=80% statements/branches.
 
+### CMS-UI-006 Create Flow Standards (Next.js + React)
+
+- Ownership and segregation:
+  - keep create-flow orchestration in feature layer (`src/features/cms-content/*`), not in route files.
+  - keep route files thin and declarative; no direct content-entry mutation calls in `app/*` routes.
+  - centralize edit-path generation in shared helper (`CmsContentActions`) to avoid duplicated path templates.
+- React container behavior:
+  - create action must be idempotent under rapid clicks (in-flight guard in container state).
+  - create action should resolve workspace slug from trusted workspace context first, then route fallback.
+  - preserve directory context by forwarding `directoryId` when present.
+- Security and resilience:
+  - validate workspace slug/entry id via safe path helpers before route navigation.
+  - never surface raw backend error payloads; show generic user-safe feedback.
+  - treat API/env/query inputs as untrusted and fail closed when required create dependencies are missing.
+- Accessibility:
+  - keep explicit accessible control labels via toolbar contract (`Create content`).
+  - ensure error feedback is surfaced through shared toast provider with readable copy.
+- Redundancy and tech-debt controls:
+  - remove repeated toast payloads and repeated route-template strings by helper extraction.
+  - keep mutation API invocation in one action helper and unit test it independently.
+- TDD and coverage:
+  - add/maintain Tier 1 tests for action helper path generation + payload mapping.
+  - add/maintain Tier 2 container tests for create success + failure behavior.
+  - maintain touched module coverage >=80% statements/branches.
+
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
