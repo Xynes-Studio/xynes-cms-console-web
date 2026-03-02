@@ -120,6 +120,7 @@ export function CmsContentListPanel() {
     }
 
     let cancelled = false;
+    setResolvedDirectoryId(undefined); // clear stale UUID before new async resolution
     setIsDirectoryResolving(true);
 
     void (async () => {
@@ -236,9 +237,11 @@ export function CmsContentListPanel() {
           entryId,
         });
         const shareUrl = window.location.origin + editPath;
-        void navigator.clipboard.writeText(shareUrl);
+        void navigator.clipboard.writeText(shareUrl).catch(() => {
+          // clipboard unavailable or permission denied — silently ignore
+        });
       } catch {
-        // clipboard unavailable — silently ignore
+        // invalid slug or entryId — silently ignore
       }
     },
     [resolvedWorkspaceSlug],
@@ -311,7 +314,18 @@ export function CmsContentListPanel() {
             return;
           }
 
-          if (!apiBaseUrl || !currentWorkspace?.id || !accessToken || !resolvedWorkspaceSlug) {
+          if (isDirectoryResolving) {
+            // Resolution is in flight — using resolvedDirectoryId here would
+            // create the entry in the wrong (stale) directory. Block until done.
+            return;
+          }
+
+          if (
+            !apiBaseUrl ||
+            !currentWorkspace?.id ||
+            !accessToken ||
+            !resolvedWorkspaceSlug
+          ) {
             setCreateError("Please sign in again and retry.");
             return;
           }

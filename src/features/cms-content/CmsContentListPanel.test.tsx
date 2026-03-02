@@ -76,8 +76,10 @@ vi.mock("../../lib/dashboard/content-directories-client", () => ({
 vi.mock("./CmsContentActions", () => ({
   createDraftEntryAndResolveEditPath: mockCreateDraftEntryAndResolveEditPath,
   getCreateEntryErrorMessage: mockGetCreateEntryErrorMessage,
-  buildContentEntryEditRoute: (args: { workspaceSlug: string; entryId: string }) =>
-    mockBuildContentEntryEditRoute(args),
+  buildContentEntryEditRoute: (args: {
+    workspaceSlug: string;
+    entryId: string;
+  }) => mockBuildContentEntryEditRoute(args),
 }));
 
 vi.mock("../../lib/dashboard/use-cms-content-query-state", () => ({
@@ -759,6 +761,16 @@ describe("CmsContentListPanel", () => {
         ),
       );
     });
+
+    it("does not propagate when clipboard write rejects (permission denied)", async () => {
+      mockClipboardWrite.mockRejectedValueOnce(new Error("Permission denied"));
+      render(<CmsContentListPanel />);
+      const btn = await screen.findByTestId("list-share-entry-share-1");
+      fireEvent.click(btn);
+      // Let the clipboard microtask settle — no unhandled rejection should surface
+      await Promise.resolve();
+      expect(mockClipboardWrite).toHaveBeenCalled();
+    });
   });
 
   // ─── directory filtering ───────────────────────────────────────────────────
@@ -791,6 +803,19 @@ describe("CmsContentListPanel", () => {
         const lastCall = mockUseCmsContentEntries.mock.calls.at(-1)?.[0];
         expect(lastCall?.query?.directoryId).toBe("dir-leaf");
       });
+    });
+
+    it("does not call create while directory resolution is in progress", async () => {
+      // Make directory resolution hang so isDirectoryResolving stays true
+      mockListWorkspaceContentDirectories.mockReturnValue(new Promise(() => {}));
+      render(<CmsContentListPanel />);
+      // Wait until the directory API has been called (resolution started, not yet finished)
+      await waitFor(() =>
+        expect(mockListWorkspaceContentDirectories).toHaveBeenCalled(),
+      );
+      // Click Create while resolution is still in flight
+      fireEvent.click(screen.getByRole("button", { name: "create content" }));
+      expect(mockCreateDraftEntryAndResolveEditPath).not.toHaveBeenCalled();
     });
 
     it("does not call the directory API and passes null directoryId when at root content path", async () => {
