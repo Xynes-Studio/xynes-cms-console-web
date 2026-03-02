@@ -50,7 +50,7 @@ pnpm test:coverage # run with coverage report (target: ≥80% statements + branc
 
 ## Folder Structure
 
-```
+```text
 app/
   dashboard/
     [workspaceSlug]/

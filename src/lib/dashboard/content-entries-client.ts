@@ -415,7 +415,7 @@ export async function listWorkspaceContentEntries({
       ? Math.max(0, Math.trunc(unwrapped.count))
       : items.length;
 
-  const count = items.length === 0 ? 0 : Math.min(reportedCount, items.length);
+  const count = reportedCount;
 
   return { items, count };
 }

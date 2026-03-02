@@ -196,7 +196,7 @@ export function CmsContentListPanel() {
             return;
           }
 
-          if (!currentWorkspace?.id || !accessToken || !resolvedWorkspaceSlug) {
+          if (!apiBaseUrl || !currentWorkspace?.id || !accessToken || !resolvedWorkspaceSlug) {
             setCreateError("Please sign in again and retry.");
             return;
           }

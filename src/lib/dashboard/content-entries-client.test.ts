@@ -273,7 +273,9 @@ describe("content-entries-client", () => {
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.id).toBe(sampleEntry.id);
-    expect(result.count).toBe(1);
+    // count reflects the server-reported total, not the number of parsed items
+    // (malformed rows are dropped client-side; the server total drives pagination)
+    expect(result.count).toBe(2);
   });
 
   it("creates and returns entry", async () => {

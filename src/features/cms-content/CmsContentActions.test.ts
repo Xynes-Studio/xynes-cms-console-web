@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildContentEntryEditRoute,
   createDraftEntryAndResolveEditPath,
@@ -6,6 +6,10 @@ import {
 } from "./CmsContentActions";
 
 describe("CmsContentActions", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("builds a canonical dashboard editor route", () => {
     expect(
       buildContentEntryEditRoute({
@@ -143,33 +147,6 @@ describe("CmsContentActions", () => {
     );
   });
 
-  it("logs create failure context when createEntry throws non-Error value", async () => {
-    const createEntry = vi.fn(async () => {
-      throw "network down";
-    });
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    await expect(
-      createDraftEntryAndResolveEditPath({
-        apiBaseUrl: "http://localhost:4100",
-        workspaceId: "workspace-1",
-        workspaceSlug: "acme-team",
-        accessToken: "jwt-token",
-        directoryId: "dir-1",
-        createEntry,
-      }),
-    ).rejects.toBe("network down");
-
-    expect(errorSpy).toHaveBeenCalledWith(
-      "[CMS][create] draft create failed",
-      expect.objectContaining({
-        workspaceId: "workspace-1",
-        workspaceSlug: "acme-team",
-        directoryId: "dir-1",
-        errorMessage: "network down",
-      }),
-    );
-  });
   it("logs create failure context when createEntry throws non-Error value", async () => {
     const createEntry = vi.fn(async () => {
       throw "network down";
