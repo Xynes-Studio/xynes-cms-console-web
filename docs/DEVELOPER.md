@@ -433,7 +433,7 @@ Rules:
   - `breadcrumbParts` and `breadcrumbKey` must be declared before any `useEffect` that references them (TDZ safety).
 - Testing:
   - Tier 2: assert that `mockListWorkspaceContentDirectories` is called and the resulting leaf UUID is passed to `useCmsContentEntries`.
-  - Tier 2: assert that root path (no segments) skips API call and passes `undefined` directoryId.
+  - Tier 2: assert that root path (no segments) skips API call and passes `null` directoryId.
 
 ## Accessibility Standards
 

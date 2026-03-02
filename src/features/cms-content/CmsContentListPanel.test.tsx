@@ -793,12 +793,12 @@ describe("CmsContentListPanel", () => {
       });
     });
 
-    it("does not call the directory API and passes undefined directoryId when at root content path", async () => {
+    it("does not call the directory API and passes null directoryId when at root content path", async () => {
       mockedPathname = "/dashboard/xynes-studio-llp/content";
       render(<CmsContentListPanel />);
       await waitFor(() => {
         const lastCall = mockUseCmsContentEntries.mock.calls.at(-1)?.[0];
-        expect(lastCall?.query?.directoryId).toBeUndefined();
+        expect(lastCall?.query?.directoryId).toBeNull();
       });
       expect(mockListWorkspaceContentDirectories).not.toHaveBeenCalled();
     });

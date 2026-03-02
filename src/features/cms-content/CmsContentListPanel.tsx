@@ -260,8 +260,8 @@ export function CmsContentListPanel() {
     accessToken: accessToken ?? "",
     query: {
       // Use the resolved UUID so the API filters by the correct directory.
-      // Falls back to undefined (no filter) when still resolving or at root.
-      directoryId: resolvedDirectoryId ?? undefined,
+      // null = no filter (root view or no match); undefined = still resolving.
+      directoryId: resolvedDirectoryId,
       search: state.query,
       sortBy: state.sortBy,
       sortDirection: state.sortDirection,
