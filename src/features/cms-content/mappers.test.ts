@@ -4,7 +4,6 @@ import { mapEntryToGridCardProps, mapEntryToListCardProps } from "./mappers";
 const makeEntry = (overrides: Record<string, unknown> = {}) => ({
   id: "entry-1",
   workspaceId: "workspace-1",
-  contentTypeId: "article",
   directoryId: null,
   title: "Entry title",
   description: "Entry description",
