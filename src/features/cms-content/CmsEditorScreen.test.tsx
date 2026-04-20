@@ -1,5 +1,6 @@
 import type React from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -8,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsEditorScreen } from "./CmsEditorScreen";
+import { createEmptyLumiaDocument } from "./cms-editor-body";
 import type { WorkspaceContentEntry } from "../../lib/dashboard/content-entries-client";
 
 // ─── hoisted mocks ───────────────────────────────────────────────────────────
@@ -23,6 +25,7 @@ const {
   mockAutosaveRetry,
   mockAutosaveClearSnapshot,
   mockCaptureSaveDraftFn,
+  mockLumiaEditor,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -33,6 +36,7 @@ const {
   mockAutosaveClearSnapshot: vi.fn(),
   // Captures the saveDraft fn passed to useCmsEntryAutosave so tests can invoke it directly
   mockCaptureSaveDraftFn: vi.fn(),
+  mockLumiaEditor: vi.fn(),
 }));
 
 let mockIsAuthLoading = false;
@@ -185,7 +189,59 @@ vi.mock("@lumia-ui/components", () => ({
   ),
 }));
 
+vi.mock("@lumia-ui/editor", () => ({
+  LumiaEditor: (props: {
+    value: unknown;
+    onChange: (value: unknown) => void;
+    variant?: string;
+    className?: string;
+    media?: unknown;
+  }) => {
+    mockLumiaEditor(props);
+    return (
+      <div data-testid="lumia-editor-mock">
+        <div data-testid="lumia-editor-value">
+          {JSON.stringify(props.value)}
+        </div>
+      </div>
+    );
+  },
+}));
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
+
+const makeEditorBody = () => ({
+  root: {
+    type: "root",
+    version: 1,
+    direction: "ltr",
+    format: "",
+    indent: 0,
+    children: [
+      {
+        type: "paragraph",
+        version: 1,
+        children: [
+          {
+            type: "text",
+            version: 1,
+            text: "Hello body",
+            detail: 0,
+            format: 0,
+            mode: "normal",
+            style: "",
+            textStyle: "",
+            canMerge: true,
+          },
+        ],
+        direction: "ltr",
+        format: "",
+        indent: 0,
+        textFormat: "",
+      },
+    ],
+  },
+});
 
 const makeEntry = (
   overrides: Partial<WorkspaceContentEntry> = {},
@@ -357,14 +413,153 @@ describe("CmsEditorScreen", () => {
       );
     });
 
-    it("renders editor canvas placeholder", async () => {
+    it("renders the real editor instead of the placeholder", async () => {
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId("editor-canvas-placeholder"),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId("lumia-editor-mock")).toBeInTheDocument();
       });
+
+      expect(
+        screen.queryByTestId("editor-canvas-placeholder"),
+      ).not.toBeInTheDocument();
+      expect(mockLumiaEditor).toHaveBeenCalled();
+    });
+
+    it("seeds the editor body from entry data", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({ body: makeEditorBody() }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(mockLumiaEditor).toHaveBeenCalled();
+      });
+
+      expect(mockLumiaEditor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          value: makeEditorBody(),
+        }),
+      );
+    });
+
+    it("propagates editor body changes into the autosave payload", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({ body: makeEditorBody() }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(mockLumiaEditor).toHaveBeenCalled();
+      });
+
+      const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
+        | {
+            onChange?: (value: unknown) => void;
+          }
+        | undefined;
+
+      expect(editorProps?.onChange).toBeTypeOf("function");
+      const saveDraftFnCallCount = mockCaptureSaveDraftFn.mock.calls.length;
+
+      const nextBody = {
+        root: {
+          type: "root",
+          version: 1,
+          direction: "ltr",
+          format: "",
+          indent: 0,
+          children: [
+            {
+              type: "paragraph",
+              version: 1,
+              direction: "ltr",
+              format: "",
+              indent: 0,
+              textFormat: "",
+              children: [
+                {
+                  type: "text",
+                  version: 1,
+                  text: "Updated body",
+                  detail: 0,
+                  format: 0,
+                  mode: "normal",
+                  style: "",
+                  textStyle: "",
+                  canMerge: true,
+                },
+              ],
+            },
+          ],
+        },
+      };
+
+      await act(async () => {
+        editorProps?.onChange?.(nextBody);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("lumia-editor-value")).toHaveTextContent(
+          JSON.stringify(nextBody),
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockCaptureSaveDraftFn.mock.calls.length).toBeGreaterThan(
+          saveDraftFnCallCount,
+        );
+      });
+
+      mockUpdateWorkspaceContentEntry.mockResolvedValue(
+        makeEntry({ body: nextBody }),
+      );
+
+      const saveDraftFn: (v: {
+        title: string;
+        description: string;
+        tags: string;
+        body: ReturnType<typeof createEmptyLumiaDocument>;
+      }) => Promise<void> = mockCaptureSaveDraftFn.mock.calls.at(-1)?.[0];
+
+      const currentBody = JSON.parse(
+        screen.getByTestId("lumia-editor-value").textContent ?? "null",
+      ) as ReturnType<typeof createEmptyLumiaDocument>;
+
+      await saveDraftFn({
+        title: screen.getByTestId("editor-title").textContent ?? "",
+        description: screen.getByTestId("editor-description").textContent ?? "",
+        tags: screen.getByTestId("editor-tags").textContent ?? "",
+        body: currentBody,
+      });
+
+      expect(mockUpdateWorkspaceContentEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            body: nextBody,
+          }),
+        }),
+      );
+    });
+
+    it("falls back safely when the entry body is malformed", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({ body: "{not valid json" as unknown as WorkspaceContentEntry["body"] }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(mockLumiaEditor).toHaveBeenCalled();
+      });
+
+      expect(mockLumiaEditor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          value: createEmptyLumiaDocument(),
+        }),
+      );
     });
 
     it("falls back to route workspaceSlug when workspace slug is not in context", async () => {
@@ -663,6 +858,7 @@ describe("CmsEditorScreen", () => {
         title: string;
         description: string;
         tags: string;
+        body: ReturnType<typeof createEmptyLumiaDocument>;
       }) => Promise<void> = mockCaptureSaveDraftFn.mock.calls.at(-1)?.[0];
 
       expect(saveDraftFn).toBeDefined();
@@ -671,6 +867,7 @@ describe("CmsEditorScreen", () => {
         title: "Saved",
         description: "Desc",
         tags: " x , y ",
+        body: makeEditorBody(),
       });
 
       expect(mockUpdateWorkspaceContentEntry).toHaveBeenCalledWith(
@@ -682,6 +879,7 @@ describe("CmsEditorScreen", () => {
             title: "Saved",
             description: "Desc",
             tags: ["x", "y"],
+            body: makeEditorBody(),
           }),
         }),
       );
@@ -702,12 +900,18 @@ describe("CmsEditorScreen", () => {
         title: string;
         description: string;
         tags: string;
+        body: ReturnType<typeof createEmptyLumiaDocument>;
       }) => Promise<void> = mockCaptureSaveDraftFn.mock.calls.at(-1)?.[0];
 
       if (!saveDraftFn) return; // guard — OK if not captured (workspace missing)
 
       await expect(
-        saveDraftFn({ title: "x", description: "", tags: "" }),
+        saveDraftFn({
+          title: "x",
+          description: "",
+          tags: "",
+          body: createEmptyLumiaDocument(),
+        }),
       ).rejects.toThrow("Not authenticated");
     });
   });
