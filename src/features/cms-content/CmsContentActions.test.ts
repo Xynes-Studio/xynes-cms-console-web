@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildContentEntryEditRoute,
+  buildContentEntryShareUrl,
   createDraftEntryAndResolveEditPath,
   getCreateEntryErrorMessage,
 } from "./CmsContentActions";
@@ -280,5 +281,27 @@ describe("buildContentEntryEditRoute — edge cases", () => {
         entryId: "entry/with/slashes",
       }),
     ).toBe("/dashboard/acme-team/content/entry/entry%2Fwith%2Fslashes/edit");
+  });
+});
+
+describe("buildContentEntryShareUrl", () => {
+  it("builds an absolute internal edit URL from origin, workspace slug, and entry id", () => {
+    expect(
+      buildContentEntryShareUrl({
+        origin: "http://localhost:3000",
+        workspaceSlug: "acme-team",
+        entryId: "entry-1",
+      }),
+    ).toBe("http://localhost:3000/dashboard/acme-team/content/entry/entry-1/edit");
+  });
+
+  it("normalizes origin trailing slash when building share URL", () => {
+    expect(
+      buildContentEntryShareUrl({
+        origin: "http://localhost:3000/",
+        workspaceSlug: "acme-team",
+        entryId: "entry-1",
+      }),
+    ).toBe("http://localhost:3000/dashboard/acme-team/content/entry/entry-1/edit");
   });
 });

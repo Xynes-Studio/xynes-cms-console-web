@@ -116,6 +116,17 @@ Follows [ADR-001](../lumia-ds/docs/ADR-001-testing-standards.md) — three-tier 
 pnpm test:coverage
 ```
 
+Targeted `CMS-UI-005` revalidation:
+
+```bash
+node ../infra/scripts/with-env.mjs vitest run \
+  'src/features/cms-content/CmsContentListPanel.test.tsx' \
+  'src/features/cms-content/CmsContentActions.test.ts' \
+  'src/lib/dashboard/content-entries-client.test.ts' \
+  'src/features/cms-content/mappers.test.ts' \
+  'src/components/dashboard/CmsContentCardList.test.tsx'
+```
+
 Tests live co-located next to their source files (`CmsEditorScreen.test.tsx` next to `CmsEditorScreen.tsx`).
 
 ### Mocking Conventions
@@ -128,6 +139,26 @@ Tests live co-located next to their source files (`CmsEditorScreen.test.tsx` nex
 ## CMS Content Feature Module
 
 The `src/features/cms-content/` module implements CMS-UI-001 through CMS-UI-008 from the [FE CMS Dashboard UI Plan](../infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md).
+
+### CMS-UI-005 action contract
+
+`CMS-UI-005` is intentionally split to keep orchestration, pure helpers, and
+presentational rendering separate:
+
+- `src/features/cms-content/CmsContentListPanel.tsx`
+  - owns row-scoped action state, Lumia toast feedback, and the controlled
+    delete confirmation dialog
+- `src/features/cms-content/CmsContentActions.ts`
+  - owns pure route/share URL construction and action-specific helper logic
+- `src/components/dashboard/CmsContentCardList.tsx`
+  - renders controls and delegates callbacks without owning mutation logic
+
+Validated end-to-end card actions:
+
+- `Open`: navigates to the canonical editor route
+- `Delete`: Lumia confirm dialog, row-scoped pending state, success/error toasts
+- `Share`: copies the canonical internal edit URL and shows success/error toasts
+- `Favorite`: optimistic toggle with rollback on failure and error toast
 
 ### Key flows
 
@@ -147,4 +178,3 @@ Set `localStorage["cms.debug"] = "1"` in browser console to enable verbose `[CMS
 - [infra/ENV_GUIDE](../infra/README.md) — frontend stack environment guide
 - [Auth SDK](../xynes-auth-sdk/README.md)
 - [Lumia DS](../lumia-ds/README.md)
-

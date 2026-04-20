@@ -11,14 +11,18 @@ import { CmsContentListPanel } from "./CmsContentListPanel";
 
 const {
   mockCreateDraftEntryAndResolveEditPath,
+  mockDeleteWorkspaceContentEntry,
   mockGetCreateEntryErrorMessage,
   mockListWorkspaceContentDirectories,
+  mockToggleWorkspaceEntryFavorite,
   mockUseCmsContentEntries,
   mockBuildContentEntryEditRoute,
 } = vi.hoisted(() => ({
   mockCreateDraftEntryAndResolveEditPath: vi.fn(),
+  mockDeleteWorkspaceContentEntry: vi.fn(),
   mockGetCreateEntryErrorMessage: vi.fn(),
   mockListWorkspaceContentDirectories: vi.fn(),
+  mockToggleWorkspaceEntryFavorite: vi.fn(),
   mockUseCmsContentEntries: vi.fn(),
   mockBuildContentEntryEditRoute: vi.fn(
     ({ workspaceSlug, entryId }: { workspaceSlug: string; entryId: string }) =>
@@ -31,6 +35,7 @@ const setState = vi.fn();
 const refreshEntries = vi.fn();
 const replace = vi.fn();
 const mockGetAccessToken = vi.fn();
+const mockToastShow = vi.fn();
 const renderGridItem = vi.fn();
 const renderListItem = vi.fn();
 let mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
@@ -80,6 +85,15 @@ vi.mock("./CmsContentActions", () => ({
     workspaceSlug: string;
     entryId: string;
   }) => mockBuildContentEntryEditRoute(args),
+  buildContentEntryShareUrl: ({
+    origin,
+    workspaceSlug,
+    entryId,
+  }: {
+    origin: string;
+    workspaceSlug: string;
+    entryId: string;
+  }) => `${origin.replace(/\/+$/, "")}${mockBuildContentEntryEditRoute({ workspaceSlug, entryId })}`,
 }));
 
 vi.mock("../../lib/dashboard/use-cms-content-query-state", () => ({
@@ -95,6 +109,20 @@ vi.mock("../../lib/dashboard/use-cms-content-entries", () => ({
     return { ...mockedEntriesState, refresh: refreshEntries };
   },
 }));
+
+vi.mock("../../lib/dashboard/content-entries-client", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../lib/dashboard/content-entries-client")
+  >("../../lib/dashboard/content-entries-client");
+
+  return {
+    ...actual,
+    deleteWorkspaceContentEntry: (args: unknown) =>
+      mockDeleteWorkspaceContentEntry(args),
+    toggleWorkspaceEntryFavorite: (args: unknown) =>
+      mockToggleWorkspaceEntryFavorite(args),
+  };
+});
 
 vi.mock("@xynes/auth-sdk", () => ({
   useAuth: () => ({
@@ -228,6 +256,9 @@ vi.mock("../../components/dashboard/CmsContentCardList", () => ({
   CmsContentCardList: (props: {
     entryId: string;
     title: string;
+    isDeleting?: boolean;
+    isFavorite?: boolean;
+    isFavoritePending?: boolean;
     onOpen?: (id: string) => void;
     onShare?: (id: string) => void;
     onDelete?: (id: string) => void;
@@ -256,17 +287,23 @@ vi.mock("../../components/dashboard/CmsContentCardList", () => ({
         {props.onDelete ? (
           <button
             data-testid={`list-delete-${props.entryId}`}
+            disabled={props.isDeleting}
             onClick={() => props.onDelete!(props.entryId)}
           >
-            Delete
+            {props.isDeleting ? "Deleting..." : "Delete"}
           </button>
         ) : null}
         {props.onToggleFavorite ? (
           <button
             data-testid={`list-favorite-${props.entryId}`}
+            disabled={props.isFavoritePending}
             onClick={() => props.onToggleFavorite!(props.entryId)}
           >
-            Favorite
+            {props.isFavoritePending
+              ? "Updating..."
+              : props.isFavorite
+                ? "Unfavorite"
+                : "Favorite"}
           </button>
         ) : null}
       </article>
@@ -309,6 +346,44 @@ vi.mock("@lumia-ui/components", () => ({
   }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
     children?: React.ReactNode;
   }) => <button {...props}>{children}</button>,
+  ConfirmDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel = "Confirm",
+    cancelLabel = "Cancel",
+    onConfirm,
+    onOpenChange,
+  }: {
+    open?: boolean;
+    title: string;
+    description?: React.ReactNode;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void | Promise<void>;
+    onOpenChange?: (open: boolean) => void;
+  }) =>
+    open ? (
+      <div role="alertdialog" aria-label={title}>
+        <h2>{title}</h2>
+        {description ? <div>{description}</div> : null}
+        <button type="button" onClick={() => onOpenChange?.(false)}>
+          {cancelLabel}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void onConfirm();
+          }}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
+  useToast: () => ({
+    show: mockToastShow,
+    dismiss: vi.fn(),
+  }),
 }));
 
 const mockClipboardWrite = vi.fn();
@@ -321,11 +396,14 @@ afterEach(() => {
   setState.mockReset();
   refreshEntries.mockReset();
   mockGetAccessToken.mockReset();
+  mockToastShow.mockReset();
   renderGridItem.mockReset();
   renderListItem.mockReset();
   mockCreateDraftEntryAndResolveEditPath.mockReset();
+  mockDeleteWorkspaceContentEntry.mockReset();
   mockGetCreateEntryErrorMessage.mockReset();
   mockListWorkspaceContentDirectories.mockReset();
+  mockToggleWorkspaceEntryFavorite.mockReset();
   mockUseCmsContentEntries.mockReset();
   mockClipboardWrite.mockReset();
   // Defaults
@@ -334,11 +412,20 @@ afterEach(() => {
   mockCreateDraftEntryAndResolveEditPath.mockResolvedValue(
     "/dashboard/xynes-studio-llp/content/entry/entry-new/edit",
   );
+  mockDeleteWorkspaceContentEntry.mockResolvedValue({
+    success: true,
+    entryId: "entry-default",
+    deletedAt: "2026-04-20T00:00:00.000Z",
+  });
   mockBuildContentEntryEditRoute.mockReset();
   mockBuildContentEntryEditRoute.mockImplementation(
     ({ workspaceSlug, entryId }: { workspaceSlug: string; entryId: string }) =>
       `/dashboard/${encodeURIComponent(workspaceSlug)}/content/entry/${encodeURIComponent(entryId)}/edit`,
   );
+  mockToggleWorkspaceEntryFavorite.mockResolvedValue({
+    entryId: "entry-default",
+    isFavorite: true,
+  });
   // Default: empty directory list → resolvedDirectoryId = null (no filter)
   mockListWorkspaceContentDirectories.mockResolvedValue([]);
   mockGetCreateEntryErrorMessage.mockReturnValue(
@@ -760,15 +847,28 @@ describe("CmsContentListPanel", () => {
           "/dashboard/xynes-studio-llp/content/entry/entry-share-1/edit",
         ),
       );
+      await waitFor(() =>
+        expect(mockToastShow).toHaveBeenCalledWith({
+          variant: "success",
+          title: "Link copied",
+          description: '"Share Me" edit link was copied to the clipboard.',
+        }),
+      );
     });
 
-    it("does not propagate when clipboard write rejects (permission denied)", async () => {
+    it("shows an error toast when clipboard write rejects", async () => {
       mockClipboardWrite.mockRejectedValueOnce(new Error("Permission denied"));
       render(<CmsContentListPanel />);
       const btn = await screen.findByTestId("list-share-entry-share-1");
       fireEvent.click(btn);
-      // Let the clipboard microtask settle — no unhandled rejection should surface
-      await Promise.resolve();
+      await waitFor(() =>
+        expect(mockToastShow).toHaveBeenCalledWith({
+          variant: "error",
+          title: "Could not copy link",
+          description:
+            "Please try again. If the issue persists, contact your workspace owner.",
+        }),
+      );
       expect(mockClipboardWrite).toHaveBeenCalled();
     });
   });
@@ -887,7 +987,7 @@ describe("CmsContentListPanel", () => {
       expect(push).not.toHaveBeenCalled();
     });
 
-    it("silently ignores buildContentEntryEditRoute throw in handleShare", async () => {
+    it("shows an error toast when share URL construction fails", async () => {
       mockBuildContentEntryEditRoute.mockImplementationOnce(() => {
         throw new Error("Invalid slug");
       });
@@ -895,6 +995,12 @@ describe("CmsContentListPanel", () => {
       const btn = await screen.findByTestId("list-share-entry-err-1");
       expect(() => fireEvent.click(btn)).not.toThrow();
       expect(mockClipboardWrite).not.toHaveBeenCalled();
+      expect(mockToastShow).toHaveBeenCalledWith({
+        variant: "error",
+        title: "Could not copy link",
+        description:
+          "Please try again. If the issue persists, contact your workspace owner.",
+      });
     });
   });
 
@@ -922,39 +1028,225 @@ describe("CmsContentListPanel", () => {
     });
   });
 
-  // ─── noop card actions (delete / favorite) ───────────────────────────────
+  // ─── delete / favorite actions ────────────────────────────────────────────
 
-  describe("noop card actions — delete and toggle-favorite", () => {
+  describe("list-card delete and toggle-favorite", () => {
     beforeEach(() => {
       vi.useRealTimers();
       mockedEntriesState = {
         ...mockedEntriesState,
         items: [
           {
-            id: "entry-noop-1",
-            title: "Noop test",
+            id: "entry-action-1",
+            title: "Action test 1",
+            description: "",
+            status: "draft",
+            ownerName: null,
+            isFavorite: false,
+          },
+          {
+            id: "entry-action-2",
+            title: "Action test 2",
             description: "",
             status: "draft",
             ownerName: null,
             isFavorite: false,
           },
         ],
-        count: 1,
+        count: 2,
       };
     });
 
-    it("does not throw or navigate when a list-card Delete is clicked (noop)", async () => {
+    it("optimistically toggles favorite for a single row without blocking other actions", async () => {
+      let resolveFavorite:
+        | ((value: { entryId: string; isFavorite: boolean }) => void)
+        | null = null;
+      mockToggleWorkspaceEntryFavorite.mockImplementationOnce(
+        () =>
+          new Promise<{ entryId: string; isFavorite: boolean }>((resolve) => {
+            resolveFavorite = resolve;
+          }),
+      );
+
       render(<CmsContentListPanel />);
-      const btn = await screen.findByTestId("list-delete-entry-noop-1");
-      expect(() => fireEvent.click(btn)).not.toThrow();
-      expect(push).not.toHaveBeenCalled();
+      const favoriteButton = await screen.findByTestId(
+        "list-favorite-entry-action-1",
+      );
+
+      fireEvent.click(favoriteButton);
+
+      expect(mockToggleWorkspaceEntryFavorite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: "workspace-1",
+          entryId: "entry-action-1",
+          accessToken: "jwt-token",
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("list-favorite-entry-action-1"),
+        ).toBeDisabled(),
+      );
+      expect(screen.getByTestId("list-favorite-entry-action-1")).toHaveTextContent(
+        "Updating...",
+      );
+
+      fireEvent.click(screen.getByTestId("list-open-entry-action-2"));
+      expect(push).toHaveBeenCalledWith(
+        "/dashboard/xynes-studio-llp/content/entry/entry-action-2/edit",
+      );
+
+      resolveFavorite?.({ entryId: "entry-action-1", isFavorite: true });
+
+      await waitFor(() =>
+        expect(screen.getByTestId("list-favorite-entry-action-1")).toHaveTextContent(
+          "Unfavorite",
+        ),
+      );
+      expect(screen.getByTestId("list-favorite-entry-action-1")).not.toBeDisabled();
     });
 
-    it("does not throw or navigate when a list-card Favorite is clicked (noop)", async () => {
+    it("rolls back favorite state and shows an error toast when the toggle fails", async () => {
+      mockToggleWorkspaceEntryFavorite.mockRejectedValueOnce(
+        new Error("HTTP 500 Internal Server Error"),
+      );
+
       render(<CmsContentListPanel />);
-      const btn = await screen.findByTestId("list-favorite-entry-noop-1");
-      expect(() => fireEvent.click(btn)).not.toThrow();
-      expect(push).not.toHaveBeenCalled();
+      const favoriteButton = await screen.findByTestId(
+        "list-favorite-entry-action-1",
+      );
+
+      fireEvent.click(favoriteButton);
+
+      await waitFor(() =>
+        expect(screen.getByTestId("list-favorite-entry-action-1")).toHaveTextContent(
+          "Favorite",
+        ),
+      );
+      expect(mockToastShow).toHaveBeenCalledWith({
+        variant: "error",
+        title: "Could not update favourite",
+        description:
+          "Please try again. If the issue persists, contact your workspace owner.",
+      });
+    });
+
+    it("opens a Lumia confirmation dialog and cancels without deleting", async () => {
+      render(<CmsContentListPanel />);
+      const deleteButton = await screen.findByTestId(
+        "list-delete-entry-action-1",
+      );
+
+      fireEvent.click(deleteButton);
+
+      expect(
+        screen.getByRole("alertdialog", {
+          name: 'Delete "Action test 1"?',
+        }),
+      ).toBeInTheDocument();
+      expect(mockDeleteWorkspaceContentEntry).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("alertdialog", {
+            name: 'Delete "Action test 1"?',
+          }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(mockDeleteWorkspaceContentEntry).not.toHaveBeenCalled();
+      expect(screen.getByTestId("list-card-entry-action-1")).toBeInTheDocument();
+    });
+
+    it("confirms in Lumia dialog and deletes a single row without blocking other rows", async () => {
+      let resolveDelete:
+        | ((value: { success: boolean; entryId: string; deletedAt: string | null }) => void)
+        | null = null;
+      mockDeleteWorkspaceContentEntry.mockImplementationOnce(
+        () =>
+          new Promise<{ success: boolean; entryId: string; deletedAt: string | null }>(
+            (resolve) => {
+              resolveDelete = resolve;
+            },
+          ),
+      );
+
+      render(<CmsContentListPanel />);
+      const deleteButton = await screen.findByTestId(
+        "list-delete-entry-action-1",
+      );
+
+      fireEvent.click(deleteButton);
+      fireEvent.click(
+        screen.getByRole("button", { name: "Delete content" }),
+      );
+
+      expect(mockDeleteWorkspaceContentEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: "workspace-1",
+          entryId: "entry-action-1",
+          accessToken: "jwt-token",
+        }),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("list-delete-entry-action-1")).toBeDisabled(),
+      );
+      expect(screen.getByTestId("list-delete-entry-action-1")).toHaveTextContent(
+        "Deleting...",
+      );
+
+      fireEvent.click(screen.getByTestId("list-open-entry-action-2"));
+      expect(push).toHaveBeenCalledWith(
+        "/dashboard/xynes-studio-llp/content/entry/entry-action-2/edit",
+      );
+
+      resolveDelete?.({
+        success: true,
+        entryId: "entry-action-1",
+        deletedAt: "2026-04-20T00:00:00.000Z",
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("list-card-entry-action-1"),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.getByTestId("list-card-entry-action-2")).toBeInTheDocument();
+      expect(mockToastShow).toHaveBeenCalledWith({
+        variant: "success",
+        title: "Content deleted",
+        description: '"Action test 1" was deleted.',
+      });
+    });
+
+    it("shows an error toast and keeps the row when delete fails", async () => {
+      mockDeleteWorkspaceContentEntry.mockRejectedValueOnce(
+        new Error("HTTP 500 Internal Server Error"),
+      );
+
+      render(<CmsContentListPanel />);
+      const deleteButton = await screen.findByTestId(
+        "list-delete-entry-action-1",
+      );
+
+      fireEvent.click(deleteButton);
+      fireEvent.click(
+        screen.getByRole("button", { name: "Delete content" }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId("list-delete-entry-action-1")).toHaveTextContent(
+          "Delete",
+        ),
+      );
+      expect(screen.getByTestId("list-card-entry-action-1")).toBeInTheDocument();
+      expect(mockToastShow).toHaveBeenCalledWith({
+        variant: "error",
+        title: "Could not delete content",
+        description:
+          "Please try again. If the issue persists, contact your workspace owner.",
+      });
     });
   });
 });

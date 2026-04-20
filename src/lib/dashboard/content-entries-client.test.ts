@@ -498,6 +498,68 @@ describe("content-entries-client", () => {
     expect(deleted.entryId).toBe("entry-1");
   });
 
+  it("sends an explicit empty JSON body for delete requests", async () => {
+    const deleteFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            success: true,
+            entryId: "entry-1",
+            deletedAt: "2026-02-26T11:00:00.000Z",
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await deleteWorkspaceContentEntry({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      entryId: "entry-1",
+      accessToken: "jwt-token",
+      fetchImpl: deleteFetch,
+    });
+
+    expect(deleteFetch).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/workspace-1/content/entries/entry-1",
+      expect.objectContaining({
+        method: "DELETE",
+        headers: expect.objectContaining({
+          Accept: "application/json",
+          Authorization: "Bearer jwt-token",
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({}),
+      }),
+    );
+  });
+
+  it("throws when delete response is invalid", async () => {
+    const deleteFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            success: false,
+            entryId: "entry-1",
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      deleteWorkspaceContentEntry({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        entryId: "entry-1",
+        accessToken: "jwt-token",
+        fetchImpl: deleteFetch,
+      }),
+    ).rejects.toThrow("Invalid content entry delete response");
+  });
+
   it("sets collaborators and toggles favorite", async () => {
     const collaboratorsFetch = vi.fn().mockResolvedValue(
       new Response(
@@ -544,6 +606,72 @@ describe("content-entries-client", () => {
     expect(favorite.isFavorite).toBe(true);
   });
 
+  it("throws when collaborators response is invalid", async () => {
+    const collaboratorsFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { entryId: "entry-1", collaborators: "Alpha" },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      setWorkspaceEntryCollaborators({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        entryId: "entry-1",
+        accessToken: "jwt-token",
+        collaborators: [],
+        fetchImpl: collaboratorsFetch,
+      }),
+    ).rejects.toThrow("Invalid content entry collaborators response");
+  });
+
+  it("throws when collaborators update request fails", async () => {
+    const collaboratorsFetch = vi.fn().mockResolvedValue(
+      new Response("denied", {
+        status: 500,
+        statusText: "Internal Server Error",
+      }),
+    );
+
+    await expect(
+      setWorkspaceEntryCollaborators({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        entryId: "entry-1",
+        accessToken: "jwt-token",
+        collaborators: [],
+        fetchImpl: collaboratorsFetch,
+      }),
+    ).rejects.toThrow(
+      "Failed to update content entry collaborators: HTTP 500 Internal Server Error",
+    );
+  });
+
+  it("throws when favorite toggle request fails", async () => {
+    const favoriteFetch = vi.fn().mockResolvedValue(
+      new Response("denied", {
+        status: 409,
+        statusText: "Conflict",
+      }),
+    );
+
+    await expect(
+      toggleWorkspaceEntryFavorite({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        entryId: "entry-1",
+        accessToken: "jwt-token",
+        fetchImpl: favoriteFetch,
+      }),
+    ).rejects.toThrow(
+      "Failed to toggle content entry favorite: HTTP 409 Conflict",
+    );
+  });
+
   it("lists favorite entries and generates internal share links", async () => {
     const favoritesFetch = vi.fn().mockResolvedValue(
       new Response(
@@ -583,5 +711,176 @@ describe("content-entries-client", () => {
 
     expect(favorites.items).toHaveLength(1);
     expect(share.url).toBe("/dashboard/acme/content/entry/entry-1/edit");
+  });
+
+  it("falls back to item length when favorites count is missing", async () => {
+    const favoritesFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { items: [sampleEntry], count: "unknown" },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const favorites = await listWorkspaceFavoriteEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: favoritesFetch,
+    });
+
+    expect(favorites.count).toBe(1);
+  });
+
+  it("throws when favorites response is malformed", async () => {
+    const favoritesFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { items: "not-an-array" },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      listWorkspaceFavoriteEntries({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        accessToken: "jwt-token",
+        fetchImpl: favoritesFetch,
+      }),
+    ).rejects.toThrow("Invalid favorite content entries response");
+  });
+
+  it("throws when favorite entries request fails", async () => {
+    const favoritesFetch = vi.fn().mockResolvedValue(
+      new Response("nope", {
+        status: 503,
+        statusText: "Service Unavailable",
+      }),
+    );
+
+    await expect(
+      listWorkspaceFavoriteEntries({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        accessToken: "jwt-token",
+        fetchImpl: favoritesFetch,
+      }),
+    ).rejects.toThrow(
+      "Failed to load favorite content entries: HTTP 503 Service Unavailable",
+    );
+  });
+
+  it("throws when favorite toggle response is invalid", async () => {
+    const favoriteFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { entryId: "entry-1", isFavorite: "yes" },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      toggleWorkspaceEntryFavorite({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        entryId: "entry-1",
+        accessToken: "jwt-token",
+        fetchImpl: favoriteFetch,
+      }),
+    ).rejects.toThrow("Invalid content entry favorite response");
+  });
+
+  it("trims workspaceSlug before generating a share link", async () => {
+    const shareFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { url: "/dashboard/acme/content/entry/entry-1/edit" },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await generateWorkspaceEntryShareLink({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      entryId: "entry-1",
+      workspaceSlug: " acme ",
+      accessToken: "jwt-token",
+      fetchImpl: shareFetch,
+    });
+
+    expect(shareFetch).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/workspace-1/content/entries/entry-1/share-link",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ workspaceSlug: "acme" }),
+      }),
+    );
+  });
+
+  it("throws when workspaceSlug is blank while generating a share link", async () => {
+    await expect(
+      generateWorkspaceEntryShareLink({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        entryId: "entry-1",
+        workspaceSlug: "   ",
+        accessToken: "jwt-token",
+        fetchImpl: vi.fn(),
+      }),
+    ).rejects.toThrow("Workspace slug is required");
+  });
+
+  it("throws when share-link generation response is invalid", async () => {
+    const shareFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { url: "" },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      generateWorkspaceEntryShareLink({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        entryId: "entry-1",
+        workspaceSlug: "acme",
+        accessToken: "jwt-token",
+        fetchImpl: shareFetch,
+      }),
+    ).rejects.toThrow("Invalid content entry share link response");
+  });
+
+  it("throws when share-link generation request fails", async () => {
+    const shareFetch = vi.fn().mockResolvedValue(
+      new Response("denied", {
+        status: 403,
+        statusText: "Forbidden",
+      }),
+    );
+
+    await expect(
+      generateWorkspaceEntryShareLink({
+        apiBaseUrl: "http://localhost:4100",
+        workspaceId: "workspace-1",
+        entryId: "entry-1",
+        workspaceSlug: "acme",
+        accessToken: "jwt-token",
+        fetchImpl: shareFetch,
+      }),
+    ).rejects.toThrow(
+      "Failed to generate content entry share link: HTTP 403 Forbidden",
+    );
   });
 });

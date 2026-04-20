@@ -358,26 +358,27 @@ Rules:
 ### CMS-UI-005 Card Action Standards (Open / Share / Delete / Favorite)
 
 - Ownership and segregation:
-  - keep all card action orchestration in `src/features/cms-content/CmsContentListPanel.tsx`.
-  - presentational components (`CmsContentCardGrid`, `CmsContentCardList`) receive typed callbacks only — no orchestration logic.
-  - edit-route URL generation lives exclusively in `CmsContentActions.buildContentEntryEditRoute`.
+  - keep integration orchestration in `src/features/cms-content/CmsContentListPanel.tsx`.
+  - keep pure route/share helper logic in `src/features/cms-content/CmsContentActions.ts`.
+  - presentational components (`CmsContentCardGrid`, `CmsContentCardList`) receive typed callbacks only and do not own mutation logic.
 - Action semantics:
   - **Open**: navigate to editor route via `router.push(buildContentEntryEditRoute({workspaceSlug, entryId}))`.
-  - **Share**: copy the full editor URL (`window.location.origin + editPath`) to the clipboard via `navigator.clipboard.writeText`. Silently ignore clipboard errors.
-  - **Delete** (stub — CMS-UI-005 full wiring not yet complete): currently a no-op; implement as confirm-dialog then soft-delete mutation with optimistic list removal when ready.
-  - **Favorite** (stub — CMS-UI-005 full wiring not yet complete): currently a no-op; implement as optimistic toggle with rollback on failure when ready.
+  - **Share**: build the canonical full editor URL through `buildContentEntryShareUrl`, copy it via `navigator.clipboard.writeText`, and show explicit success/error toast feedback.
+  - **Delete**: open Lumia `ConfirmDialog`, perform delete mutation after confirmation, keep pending state row-scoped, and show success/error toast feedback.
+  - **Favorite**: perform optimistic toggle with rollback on failure and error toast feedback.
 - Resilience and fallback:
-  - wrap `buildContentEntryEditRoute` calls in try/catch; silently ignore errors (invalid slug/entryId should not crash the view).
+  - wrap route/share URL construction in try/catch so invalid slug/entryId values cannot crash the view.
   - guard all actions against missing workspace context (`resolvedWorkspaceSlug`); return early and do nothing if absent.
 - Tech-debt controls:
-  - do NOT inline path-template strings in card handlers; always delegate to `buildContentEntryEditRoute`.
+  - do NOT inline path-template strings in card handlers; always delegate to `CmsContentActions` helpers.
   - do NOT use `state.directoryId` (deprecated URL query-param) in card handler context; use `resolvedDirectoryId` (path-segment-resolved UUID) exclusively.
-  - replace no-op stubs with real implementations incrementally as each action's backend contracts are confirmed.
+  - keep toast copy and mutation sequencing in the feature layer rather than burying feedback inside presentational cards.
 - TDD and coverage:
   - test Open by clicking the card's open button and asserting router.push target.
-  - test Share by clicking the card's share button and asserting clipboard.writeText argument.
-  - test error resilience by making `buildContentEntryEditRoute` throw and asserting no-crash / no router.push.
-  - test noop stubs for delete/favorite by clicking and asserting no throw and no router.push.
+  - test Share by clicking the card's share button and asserting clipboard copy plus success/error toast behavior.
+  - test Delete by covering cancel, confirm, row-scoped pending state, success toast, and failure toast.
+  - test Favorite by covering optimistic update, non-blocking interaction, and rollback on failure.
+  - maintain touched-module coverage `>= 80%` statements and branches.
 
 ### CMS-UI-007 Editor Route Standards (CmsEditorScreen)
 

@@ -11,6 +11,8 @@ export type CmsEntryCardListProps = {
   status: "draft" | "published";
   collaborators: string[];
   isFavorite: boolean;
+  isDeleting?: boolean;
+  isFavoritePending?: boolean;
   onOpen: (entryId: string) => void;
   onDelete: (entryId: string) => void;
   onShare: (entryId: string) => void;
@@ -60,6 +62,8 @@ export function CmsContentCardList({
   status,
   collaborators,
   isFavorite,
+  isDeleting = false,
+  isFavoritePending = false,
   onOpen,
   onDelete,
   onShare,
@@ -95,11 +99,18 @@ export function CmsContentCardList({
             fallbackInitials={resolvedOwner}
           />
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-2xl leading-8 font-medium text-foreground">{title}</h3>
-            <p className="truncate text-sm leading-5 text-foreground/90">{metaText}</p>
+            <h3 className="truncate text-2xl leading-8 font-medium text-foreground">
+              {title}
+            </h3>
+            <p className="truncate text-sm leading-5 text-foreground/90">
+              {metaText}
+            </p>
           </div>
           {status === "draft" ? (
-            <Badge variant="outline" className="shrink-0 rounded-md px-2 py-1 text-xs font-medium">
+            <Badge
+              variant="outline"
+              className="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
+            >
               Draft
             </Badge>
           ) : null}
@@ -114,13 +125,14 @@ export function CmsContentCardList({
           variant="outline"
           size="sm"
           aria-label={`Delete content ${title}`}
+          disabled={isDeleting}
           onClick={(event) => {
             event.stopPropagation();
             onDelete(entryId);
           }}
         >
           <Icon name="delete" size="sm" />
-          Delete
+          {isDeleting ? "Deleting..." : "Delete"}
         </Button>
         <Button
           variant="outline"
@@ -139,13 +151,18 @@ export function CmsContentCardList({
           size="sm"
           aria-pressed={isFavorite}
           aria-label={`${isFavorite ? "Unfavorite" : "Favorite"} content ${title}`}
+          disabled={isFavoritePending}
           onClick={(event) => {
             event.stopPropagation();
             onToggleFavorite(entryId);
           }}
         >
           <Icon name={isFavorite ? "check" : "add"} size="sm" />
-          Favourite
+          {isFavoritePending
+            ? "Updating..."
+            : isFavorite
+              ? "Favourited"
+              : "Favourite"}
         </Button>
       </div>
     </Card>

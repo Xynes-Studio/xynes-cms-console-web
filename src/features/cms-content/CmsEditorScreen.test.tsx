@@ -663,8 +663,7 @@ describe("CmsEditorScreen", () => {
         title: string;
         description: string;
         tags: string;
-      }) => Promise<void> =
-        mockCaptureSaveDraftFn.mock.calls.at(-1)?.[0];
+      }) => Promise<void> = mockCaptureSaveDraftFn.mock.calls.at(-1)?.[0];
 
       expect(saveDraftFn).toBeDefined();
 
@@ -703,8 +702,7 @@ describe("CmsEditorScreen", () => {
         title: string;
         description: string;
         tags: string;
-      }) => Promise<void> =
-        mockCaptureSaveDraftFn.mock.calls.at(-1)?.[0];
+      }) => Promise<void> = mockCaptureSaveDraftFn.mock.calls.at(-1)?.[0];
 
       if (!saveDraftFn) return; // guard — OK if not captured (workspace missing)
 
@@ -799,9 +797,7 @@ describe("CmsEditorScreen", () => {
       });
 
       expect(
-        screen.getByText(
-          "You don't have permission to publish this entry.",
-        ),
+        screen.getByText("You don't have permission to publish this entry."),
       ).toBeInTheDocument();
     });
 
@@ -844,9 +840,7 @@ describe("CmsEditorScreen", () => {
         expect(screen.getByTestId("cms-editor-layout")).toBeInTheDocument();
       });
 
-      expect(
-        screen.getByTestId("cms-editor-layout"),
-      ).toHaveAttribute(
+      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
         "data-generated-link",
         "/dashboard/acme-team/content/entry/entry-1/edit",
       );
@@ -866,9 +860,7 @@ describe("CmsEditorScreen", () => {
         expect(screen.getByTestId("cms-editor-layout")).toBeInTheDocument();
       });
 
-      expect(
-        screen.getByTestId("cms-editor-layout"),
-      ).toHaveAttribute(
+      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
         "data-generated-link",
         "/dashboard/acme-team/content/entry-1",
       );

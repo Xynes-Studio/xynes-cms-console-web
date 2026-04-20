@@ -598,7 +598,8 @@ export async function deleteWorkspaceContentEntry({
   const endpoint = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}/content/entries/${encodeURIComponent(normalizedEntryId)}`;
   const response = await fetchImpl(endpoint, {
     method: "DELETE",
-    headers: createReadHeaders(normalized.accessToken),
+    headers: createJsonHeaders(normalized.accessToken),
+    body: JSON.stringify({}),
     signal,
   });
 
