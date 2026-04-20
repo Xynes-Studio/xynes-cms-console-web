@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@xynes/auth-sdk",
     "@lumia-ui/components",
+    "@lumia-ui/editor",
     "@lumia-ui/layout",
     "@lumia-ui/icons",
   ],
