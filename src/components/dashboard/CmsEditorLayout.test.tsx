@@ -1,5 +1,5 @@
 import type React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CmsEditorLayout } from "./CmsEditorLayout";
 
@@ -74,7 +74,9 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByLabelText("Content description")).toHaveValue("Entry description");
     expect(screen.getByLabelText("Content tags")).toHaveValue("alpha,beta");
     expect(screen.getByText("Draft")).toBeInTheDocument();
-    expect(screen.getByText("Editor Body")).toBeInTheDocument();
+
+    const canvas = screen.getByLabelText("Content editor canvas");
+    expect(within(canvas).getByText("Editor Body")).toBeInTheDocument();
   });
 
   it("emits metadata change callbacks", () => {
