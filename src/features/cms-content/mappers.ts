@@ -33,9 +33,13 @@ export const mapEntryToGridCardProps = ({
 export const mapEntryToListCardProps = ({
   entry,
   handlers,
+  isDeleting = false,
+  isFavoritePending = false,
 }: {
   entry: WorkspaceContentEntry;
   handlers: EntryActionHandlers;
+  isDeleting?: boolean;
+  isFavoritePending?: boolean;
 }): CmsEntryCardListProps => ({
   entryId: entry.id,
   title: entry.title,
@@ -46,6 +50,8 @@ export const mapEntryToListCardProps = ({
   status: resolveCardStatus(entry.status),
   collaborators: entry.collaborators,
   isFavorite: entry.isFavorite,
+  isDeleting,
+  isFavoritePending,
   onOpen: handlers.onOpen,
   onDelete: handlers.onDelete,
   onShare: handlers.onShare,

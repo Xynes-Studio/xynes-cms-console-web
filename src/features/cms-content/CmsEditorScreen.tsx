@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import { Alert } from "@lumia-ui/components";
+import { LumiaEditor } from "@lumia-ui/editor";
 import { CmsEditorLayout } from "../../components/dashboard/CmsEditorLayout";
 import {
   getWorkspaceContentEntryById,
@@ -12,6 +13,10 @@ import {
   type WorkspaceContentEntry,
 } from "../../lib/dashboard/content-entries-client";
 import { useCmsEntryAutosave } from "../../lib/dashboard/use-cms-entry-autosave";
+import {
+  hasEditorDraftChanged,
+  normalizeEditorBody,
+} from "./cms-editor-body";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_GATEWAY_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -62,6 +67,7 @@ type EditorDraftValue = {
   title: string;
   description: string;
   tags: string;
+  body: ReturnType<typeof normalizeEditorBody>;
 };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -71,6 +77,7 @@ function buildDraftFromEntry(entry: WorkspaceContentEntry): EditorDraftValue {
     title: entry.title ?? "",
     description: entry.description ?? "",
     tags: Array.isArray(entry.tags) ? entry.tags.join(", ") : "",
+    body: JSON.parse(JSON.stringify(normalizeEditorBody(entry.body))),
   };
 }
 
@@ -138,6 +145,7 @@ export function CmsEditorScreen({
     title: "",
     description: "",
     tags: "",
+    body: normalizeEditorBody(null),
   });
 
   // Track last-saved payload to detect unsaved changes
@@ -199,6 +207,7 @@ export function CmsEditorScreen({
           title: value.title,
           description: value.description,
           tags: trimmedTags,
+          body: normalizeEditorBody(value.body),
         },
       });
       lastSavedDraftRef.current = buildDraftFromEntry(updated);
@@ -220,7 +229,7 @@ export function CmsEditorScreen({
     autosave.saveState === "saving" ||
     autosave.saveState === "error" ||
     (lastSavedDraftRef.current !== null &&
-      JSON.stringify(draft) !== JSON.stringify(lastSavedDraftRef.current));
+      hasEditorDraftChanged(lastSavedDraftRef.current, draft));
 
   // ── publish ───────────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
@@ -323,12 +332,17 @@ export function CmsEditorScreen({
         }}
         onRetrySave={() => void autosave.retry()}
       >
-        <div
-          className="flex h-full min-h-75 items-center justify-center rounded border-2 border-dashed border-border text-sm text-muted-foreground"
-          data-testid="editor-canvas-placeholder"
-        >
-          Editor canvas — rich text support coming soon
-        </div>
+        <LumiaEditor
+          value={draft.body}
+          onChange={(value) =>
+            setDraft((prev) => ({
+              ...prev,
+              body: normalizeEditorBody(value),
+            }))
+          }
+          variant="full"
+          className="min-h-75"
+        />
       </CmsEditorLayout>
     </>
   );

@@ -93,6 +93,28 @@ export function buildContentEntryEditRoute({
   return `${dashboardPath}/content/entry/${encodeURIComponent(normalizedEntryId)}/edit`;
 }
 
+export function buildContentEntryShareUrl({
+  origin,
+  workspaceSlug,
+  entryId,
+}: {
+  origin: string;
+  workspaceSlug: string;
+  entryId: string;
+}) {
+  const normalizedOrigin = origin.trim().replace(/\/+$/, "");
+  if (!normalizedOrigin) {
+    throw new Error("Invalid origin");
+  }
+
+  const editPath = buildContentEntryEditRoute({
+    workspaceSlug,
+    entryId,
+  });
+
+  return `${normalizedOrigin}${editPath}`;
+}
+
 export async function createDraftEntryAndResolveEditPath({
   apiBaseUrl,
   workspaceId,

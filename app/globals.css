@@ -1,8 +1,10 @@
-/* stylelint-disable at-rule-no-unknown */
+/* stylelint-disable at-rule-no-unknown, scss/at-rule-no-unknown */
 @import "tailwindcss";
+@import "../node_modules/@lumia-ui/editor/dist/index.css";
 @source "../app/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../src/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../node_modules/@lumia-ui/components/dist/**/*.{js,mjs,cjs}";
+@source "../node_modules/@lumia-ui/editor/dist/**/*.{js,mjs,cjs}";
 @source "../node_modules/@lumia-ui/layout/dist/**/*.{js,mjs,cjs}";
 @source "../node_modules/@lumia-ui/icons/dist/**/*.{js,mjs,cjs}";
 
@@ -52,4 +54,4 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* stylelint-enable at-rule-no-unknown */
+/* stylelint-enable at-rule-no-unknown, scss/at-rule-no-unknown */

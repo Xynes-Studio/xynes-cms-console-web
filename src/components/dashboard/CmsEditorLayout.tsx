@@ -39,21 +39,30 @@ const formatSavedAt = (value?: string | null) => {
 };
 
 const getSafeHref = (value: string) => {
-  if (value.startsWith("/")) return value;
-  if (!/^https?:\/\//i.test(value)) return null;
+  if (value.startsWith("/") && !value.startsWith("//")) {
+    return value;
+  }
+
+  if (!/^https?:\/\//i.test(value)) {
+    return null;
+  }
+
   try {
-    const baseOrigin = typeof window === "undefined" ? null : window.location.origin;
-    if (!baseOrigin) return null;
-    const parsed = new URL(value, baseOrigin);
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const parsed = new URL(value, window.location.origin);
     if (
       (parsed.protocol === "http:" || parsed.protocol === "https:") &&
-      parsed.origin === baseOrigin
+      parsed.origin === window.location.origin
     ) {
       return value;
     }
   } catch {
     return null;
   }
+
   return null;
 };
 

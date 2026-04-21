@@ -1,5 +1,5 @@
 import type React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CmsEditorLayout } from "./CmsEditorLayout";
 
@@ -69,12 +69,17 @@ describe("CmsEditorLayout", () => {
     );
 
     expect(screen.getByText("workspace-id/content/level1/level2")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "/content/entry-123/edit" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "/content/entry-123/edit" })).toHaveAttribute(
+      "href",
+      "/content/entry-123/edit",
+    );
     expect(screen.getByLabelText("Content title")).toHaveValue("Entry title");
     expect(screen.getByLabelText("Content description")).toHaveValue("Entry description");
     expect(screen.getByLabelText("Content tags")).toHaveValue("alpha,beta");
     expect(screen.getByText("Draft")).toBeInTheDocument();
-    expect(screen.getByText("Editor Body")).toBeInTheDocument();
+
+    const canvas = screen.getByLabelText("Content editor canvas");
+    expect(within(canvas).getByText("Editor Body")).toBeInTheDocument();
   });
 
   it("emits metadata change callbacks", () => {
@@ -147,15 +152,27 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByText("Save failed, retrying")).toBeInTheDocument();
   });
 
-  it("renders generated link as plain text when url is unsafe", () => {
+  it("renders unsafe generated links as plain text", () => {
     render(
       <CmsEditorLayout {...buildProps()} generatedLink="javascript:alert(1)">
         <div>Editor Body</div>
       </CmsEditorLayout>,
     );
 
+    expect(screen.getByText("Generated Link")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "javascript:alert(1)" })).toBeNull();
     expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
+  });
+
+  it("renders protocol-relative generated links as plain text", () => {
+    render(
+      <CmsEditorLayout {...buildProps()} generatedLink="//evil.example/path">
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    expect(screen.queryByRole("link", { name: "//evil.example/path" })).toBeNull();
+    expect(screen.getByText("//evil.example/path")).toBeInTheDocument();
   });
 
   it("registers beforeunload guard when there are unsaved changes", () => {
@@ -204,29 +221,6 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByText("Saved at --:--:--")).toBeInTheDocument();
   });
 
-  it("renders relative generated links as clickable", () => {
-    render(
-      <CmsEditorLayout {...buildProps()} generatedLink="/dashboard/workspace/content/entry/1/edit">
-        <div>Editor Body</div>
-      </CmsEditorLayout>,
-    );
-
-    expect(
-      screen.getByRole("link", { name: "/dashboard/workspace/content/entry/1/edit" }),
-    ).toHaveAttribute("href", "/dashboard/workspace/content/entry/1/edit");
-  });
-
-  it("renders non-url generated link as plain text", () => {
-    render(
-      <CmsEditorLayout {...buildProps()} generatedLink="not a url">
-        <div>Editor Body</div>
-      </CmsEditorLayout>,
-    );
-
-    expect(screen.queryByRole("link", { name: "not a url" })).toBeNull();
-    expect(screen.getByText("not a url")).toBeInTheDocument();
-  });
-
   it("renders external absolute generated links as plain text", () => {
     render(
       <CmsEditorLayout {...buildProps()} generatedLink="https://example.com/entry/1/edit">
@@ -234,7 +228,9 @@ describe("CmsEditorLayout", () => {
       </CmsEditorLayout>,
     );
 
-    expect(screen.queryByRole("link", { name: "https://example.com/entry/1/edit" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "https://example.com/entry/1/edit" }),
+    ).toBeNull();
     expect(screen.getByText("https://example.com/entry/1/edit")).toBeInTheDocument();
   });
 

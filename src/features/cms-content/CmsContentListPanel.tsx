@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import type { BreadcrumbItem } from "@lumia-ui/components";
-import { Alert, Card } from "@lumia-ui/components";
+import { Alert, Card, ConfirmDialog, useToast } from "@lumia-ui/components";
 import { CmsContentCardGrid } from "../../components/dashboard/CmsContentCardGrid";
 import { CmsContentCardList } from "../../components/dashboard/CmsContentCardList";
+import {
+  deleteWorkspaceContentEntry,
+  toggleWorkspaceEntryFavorite,
+} from "../../lib/dashboard/content-entries-client";
 import { useCmsContentQueryState } from "../../lib/dashboard/use-cms-content-query-state";
 import { useCmsContentEntries } from "../../lib/dashboard/use-cms-content-entries";
 import { CmsContentToolbar } from "../../components/dashboard/CmsContentToolbar";
@@ -14,22 +18,23 @@ import {
   CmsContentListState,
   resolveCmsContentListState,
 } from "./CmsContentListState";
+import { listWorkspaceContentDirectories } from "../../lib/dashboard/content-directories-client";
 import {
+  getContentDirectoryPathIds,
+  materializePersistedContentDirectories,
+} from "../../lib/dashboard/content-directory-tree";
+import {
+  buildContentEntryEditRoute,
+  buildContentEntryShareUrl,
   createDraftEntryAndResolveEditPath,
   getCreateEntryErrorMessage,
 } from "./CmsContentActions";
 import { mapEntryToGridCardProps, mapEntryToListCardProps } from "./mappers";
 
 const QUERY_REPLACE_DEBOUNCE_MS = 300;
-const noopEntryAction: (entryId: string) => void = () => {
-  return;
-};
-const noopListHandlers = {
-  onOpen: noopEntryAction,
-  onDelete: noopEntryAction,
-  onShare: noopEntryAction,
-  onToggleFavorite: noopEntryAction,
-};
+const mutationErrorDescription =
+  "Please try again. If the issue persists, contact your workspace owner.";
+export const UNMATCHED_DIRECTORY_ID = "__UNMATCHED_DIRECTORY_ID__";
 
 const safeDecodePathSegment = (segment: string) => {
   try {
@@ -40,6 +45,7 @@ const safeDecodePathSegment = (segment: string) => {
 };
 
 export function CmsContentListPanel() {
+  const { show: showToast } = useToast();
   const pathname = usePathname();
   const router = useRouter();
   const {
@@ -54,8 +60,44 @@ export function CmsContentListPanel() {
   const [isQueryEditing, setIsQueryEditing] = useState(false);
   const [isCreatingEntry, setIsCreatingEntry] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [deletedEntryIds, setDeletedEntryIds] = useState<Record<string, true>>(
+    {},
+  );
+  const [favoriteOverrides, setFavoriteOverrides] = useState<
+    Record<string, boolean>
+  >({});
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Record<string, true>>(
+    {},
+  );
+  const [pendingDeleteEntryId, setPendingDeleteEntryId] = useState<
+    string | null
+  >(null);
+  const [pendingDeleteEntryLabel, setPendingDeleteEntryLabel] = useState("");
+  const [pendingFavoriteIds, setPendingFavoriteIds] = useState<
+    Record<string, true>
+  >({});
+  // resolvedDirectoryId:
+  //   undefined                      = actively resolving
+  //   null                           = root view (no path segments)
+  //   UNMATCHED_DIRECTORY_ID string  = path does not match a persisted directory
+  //   string                         = resolved UUID of the leaf directory matching the current URL path
+  const [resolvedDirectoryId, setResolvedDirectoryId] = useState<
+    string | null | undefined
+  >(undefined);
+  const [isDirectoryResolving, setIsDirectoryResolving] = useState(false);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
-
+  // ── breadcrumb derivation (hoisted so it can be used in effects below) ──
+  const pathParts = pathname
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => safeDecodePathSegment(segment));
+  const contentIndex = pathParts.lastIndexOf("content");
+  const breadcrumbParts = useMemo(
+    () => (contentIndex >= 0 ? pathParts.slice(contentIndex + 1) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pathname],
+  );
+  const breadcrumbKey = breadcrumbParts.join("/");
   useEffect(() => {
     let cancelled = false;
 
@@ -86,6 +128,60 @@ export function CmsContentListPanel() {
     };
   }, [currentWorkspace?.id, getAccessToken, isAuthenticated, isAuthLoading]);
 
+  // ── resolve directory UUID from URL path segments ─────────────────────
+  useEffect(() => {
+    if (breadcrumbParts.length === 0) {
+      setResolvedDirectoryId(null);
+      setIsDirectoryResolving(false);
+      return;
+    }
+
+    if (!currentWorkspace?.id || !accessToken || !apiBaseUrl) {
+      // Wait until auth is ready — keep current resolvedDirectoryId as-is
+      return;
+    }
+
+    let cancelled = false;
+    setResolvedDirectoryId(undefined); // clear stale UUID before new async resolution
+    setIsDirectoryResolving(true);
+
+    void (async () => {
+      try {
+        const dirs = await listWorkspaceContentDirectories({
+          apiBaseUrl,
+          workspaceId: currentWorkspace.id,
+          accessToken,
+        });
+        if (cancelled) return;
+
+        const tree = materializePersistedContentDirectories({
+          baseNodes: [],
+          directories: dirs,
+        });
+        const pathIds = getContentDirectoryPathIds({
+          nodes: tree,
+          pathSegments: breadcrumbParts,
+        });
+        const leafId =
+          pathIds.length === breadcrumbParts.length
+            ? (pathIds.at(-1) ?? null)
+            : UNMATCHED_DIRECTORY_ID;
+        setResolvedDirectoryId(leafId);
+      } catch {
+        if (!cancelled) setResolvedDirectoryId(null);
+      } finally {
+        if (!cancelled) setIsDirectoryResolving(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // breadcrumbKey is a stable primitive derived from breadcrumbParts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breadcrumbKey, currentWorkspace?.id, accessToken, apiBaseUrl]);
+
+  // ── URL query debounce ────────────────────────────────────────────────────
   useEffect(() => {
     if (!isQueryEditing) {
       return;
@@ -111,13 +207,6 @@ export function CmsContentListPanel() {
     };
   }, [isQueryEditing, queryDraft, setState, state.query]);
 
-  const pathParts = pathname
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => safeDecodePathSegment(segment));
-  const contentIndex = pathParts.lastIndexOf("content");
-  const breadcrumbParts =
-    contentIndex >= 0 ? pathParts.slice(contentIndex + 1) : [];
   const workspaceSlug =
     contentIndex > 0 && pathParts[contentIndex - 1]
       ? pathParts[contentIndex - 1]
@@ -126,6 +215,8 @@ export function CmsContentListPanel() {
     ? `/dashboard/${encodeURIComponent(workspaceSlug)}/content`
     : "/dashboard";
   const resolvedWorkspaceSlug = currentWorkspace?.slug?.trim() || workspaceSlug;
+  const isUnmatchedDirectoryPath =
+    resolvedDirectoryId === UNMATCHED_DIRECTORY_ID;
 
   const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -146,12 +237,42 @@ export function CmsContentListPanel() {
     });
   });
 
-  const { items, count, isLoading, error, refresh } = useCmsContentEntries({
+  // ── card action handlers ──────────────────────────────────────────────────
+  const handleOpen = useCallback(
+    (entryId: string) => {
+      if (!resolvedWorkspaceSlug) return;
+      try {
+        const editPath = buildContentEntryEditRoute({
+          workspaceSlug: resolvedWorkspaceSlug,
+          entryId,
+        });
+        router.push(editPath);
+      } catch {
+        // invalid slug or entryId — silently ignore
+      }
+    },
+    [resolvedWorkspaceSlug, router],
+  );
+
+  const showMutationError = useCallback(
+    (title: "Could not delete content" | "Could not update favourite") => {
+      showToast({
+        variant: "error",
+        title,
+        description: mutationErrorDescription,
+      });
+    },
+    [showToast],
+  );
+
+  const { items, isLoading, error, refresh } = useCmsContentEntries({
     apiBaseUrl,
     workspaceId: currentWorkspace?.id ?? "",
     accessToken: accessToken ?? "",
     query: {
-      directoryId: state.directoryId,
+      // Use the resolved UUID so the API filters by the correct directory.
+      // null = no filter (root view or no match); undefined = still resolving.
+      directoryId: resolvedDirectoryId,
       search: state.query,
       sortBy: state.sortBy,
       sortDirection: state.sortDirection,
@@ -165,13 +286,198 @@ export function CmsContentListPanel() {
       isAuthenticated &&
       Boolean(currentWorkspace?.id) &&
       Boolean(accessToken) &&
-      Boolean(apiBaseUrl),
+      Boolean(apiBaseUrl) &&
+      // Block fetch until directory UUID is resolved to prevent showing unfiltered results
+      !isDirectoryResolving &&
+      !isUnmatchedDirectoryPath,
   });
 
+  // Treat directory resolution as a loading phase so the skeleton shows
+  const effectiveIsLoading = isLoading || isDirectoryResolving;
+  const visibleItems = items
+    .filter((item) => !deletedEntryIds[item.id])
+    .map((item) => ({
+      ...item,
+      isFavorite: favoriteOverrides[item.id] ?? item.isFavorite,
+    }));
+  const visibleCount = visibleItems.length;
+
+  const handleShare = useCallback(
+    async (entryId: string) => {
+      if (!resolvedWorkspaceSlug) return;
+      try {
+        const targetEntry = visibleItems.find((item) => item.id === entryId);
+        const entryLabel = targetEntry?.title?.trim() || "This content";
+        const shareUrl = buildContentEntryShareUrl({
+          origin: window.location.origin,
+          workspaceSlug: resolvedWorkspaceSlug,
+          entryId,
+        });
+        await navigator.clipboard.writeText(shareUrl);
+        showToast({
+          variant: "success",
+          title: "Link copied",
+          description: `"${entryLabel}" edit link was copied to the clipboard.`,
+        });
+      } catch {
+        showToast({
+          variant: "error",
+          title: "Could not copy link",
+          description: mutationErrorDescription,
+        });
+      }
+    },
+    [resolvedWorkspaceSlug, showToast, visibleItems],
+  );
+
+  const confirmDelete = useCallback(async () => {
+    if (
+      !pendingDeleteEntryId ||
+      pendingDeleteIds[pendingDeleteEntryId] ||
+      !apiBaseUrl ||
+      !currentWorkspace?.id ||
+      !accessToken
+    ) {
+      return;
+    }
+
+    const entryId = pendingDeleteEntryId;
+    const entryLabel = pendingDeleteEntryLabel || "This content";
+    setPendingDeleteIds((prev) => ({ ...prev, [entryId]: true }));
+
+    try {
+      await deleteWorkspaceContentEntry({
+        apiBaseUrl,
+        workspaceId: currentWorkspace.id,
+        entryId,
+        accessToken,
+      });
+      setDeletedEntryIds((prev) => ({ ...prev, [entryId]: true }));
+      setPendingDeleteEntryId(null);
+      setPendingDeleteEntryLabel("");
+      showToast({
+        variant: "success",
+        title: "Content deleted",
+        description: `"${entryLabel}" was deleted.`,
+      });
+    } catch {
+      showMutationError("Could not delete content");
+    } finally {
+      setPendingDeleteIds((prev) => {
+        const next = { ...prev };
+        delete next[entryId];
+        return next;
+      });
+    }
+  }, [
+    accessToken,
+    apiBaseUrl,
+    currentWorkspace?.id,
+    pendingDeleteEntryId,
+    pendingDeleteEntryLabel,
+    pendingDeleteIds,
+    showToast,
+    showMutationError,
+  ]);
+
+  const handleDelete = useCallback(
+    async (entryId: string) => {
+      if (
+        pendingDeleteIds[entryId] ||
+        !apiBaseUrl ||
+        !currentWorkspace?.id ||
+        !accessToken
+      ) {
+        return;
+      }
+
+      const targetEntry = visibleItems.find((item) => item.id === entryId);
+      const entryLabel = targetEntry?.title?.trim() || "this content";
+      setPendingDeleteEntryId(entryId);
+      setPendingDeleteEntryLabel(entryLabel);
+    },
+    [
+      accessToken,
+      apiBaseUrl,
+      currentWorkspace?.id,
+      pendingDeleteIds,
+      visibleItems,
+    ],
+  );
+
+  const handleToggleFavorite = useCallback(
+    async (entryId: string) => {
+      if (
+        pendingFavoriteIds[entryId] ||
+        !apiBaseUrl ||
+        !currentWorkspace?.id ||
+        !accessToken
+      ) {
+        return;
+      }
+
+      const targetEntry = visibleItems.find((item) => item.id === entryId);
+      if (!targetEntry) {
+        return;
+      }
+
+      const previousFavorite = targetEntry.isFavorite;
+
+      setFavoriteOverrides((prev) => ({
+        ...prev,
+        [entryId]: !previousFavorite,
+      }));
+      setPendingFavoriteIds((prev) => ({ ...prev, [entryId]: true }));
+
+      try {
+        const result = await toggleWorkspaceEntryFavorite({
+          apiBaseUrl,
+          workspaceId: currentWorkspace.id,
+          entryId,
+          accessToken,
+        });
+        setFavoriteOverrides((prev) => ({
+          ...prev,
+          [entryId]: result.isFavorite,
+        }));
+      } catch {
+        setFavoriteOverrides((prev) => ({
+          ...prev,
+          [entryId]: previousFavorite,
+        }));
+        showMutationError("Could not update favourite");
+      } finally {
+        setPendingFavoriteIds((prev) => {
+          const next = { ...prev };
+          delete next[entryId];
+          return next;
+        });
+      }
+    },
+    [
+      accessToken,
+      apiBaseUrl,
+      currentWorkspace?.id,
+      pendingFavoriteIds,
+      showMutationError,
+      visibleItems,
+    ],
+  );
+
+  const listHandlers = useMemo(
+    () => ({
+      onOpen: handleOpen,
+      onDelete: handleDelete,
+      onShare: handleShare,
+      onToggleFavorite: handleToggleFavorite,
+    }),
+    [handleDelete, handleOpen, handleShare, handleToggleFavorite],
+  );
+
   const listViewState = resolveCmsContentListState({
-    isLoading,
+    isLoading: effectiveIsLoading,
     error,
-    count,
+    count: visibleCount,
     query: state.query,
     breadcrumbParts,
   });
@@ -181,9 +487,24 @@ export function CmsContentListPanel() {
       className="flex h-full min-h-0 flex-col"
       aria-label="Content list panel"
     >
+      <ConfirmDialog
+        open={Boolean(pendingDeleteEntryId)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setPendingDeleteEntryId(null);
+            setPendingDeleteEntryLabel("");
+          }
+        }}
+        title={`Delete "${pendingDeleteEntryLabel || "this content"}"?`}
+        description="This action cannot be undone."
+        confirmLabel="Delete content"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={confirmDelete}
+      />
       <CmsContentToolbar
         breadcrumbItems={breadcrumbItems}
-        itemCount={count}
+        itemCount={visibleCount}
         query={isQueryEditing ? queryDraft : state.query}
         sortBy={state.sortBy}
         view={state.view}
@@ -196,7 +517,18 @@ export function CmsContentListPanel() {
             return;
           }
 
-          if (!apiBaseUrl || !currentWorkspace?.id || !accessToken || !resolvedWorkspaceSlug) {
+          if (isDirectoryResolving || isUnmatchedDirectoryPath) {
+            // Resolution is in flight — using resolvedDirectoryId here would
+            // create the entry in the wrong (stale/unmatched) directory. Block until done.
+            return;
+          }
+
+          if (
+            !apiBaseUrl ||
+            !currentWorkspace?.id ||
+            !accessToken ||
+            !resolvedWorkspaceSlug
+          ) {
             setCreateError("Please sign in again and retry.");
             return;
           }
@@ -210,7 +542,9 @@ export function CmsContentListPanel() {
                 workspaceId: currentWorkspace.id,
                 workspaceSlug: resolvedWorkspaceSlug,
                 accessToken,
-                directoryId: state.directoryId,
+                // Use the path-resolved directory UUID so new entries land in
+                // the currently-browsed directory, not the query-param one.
+                directoryId: resolvedDirectoryId,
               });
 
               router.push(editPath);
@@ -219,7 +553,8 @@ export function CmsContentListPanel() {
               console.error("[CMS][create] toolbar flow failed", {
                 workspaceId: currentWorkspace.id,
                 workspaceSlug: resolvedWorkspaceSlug,
-                directoryId: state.directoryId,
+                // Use the path-resolved UUID, not the (deprecated) URL query-param directoryId
+                resolvedDirectoryId,
                 errorMessage:
                   error instanceof Error
                     ? error.message
@@ -285,20 +620,22 @@ export function CmsContentListPanel() {
                 : "grid grid-cols-1 gap-3"
             }
           >
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <li key={item.id}>
                 {state.view === "grid" ? (
                   <CmsContentCardGrid
                     {...mapEntryToGridCardProps({
                       entry: item,
-                      onOpen: noopEntryAction,
+                      onOpen: handleOpen,
                     })}
                   />
                 ) : (
                   <CmsContentCardList
                     {...mapEntryToListCardProps({
                       entry: item,
-                      handlers: noopListHandlers,
+                      handlers: listHandlers,
+                      isDeleting: Boolean(pendingDeleteIds[item.id]),
+                      isFavoritePending: Boolean(pendingFavoriteIds[item.id]),
                     })}
                   />
                 )}
