@@ -39,7 +39,7 @@ const formatSavedAt = (value?: string | null) => {
 };
 
 const getSafeHref = (value: string) => {
-  if (value.startsWith("/")) {
+  if (value.startsWith("/") && !value.startsWith("//")) {
     return value;
   }
 

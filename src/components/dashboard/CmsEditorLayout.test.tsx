@@ -164,6 +164,17 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
   });
 
+  it("renders protocol-relative generated links as plain text", () => {
+    render(
+      <CmsEditorLayout {...buildProps()} generatedLink="//evil.example/path">
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    expect(screen.queryByRole("link", { name: "//evil.example/path" })).toBeNull();
+    expect(screen.getByText("//evil.example/path")).toBeInTheDocument();
+  });
+
   it("registers beforeunload guard when there are unsaved changes", () => {
     render(
       <CmsEditorLayout {...buildProps()} hasUnsavedChanges>

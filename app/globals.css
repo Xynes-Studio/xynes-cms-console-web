@@ -1,4 +1,4 @@
-/* stylelint-disable at-rule-no-unknown */
+/* stylelint-disable at-rule-no-unknown, scss/at-rule-no-unknown */
 @import "tailwindcss";
 @import "../node_modules/@lumia-ui/editor/dist/index.css";
 @source "../app/**/*.{js,ts,jsx,tsx,mdx}";
@@ -54,4 +54,4 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* stylelint-enable at-rule-no-unknown */
+/* stylelint-enable at-rule-no-unknown, scss/at-rule-no-unknown */

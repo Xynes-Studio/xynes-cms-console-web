@@ -29,6 +29,19 @@ describe("normalizeEditorBody", () => {
     });
   });
 
+  it("returns independent empty documents on each call", () => {
+    const first = createEmptyLumiaDocument();
+    const second = createEmptyLumiaDocument();
+
+    (
+      first.root.children[0] as {
+        children?: unknown[];
+      }
+    ).children = [{ type: "text", text: "Mutated" }];
+
+    expect(second).toEqual(createEmptyLumiaDocument());
+  });
+
   it("returns an empty Lumia document when body is null", () => {
     expect(normalizeEditorBody(null)).toEqual(createEmptyLumiaDocument());
   });
@@ -39,6 +52,12 @@ describe("normalizeEditorBody", () => {
 
   it("returns an empty Lumia document when body is malformed", () => {
     expect(normalizeEditorBody({ bad: true })).toEqual(
+      createEmptyLumiaDocument(),
+    );
+  });
+
+  it("returns an empty Lumia document when body is a non-plain object", () => {
+    expect(normalizeEditorBody(new Date("2026-01-01T00:00:00.000Z"))).toEqual(
       createEmptyLumiaDocument(),
     );
   });

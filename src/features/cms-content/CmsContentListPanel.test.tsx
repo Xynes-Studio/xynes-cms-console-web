@@ -7,7 +7,10 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CmsContentListPanel } from "./CmsContentListPanel";
+import {
+  CmsContentListPanel,
+  UNMATCHED_DIRECTORY_ID,
+} from "./CmsContentListPanel";
 
 const {
   mockCreateDraftEntryAndResolveEditPath,
@@ -426,8 +429,20 @@ afterEach(() => {
     entryId: "entry-default",
     isFavorite: true,
   });
-  // Default: empty directory list → resolvedDirectoryId = null (no filter)
-  mockListWorkspaceContentDirectories.mockResolvedValue([]);
+  mockListWorkspaceContentDirectories.mockResolvedValue([
+    {
+      id: "dir-parent",
+      parentId: null,
+      name: "level-1-2",
+      pathSegment: "level-1-2",
+    },
+    {
+      id: "dir-leaf",
+      parentId: "dir-parent",
+      name: "level-2",
+      pathSegment: "level-2",
+    },
+  ]);
   mockGetCreateEntryErrorMessage.mockReturnValue(
     "Content entry create route is not configured in backend yet. Please contact platform team to map /content/entries to directory-based cms.entry.* actions.",
   );
@@ -916,6 +931,28 @@ describe("CmsContentListPanel", () => {
       // Click Create while resolution is still in flight
       fireEvent.click(screen.getByRole("button", { name: "create content" }));
       expect(mockCreateDraftEntryAndResolveEditPath).not.toHaveBeenCalled();
+    });
+
+    it("uses mockListWorkspaceContentDirectories and useCmsContentEntries to keep UNMATCHED_DIRECTORY_ID for unmatched paths", async () => {
+      mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/missing-leaf";
+      mockListWorkspaceContentDirectories.mockResolvedValue([
+        {
+          id: "dir-parent",
+          parentId: null,
+          name: "level-1-2",
+          pathSegment: "level-1-2",
+        },
+      ]);
+      render(<CmsContentListPanel />);
+      await waitFor(() =>
+        expect(mockListWorkspaceContentDirectories).toHaveBeenCalled(),
+      );
+      await waitFor(() => {
+        const lastCall = mockUseCmsContentEntries.mock.calls.at(-1)?.[0];
+        expect(lastCall?.query?.directoryId).toBe(UNMATCHED_DIRECTORY_ID);
+        expect(lastCall?.query?.directoryId).not.toBeNull();
+        expect(lastCall?.enabled).toBe(false);
+      });
     });
 
     it("does not call the directory API and passes null directoryId when at root content path", async () => {

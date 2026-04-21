@@ -34,6 +34,7 @@ import { mapEntryToGridCardProps, mapEntryToListCardProps } from "./mappers";
 const QUERY_REPLACE_DEBOUNCE_MS = 300;
 const mutationErrorDescription =
   "Please try again. If the issue persists, contact your workspace owner.";
+export const UNMATCHED_DIRECTORY_ID = "__UNMATCHED_DIRECTORY_ID__";
 
 const safeDecodePathSegment = (segment: string) => {
   try {
@@ -76,9 +77,10 @@ export function CmsContentListPanel() {
     Record<string, true>
   >({});
   // resolvedDirectoryId:
-  //   undefined = actively resolving (directory path exists but UUID not yet looked up)
-  //   null      = root view (no path segments) or resolution completed with no match
-  //   string    = resolved UUID of the leaf directory matching the current URL path
+  //   undefined                      = actively resolving
+  //   null                           = root view (no path segments)
+  //   UNMATCHED_DIRECTORY_ID string  = path does not match a persisted directory
+  //   string                         = resolved UUID of the leaf directory matching the current URL path
   const [resolvedDirectoryId, setResolvedDirectoryId] = useState<
     string | null | undefined
   >(undefined);
@@ -160,8 +162,10 @@ export function CmsContentListPanel() {
           nodes: tree,
           pathSegments: breadcrumbParts,
         });
-        // Last ID is the leaf (deepest matching) directory
-        const leafId = pathIds.at(-1) ?? null;
+        const leafId =
+          pathIds.length === breadcrumbParts.length
+            ? (pathIds.at(-1) ?? null)
+            : UNMATCHED_DIRECTORY_ID;
         setResolvedDirectoryId(leafId);
       } catch {
         if (!cancelled) setResolvedDirectoryId(null);
@@ -211,6 +215,8 @@ export function CmsContentListPanel() {
     ? `/dashboard/${encodeURIComponent(workspaceSlug)}/content`
     : "/dashboard";
   const resolvedWorkspaceSlug = currentWorkspace?.slug?.trim() || workspaceSlug;
+  const isUnmatchedDirectoryPath =
+    resolvedDirectoryId === UNMATCHED_DIRECTORY_ID;
 
   const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -282,7 +288,8 @@ export function CmsContentListPanel() {
       Boolean(accessToken) &&
       Boolean(apiBaseUrl) &&
       // Block fetch until directory UUID is resolved to prevent showing unfiltered results
-      !isDirectoryResolving,
+      !isDirectoryResolving &&
+      !isUnmatchedDirectoryPath,
   });
 
   // Treat directory resolution as a loading phase so the skeleton shows
@@ -510,9 +517,9 @@ export function CmsContentListPanel() {
             return;
           }
 
-          if (isDirectoryResolving) {
+          if (isDirectoryResolving || isUnmatchedDirectoryPath) {
             // Resolution is in flight — using resolvedDirectoryId here would
-            // create the entry in the wrong (stale) directory. Block until done.
+            // create the entry in the wrong (stale/unmatched) directory. Block until done.
             return;
           }
 

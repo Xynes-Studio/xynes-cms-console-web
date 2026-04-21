@@ -374,7 +374,7 @@ Rules:
   - guard all actions against missing workspace context (`resolvedWorkspaceSlug`); return early and do nothing if absent.
 - Tech-debt controls:
   - do NOT inline path-template strings in card handlers; always delegate to `CmsContentActions` helpers.
-  - do NOT use `state.directoryId` (deprecated URL query-param) in card handler context; use `resolvedDirectoryId` (path-segment-resolved UUID) exclusively.
+  - do NOT use the deprecated URL query-param directory id in card handler context; use `resolvedDirectoryId` (path-segment-resolved UUID) exclusively.
   - keep toast copy and mutation sequencing in the feature layer rather than burying feedback inside presentational cards.
 - TDD and coverage:
   - test Open by clicking the card's open button and asserting router.push target.
@@ -431,14 +431,16 @@ Rules:
   - `effectiveIsLoading = isLoading || isDirectoryResolving` — passes the combined loading signal to the list state resolver so skeleton is shown during directory resolution.
 - State semantics:
   - `resolvedDirectoryId === undefined`: resolution pending (directory path exists but UUID not yet resolved)
-  - `resolvedDirectoryId === null`: root content view (no path segments) or resolution finished with no match
+  - `resolvedDirectoryId === null`: root content view (no path segments)
+  - `resolvedDirectoryId === UNMATCHED_DIRECTORY_ID`: path resolution finished but no persisted directory matched the requested breadcrumb path
   - `resolvedDirectoryId === string`: UUID of the leaf directory matching the current URL path
 - Tech-debt rules:
-  - any reference to the deprecated `state.directoryId` (URL query-param) in content listing/create/logging context must be replaced with `resolvedDirectoryId`.
+  - any reference to the deprecated URL query-param directory id in content listing/create/logging context must be replaced with `resolvedDirectoryId`.
   - resolution is keyed on `breadcrumbKey` (stable join of path segments) to avoid redundant API calls on unrelated state updates.
   - `breadcrumbParts` and `breadcrumbKey` must be declared before any `useEffect` that references them (TDZ safety).
 - Testing:
   - Tier 2: assert that `mockListWorkspaceContentDirectories` is called and the resulting leaf UUID is passed to `useCmsContentEntries`.
+  - Tier 2: assert that `mockListWorkspaceContentDirectories` and `useCmsContentEntries` preserve `UNMATCHED_DIRECTORY_ID` for unmatched paths and never fall back to a root (`null`) fetch.
   - Tier 2: assert that root path (no segments) skips API call and passes `null` directoryId.
 
 ## Accessibility Standards

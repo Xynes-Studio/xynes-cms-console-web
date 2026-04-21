@@ -317,18 +317,24 @@ describe("useCmsEntryAutosave", () => {
     const saveDraft = vi.fn().mockResolvedValue(undefined);
 
     const { rerender } = renderHook(
-      ({ enabled }) =>
+      ({ enabled, value }) =>
         useCmsEntryAutosave({
           enabled,
           cacheKey: "entry-disabled",
-          value: { title: "draft" },
+          value,
           delayMs: 100,
           saveDraft,
         }),
-      { initialProps: { enabled: true } },
+      {
+        initialProps: {
+          enabled: true,
+          value: { title: "loaded" },
+        },
+      },
     );
 
-    rerender({ enabled: false });
+    rerender({ enabled: true, value: { title: "draft" } });
+    rerender({ enabled: false, value: { title: "draft" } });
 
     await act(async () => {
       vi.advanceTimersByTime(200);

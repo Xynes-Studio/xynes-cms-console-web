@@ -10,10 +10,10 @@
 
 ---
 
-### Task 1: Link the Lumia editor package into the CMS app
+## Task 1: Link the Lumia editor package into the CMS app
 
 **Files:**
-- Modify: `/Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/package.json`
+- Modify: `$REPO_ROOT/xynes-front-end/xynes-cms-console-web/package.json`
 
 **Step 1: Write the failing test**
 
@@ -24,7 +24,7 @@ No new test for dependency wiring. Use the existing app import boundary as the f
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 node -e "import('@lumia-ui/editor').catch(() => process.exit(1))"
 ```
 
@@ -43,10 +43,10 @@ Add a linked dependency:
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/lumia-ds
+cd $REPO_ROOT/xynes-front-end/lumia-ds
 pnpm --filter @lumia-ui/editor build
 
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 node -e "import('@lumia-ui/editor').then(() => process.exit(0)).catch(() => process.exit(1))"
 ```
 
@@ -55,15 +55,15 @@ Expected: build succeeds and import resolves.
 **Step 5: Commit**
 
 ```bash
-git add /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/package.json
+git add $REPO_ROOT/xynes-front-end/xynes-cms-console-web/package.json
 git commit -m "build: link Lumia editor package"
 ```
 
-### Task 2: Add pure editor body normalization helpers
+## Task 2: Add pure editor body normalization helpers
 
 **Files:**
-- Create: `/Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/features/cms-content/cms-editor-body.ts`
-- Test: `/Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/features/cms-content/cms-editor-body.test.ts`
+- Create: `$REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/features/cms-content/cms-editor-body.ts`
+- Test: `$REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/features/cms-content/cms-editor-body.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -127,7 +127,7 @@ describe("hasEditorDraftChanged", () => {
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm test -- src/features/cms-content/cms-editor-body.test.ts
 ```
 
@@ -159,7 +159,7 @@ const isValidLumiaDocument = (value: unknown) =>
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm test -- src/features/cms-content/cms-editor-body.test.ts
 ```
 
@@ -168,15 +168,15 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/features/cms-content/cms-editor-body.ts /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/features/cms-content/cms-editor-body.test.ts
+git add $REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/features/cms-content/cms-editor-body.ts $REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/features/cms-content/cms-editor-body.test.ts
 git commit -m "feat: add CMS editor body normalization helpers"
 ```
 
-### Task 3: Replace the placeholder canvas in `CmsEditorLayout`
+## Task 3: Replace the placeholder canvas in `CmsEditorLayout`
 
 **Files:**
-- Modify: `/Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/components/dashboard/CmsEditorLayout.tsx`
-- Modify: `/Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/components/dashboard/CmsEditorLayout.test.tsx`
+- Modify: `$REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/components/dashboard/CmsEditorLayout.tsx`
+- Modify: `$REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/components/dashboard/CmsEditorLayout.test.tsx`
 
 **Step 1: Write the failing test**
 
@@ -202,7 +202,7 @@ it("renders editor canvas content and does not show placeholder text", () => {
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm test -- src/components/dashboard/CmsEditorLayout.test.tsx
 ```
 
@@ -220,7 +220,7 @@ Expected: FAIL because the current layout still expects placeholder behavior.
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm test -- src/components/dashboard/CmsEditorLayout.test.tsx
 ```
 
@@ -229,17 +229,17 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/components/dashboard/CmsEditorLayout.tsx /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/components/dashboard/CmsEditorLayout.test.tsx
+git add $REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/components/dashboard/CmsEditorLayout.tsx $REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/components/dashboard/CmsEditorLayout.test.tsx
 git commit -m "feat: mount real editor canvas in CMS editor layout"
 ```
 
-### Task 4: Integrate Lumia editor in `CmsEditorScreen` with autosave body persistence
+## Task 4: Integrate Lumia editor in `CmsEditorScreen` with autosave body persistence
 
 **Files:**
-- Modify: `/Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/features/cms-content/CmsEditorScreen.tsx`
-- Modify: `/Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/features/cms-content/CmsEditorScreen.test.tsx`
-- Reference: `/Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/lib/dashboard/content-entries-client.ts`
-- Reference: `/Users/archanray/xynes-erp/xynes-front-end/lumia-ds/packages/editor/README.md`
+- Modify: `$REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/features/cms-content/CmsEditorScreen.tsx`
+- Modify: `$REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/features/cms-content/CmsEditorScreen.test.tsx`
+- Reference: `$REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/lib/dashboard/content-entries-client.ts`
+- Reference: `$REPO_ROOT/xynes-front-end/lumia-ds/packages/editor/README.md`
 
 **Step 1: Write the failing test**
 
@@ -306,7 +306,7 @@ it("falls back to an empty Lumia document when entry body is malformed", async (
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm test -- src/features/cms-content/CmsEditorScreen.test.tsx
 ```
 
@@ -346,7 +346,7 @@ payload: {
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm test -- src/features/cms-content/CmsEditorScreen.test.tsx
 ```
 
@@ -355,14 +355,14 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/features/cms-content/CmsEditorScreen.tsx /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web/src/features/cms-content/CmsEditorScreen.test.tsx
+git add $REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/features/cms-content/CmsEditorScreen.tsx $REPO_ROOT/xynes-front-end/xynes-cms-console-web/src/features/cms-content/CmsEditorScreen.test.tsx
 git commit -m "feat: wire Lumia editor into CMS editor screen"
 ```
 
-### Task 5: Update story documentation with explicit tech debt
+## Task 5: Update story documentation with explicit tech debt
 
 **Files:**
-- Modify: `/Users/archanray/xynes-erp/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md`
+- Modify: `$REPO_ROOT/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md`
 
 **Step 1: Write the failing test**
 
@@ -373,7 +373,7 @@ No automated test. Documentation change only.
 Run:
 
 ```bash
-rg -n "media upload|tech debt|CMS-UI-007" /Users/archanray/xynes-erp/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md
+rg -n "media upload|tech debt|CMS-UI-007" $REPO_ROOT/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md
 ```
 
 Expected: `CMS-UI-007` exists, but no explicit media-upload tech debt note is recorded.
@@ -390,7 +390,7 @@ Add a short note under `CMS-UI-007` or a dedicated follow-up section stating:
 Run:
 
 ```bash
-rg -n "media upload|bucket|gateway|platform-config|cms-core" /Users/archanray/xynes-erp/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md
+rg -n "media upload|bucket|gateway|platform-config|cms-core" $REPO_ROOT/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md
 ```
 
 Expected: explicit tech debt note is present.
@@ -398,11 +398,11 @@ Expected: explicit tech debt note is present.
 **Step 5: Commit**
 
 ```bash
-git add /Users/archanray/xynes-erp/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md
+git add $REPO_ROOT/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md
 git commit -m "docs: record CMS editor media upload tech debt"
 ```
 
-### Task 6: Final verification before completion
+## Task 6: Final verification before completion
 
 **Files:**
 - Verify touched files from Tasks 1-5
@@ -412,7 +412,7 @@ git commit -m "docs: record CMS editor media upload tech debt"
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm test -- src/features/cms-content/cms-editor-body.test.ts src/components/dashboard/CmsEditorLayout.test.tsx src/features/cms-content/CmsEditorScreen.test.tsx
 ```
 
@@ -423,7 +423,7 @@ Expected: all targeted tests PASS.
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm lint
 ```
 
@@ -434,7 +434,7 @@ Expected: exit code 0.
 Run:
 
 ```bash
-cd /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web
+cd $REPO_ROOT/xynes-front-end/xynes-cms-console-web
 pnpm test:coverage
 ```
 
@@ -453,6 +453,6 @@ Check:
 **Step 5: Commit**
 
 ```bash
-git add /Users/archanray/xynes-erp/xynes-front-end/xynes-cms-console-web /Users/archanray/xynes-erp/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md
+git add $REPO_ROOT/xynes-front-end/xynes-cms-console-web $REPO_ROOT/xynes-front-end/infra/docs/plans/2026-02-27-fe-cms-dashboard-ui-integration-stories.md
 git commit -m "feat: complete CMS-UI-007 Lumia editor integration"
 ```

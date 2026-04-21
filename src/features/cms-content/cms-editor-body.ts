@@ -41,8 +41,16 @@ const EMPTY_DOCUMENT: LumiaEditorDocument = {
   },
 };
 
+const isPlainObject = (value: object) => {
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+  typeof value === "object" &&
+  value !== null &&
+  !Array.isArray(value) &&
+  isPlainObject(value);
 
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -161,17 +169,29 @@ const stableStringify = (value: unknown): string => {
         .reduce<Record<string, unknown>>((acc, key) => {
           acc[key] = current[key];
           return acc;
-        }, {});
+        }, Object.create(null) as Record<string, unknown>);
     }
     return current;
   });
 };
 
+const cloneJsonValue = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneJsonValue(item));
+  }
+
+  if (isRecord(value)) {
+    return Object.keys(value).reduce<Record<string, unknown>>((acc, key) => {
+      acc[key] = cloneJsonValue(value[key]);
+      return acc;
+    }, Object.create(null) as Record<string, unknown>);
+  }
+
+  return value;
+};
+
 export const createEmptyLumiaDocument = (): LumiaEditorDocument => ({
-  root: {
-    ...EMPTY_DOCUMENT.root,
-    children: [...EMPTY_DOCUMENT.root.children],
-  },
+  root: cloneJsonValue(EMPTY_DOCUMENT.root) as LumiaEditorRootNode,
 });
 
 export const normalizeEditorBody = (value: unknown): LumiaEditorDocument => {
