@@ -27,7 +27,17 @@ const EMPTY_DOCUMENT: LumiaEditorDocument = {
     direction: "ltr",
     format: "",
     indent: 0,
-    children: [],
+    children: [
+      {
+        type: "paragraph",
+        version: 1,
+        direction: null,
+        format: "",
+        indent: 0,
+        textFormat: "",
+        children: [],
+      },
+    ],
   },
 };
 
@@ -99,6 +109,7 @@ const isValidLumiaDocument = (value: unknown): value is LumiaEditorDocument => {
     typeof value.root.format === "string" &&
     typeof value.root.indent === "number" &&
     Array.isArray(value.root.children) &&
+    value.root.children.length > 0 &&
     isJsonSafeValue(value, new Set())
   );
 };
@@ -159,7 +170,7 @@ const stableStringify = (value: unknown): string => {
 export const createEmptyLumiaDocument = (): LumiaEditorDocument => ({
   root: {
     ...EMPTY_DOCUMENT.root,
-    children: [],
+    children: [...EMPTY_DOCUMENT.root.children],
   },
 });
 

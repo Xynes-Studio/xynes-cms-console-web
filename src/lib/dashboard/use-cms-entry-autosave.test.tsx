@@ -56,21 +56,90 @@ describe("useCmsEntryAutosave", () => {
     expect(result.current.pendingSnapshot).toBeNull();
   });
 
+  it("does not autosave an untouched initial value", async () => {
+    const saveDraft = vi.fn().mockResolvedValue(undefined);
+
+    renderHook(() =>
+      useCmsEntryAutosave({
+        enabled: true,
+        cacheKey: "entry-initial",
+        value: { title: "loaded" },
+        delayMs: 200,
+        saveDraft,
+      }),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+
+    expect(saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("does not loop autosave after a successful save", async () => {
+    const saveDraft = vi.fn().mockResolvedValue(undefined);
+
+    const { rerender } = renderHook(
+      ({ value }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey: "entry-loop",
+          value,
+          delayMs: 200,
+          saveDraft,
+        }),
+      {
+        initialProps: {
+          value: { title: "loaded" },
+        },
+      },
+    );
+
+    rerender({ value: { title: "edited" } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps snapshot and supports retry when save fails", async () => {
     const saveDraft = vi
       .fn()
       .mockRejectedValueOnce(new Error("fail"))
       .mockResolvedValueOnce(undefined);
 
-    const { result } = renderHook(() =>
-      useCmsEntryAutosave({
-        enabled: true,
-        cacheKey: "entry-2",
-        value: { title: "draft" },
-        delayMs: 100,
-        saveDraft,
-      }),
+    const { result, rerender } = renderHook(
+      ({ value }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey: "entry-2",
+          value,
+          delayMs: 100,
+          saveDraft,
+        }),
+      {
+        initialProps: {
+          value: { title: "loaded" },
+        },
+      },
     );
+
+    rerender({ value: { title: "draft" } });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     await act(async () => {
       vi.advanceTimersByTime(100);
@@ -78,7 +147,7 @@ describe("useCmsEntryAutosave", () => {
     });
     expect(result.current.saveState).toBe("error");
     expect(result.current.pendingSnapshot).toEqual({ title: "draft" });
-
+ 
     await act(async () => {
       await result.current.retry();
     });
@@ -157,6 +226,27 @@ describe("useCmsEntryAutosave", () => {
     expect(result.current.restoreSnapshot()).toBeNull();
   });
 
+  it("returns null when the cached snapshot is invalid JSON", async () => {
+    localStorage.setItem("cms-entry-autosave:entry-invalid", "{");
+
+    const { result } = renderHook(() =>
+      useCmsEntryAutosave({
+        enabled: true,
+        cacheKey: "entry-invalid",
+        value: { title: "live" },
+        delayMs: 50,
+        saveDraft: vi.fn().mockResolvedValue(undefined),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.pendingSnapshot).toBeNull();
+    expect(result.current.restoreSnapshot()).toBeNull();
+  });
+
   it("rehydrates snapshot when cacheKey changes", async () => {
     localStorage.setItem("cms-entry-autosave:entry-a", JSON.stringify({ title: "A" }));
     localStorage.setItem("cms-entry-autosave:entry-b", JSON.stringify({ title: "B" }));
@@ -201,6 +291,8 @@ describe("useCmsEntryAutosave", () => {
       { initialProps: { value: { title: "first" } } },
     );
 
+    rerender({ value: { title: "second" } });
+
     await act(async () => {
       vi.advanceTimersByTime(50);
       await Promise.resolve();
@@ -213,11 +305,72 @@ describe("useCmsEntryAutosave", () => {
     });
     expect(saveDraft).toHaveBeenCalledTimes(1);
 
-    rerender({ value: { title: "second" } });
+    rerender({ value: { title: "third" } });
     await act(async () => {
       vi.advanceTimersByTime(50);
       await Promise.resolve();
     });
     expect(saveDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels a scheduled autosave when autosave becomes disabled", async () => {
+    const saveDraft = vi.fn().mockResolvedValue(undefined);
+
+    const { rerender } = renderHook(
+      ({ enabled }) =>
+        useCmsEntryAutosave({
+          enabled,
+          cacheKey: "entry-disabled",
+          value: { title: "draft" },
+          delayMs: 100,
+          saveDraft,
+        }),
+      { initialProps: { enabled: true } },
+    );
+
+    rerender({ enabled: false });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+
+    expect(saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("keeps the same pending snapshot reference when the same snapshot fails again", async () => {
+    const saveDraft = vi.fn().mockRejectedValue(new Error("fail"));
+
+    const { result, rerender } = renderHook(
+      ({ value }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey: "entry-repeat-error",
+          value,
+          delayMs: 100,
+          saveDraft,
+        }),
+      {
+        initialProps: {
+          value: { title: "loaded" },
+        },
+      },
+    );
+
+    rerender({ value: { title: "draft" } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
+    const firstPendingSnapshot = result.current.pendingSnapshot;
+
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    expect(result.current.pendingSnapshot).toBe(firstPendingSnapshot);
+    expect(saveDraft).toHaveBeenCalledTimes(2);
   });
 });

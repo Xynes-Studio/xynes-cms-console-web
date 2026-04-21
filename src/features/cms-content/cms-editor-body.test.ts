@@ -6,6 +6,29 @@ import {
 } from "./cms-editor-body";
 
 describe("normalizeEditorBody", () => {
+  it("creates an empty Lumia document with a placeholder paragraph", () => {
+    expect(createEmptyLumiaDocument()).toEqual({
+      root: {
+        type: "root",
+        version: 1,
+        direction: "ltr",
+        format: "",
+        indent: 0,
+        children: [
+          {
+            type: "paragraph",
+            version: 1,
+            direction: null,
+            format: "",
+            indent: 0,
+            textFormat: "",
+            children: [],
+          },
+        ],
+      },
+    });
+  });
+
   it("returns an empty Lumia document when body is null", () => {
     expect(normalizeEditorBody(null)).toEqual(createEmptyLumiaDocument());
   });
@@ -75,6 +98,21 @@ describe("normalizeEditorBody", () => {
     };
 
     expect(normalizeEditorBody(value)).toEqual(createEmptyLumiaDocument());
+  });
+
+  it("normalizes root nodes with no children to a placeholder paragraph", () => {
+    expect(
+      normalizeEditorBody({
+        root: {
+          type: "root",
+          version: 1,
+          direction: "ltr",
+          format: "",
+          indent: 0,
+          children: [],
+        },
+      }),
+    ).toEqual(createEmptyLumiaDocument());
   });
 
   it("preserves acyclic bodies with repeated shared references", () => {

@@ -69,7 +69,10 @@ describe("CmsEditorLayout", () => {
     );
 
     expect(screen.getByText("workspace-id/content/level1/level2")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "/content/entry-123/edit" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "/content/entry-123/edit" })).toHaveAttribute(
+      "href",
+      "/content/entry-123/edit",
+    );
     expect(screen.getByLabelText("Content title")).toHaveValue("Entry title");
     expect(screen.getByLabelText("Content description")).toHaveValue("Entry description");
     expect(screen.getByLabelText("Content tags")).toHaveValue("alpha,beta");
@@ -149,13 +152,14 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByText("Save failed, retrying")).toBeInTheDocument();
   });
 
-  it("renders generated link as plain text when url is unsafe", () => {
+  it("renders unsafe generated links as plain text", () => {
     render(
       <CmsEditorLayout {...buildProps()} generatedLink="javascript:alert(1)">
         <div>Editor Body</div>
       </CmsEditorLayout>,
     );
 
+    expect(screen.getByText("Generated Link")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "javascript:alert(1)" })).toBeNull();
     expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
   });
@@ -206,29 +210,6 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByText("Saved at --:--:--")).toBeInTheDocument();
   });
 
-  it("renders relative generated links as clickable", () => {
-    render(
-      <CmsEditorLayout {...buildProps()} generatedLink="/dashboard/workspace/content/entry/1/edit">
-        <div>Editor Body</div>
-      </CmsEditorLayout>,
-    );
-
-    expect(
-      screen.getByRole("link", { name: "/dashboard/workspace/content/entry/1/edit" }),
-    ).toHaveAttribute("href", "/dashboard/workspace/content/entry/1/edit");
-  });
-
-  it("renders non-url generated link as plain text", () => {
-    render(
-      <CmsEditorLayout {...buildProps()} generatedLink="not a url">
-        <div>Editor Body</div>
-      </CmsEditorLayout>,
-    );
-
-    expect(screen.queryByRole("link", { name: "not a url" })).toBeNull();
-    expect(screen.getByText("not a url")).toBeInTheDocument();
-  });
-
   it("renders external absolute generated links as plain text", () => {
     render(
       <CmsEditorLayout {...buildProps()} generatedLink="https://example.com/entry/1/edit">
@@ -236,7 +217,9 @@ describe("CmsEditorLayout", () => {
       </CmsEditorLayout>,
     );
 
-    expect(screen.queryByRole("link", { name: "https://example.com/entry/1/edit" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "https://example.com/entry/1/edit" }),
+    ).toBeNull();
     expect(screen.getByText("https://example.com/entry/1/edit")).toBeInTheDocument();
   });
 

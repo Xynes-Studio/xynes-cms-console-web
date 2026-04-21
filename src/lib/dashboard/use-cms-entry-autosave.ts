@@ -112,10 +112,11 @@ export function useCmsEntryAutosave<TValue>({
     latestValueRef.current = value;
   }, [value]);
   useEffect(() => {
+    lastSavedSerializedRef.current = null;
+    lastSnapshotSerializedRef.current = null;
     let isCancelled = false;
     const cached = readSnapshot(storageKey);
     if (!cached) {
-      lastSnapshotSerializedRef.current = null;
       queueMicrotask(() => {
         if (!isCancelled) {
           setPendingSnapshot(null);
@@ -197,14 +198,30 @@ export function useCmsEntryAutosave<TValue>({
       return;
     }
 
+    const serializedValue = serializeSnapshot(value);
+
     if (
       pendingSnapshot === null &&
-      serializeSnapshot(value) !== lastSavedSerializedRef.current
+      lastSavedSerializedRef.current === null
     ) {
-      const serialized = serializeSnapshot(value);
-      if (serialized !== lastSnapshotSerializedRef.current) {
-        lastSnapshotSerializedRef.current = serialized;
-        writeSnapshot(storageKey, serialized);
+      lastSavedSerializedRef.current = serializedValue;
+      return;
+    }
+
+    if (
+      pendingSnapshot === null &&
+      serializedValue === lastSavedSerializedRef.current
+    ) {
+      return;
+    }
+
+    if (
+      pendingSnapshot === null &&
+      serializedValue !== lastSavedSerializedRef.current
+    ) {
+      if (serializedValue !== lastSnapshotSerializedRef.current) {
+        lastSnapshotSerializedRef.current = serializedValue;
+        writeSnapshot(storageKey, serializedValue);
       }
     }
 

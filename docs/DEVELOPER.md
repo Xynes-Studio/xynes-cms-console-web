@@ -272,6 +272,7 @@ Rules:
 - Security:
   - generated link and metadata values are treated as untrusted user data.
   - generated link is clickable only for internal paths (relative or same-origin absolute); external/unsafe URLs render as plain text.
+  - do not remove generated-link metadata from the layout to simplify sanitization; keep the field and enforce same-origin/path-only linking in the component.
 
 ### CMS Entry Data Layer Standards
 
@@ -304,8 +305,10 @@ Rules:
 - Autosave:
   - debounce save calls (default 2s).
   - maintain local snapshot cache for draft recovery.
+  - treat the first loaded draft as the saved baseline; do not autosave untouched server state on mount.
   - guard browser storage access (`window.localStorage`) for SSR/runtime safety.
   - expose explicit retry path on save failure.
+  - clear or suppress pending timers when autosave is disabled or the hook enters an error state.
 - Testing:
   - Tier 1 tests for client normalization/validation and hook state logic.
   - maintain >=80% statements/branches in touched modules.
@@ -400,10 +403,12 @@ Rules:
 - React standards:
   - keep all stateful logic (autosave, publish, unsaved guard) inside `CmsEditorScreen`; keep `CmsEditorLayout` presentational.
   - initialize content state from loaded entry; track local draft separately from saved state.
+  - load Lumia editor styling centrally from `app/globals.css`; do not import editor CSS ad hoc inside route or feature components.
 - Security and resilience:
   - treat `entryId` as untrusted; validate via API response before rendering content.
   - do not expose raw error messages in editor UI.
   - unsaved-change prompt must cover both in-app navigation and browser tab close/refresh.
+  - generated link metadata remains visible in `CmsEditorLayout`, but only internal relative or same-origin absolute URLs may render as anchors.
 - TDD and coverage:
   - Tier 2 tests for: loading state, entry display, autosave trigger, publish action, unsaved guard.
   - Tier 2 tests for route page and layout files (thin RSC — assert correct prop passthrough).
