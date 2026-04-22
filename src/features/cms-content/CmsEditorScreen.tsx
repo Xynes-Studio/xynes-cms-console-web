@@ -238,6 +238,12 @@ export function CmsEditorScreen({
     setPublishError(null);
 
     try {
+      await autosave.flush();
+    } catch {
+      return;
+    }
+
+    try {
       const updated = await publishWorkspaceContentEntry({
         apiBaseUrl: API_BASE_URL,
         workspaceId: currentWorkspace.id,
@@ -258,8 +264,15 @@ export function CmsEditorScreen({
 
   // ── back navigation ───────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
+    if (
+      hasUnsavedChanges &&
+      typeof window !== "undefined" &&
+      !window.confirm("You have unsaved changes. Leave this editor?")
+    ) {
+      return;
+    }
     router.push(buildBackPath(resolvedSlug));
-  }, [router, resolvedSlug]);
+  }, [hasUnsavedChanges, resolvedSlug, router]);
 
   // ── render ────────────────────────────────────────────────────────────────
   if (isLoading || isAuthLoading) {

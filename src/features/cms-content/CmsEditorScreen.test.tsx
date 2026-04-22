@@ -23,6 +23,7 @@ const {
   mockUpdateWorkspaceContentEntry,
   mockPublishWorkspaceContentEntry,
   mockAutosaveRetry,
+  mockAutosaveFlush,
   mockAutosaveClearSnapshot,
   mockCaptureSaveDraftFn,
   mockLumiaEditor,
@@ -33,6 +34,7 @@ const {
   mockUpdateWorkspaceContentEntry: vi.fn(),
   mockPublishWorkspaceContentEntry: vi.fn(),
   mockAutosaveRetry: vi.fn(),
+  mockAutosaveFlush: vi.fn(),
   mockAutosaveClearSnapshot: vi.fn(),
   // Captures the saveDraft fn passed to useCmsEntryAutosave so tests can invoke it directly
   mockCaptureSaveDraftFn: vi.fn(),
@@ -52,6 +54,7 @@ let mockAutosaveState = {
   error: null,
   pendingSnapshot: null,
   retry: mockAutosaveRetry,
+  flush: mockAutosaveFlush,
   restoreSnapshot: vi.fn(() => null),
   clearSnapshot: mockAutosaveClearSnapshot,
 };
@@ -278,6 +281,7 @@ afterEach(() => {
     error: null,
     pendingSnapshot: null,
     retry: mockAutosaveRetry,
+    flush: mockAutosaveFlush,
     restoreSnapshot: vi.fn(() => null),
     clearSnapshot: mockAutosaveClearSnapshot,
   };
@@ -606,6 +610,42 @@ describe("CmsEditorScreen", () => {
 
       expect(mockPush).toHaveBeenCalledWith("/dashboard/real-slug/content");
     });
+
+    it("prompts before navigating away when unsaved changes exist and stays put on cancel", async () => {
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("back-btn")).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId("title-input"), {
+        target: { value: "Changed title" },
+      });
+      fireEvent.click(screen.getByTestId("back-btn"));
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("prompts before navigating away when unsaved changes exist and exits on confirm", async () => {
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("back-btn")).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId("title-input"), {
+        target: { value: "Changed title" },
+      });
+      fireEvent.click(screen.getByTestId("back-btn"));
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(mockPush).toHaveBeenCalledWith("/dashboard/acme-team/content");
+    });
   });
 
   describe("publish", () => {
@@ -682,6 +722,72 @@ describe("CmsEditorScreen", () => {
           "published",
         );
       });
+    });
+
+    it("waits for autosave flush before publishing", async () => {
+      let resolveFlush: (() => void) | null = null;
+      mockAutosaveState = {
+        ...mockAutosaveState,
+        flush: vi.fn(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveFlush = resolve;
+            }),
+        ),
+      };
+      mockPublishWorkspaceContentEntry.mockResolvedValue(
+        makeEntry({
+          status: "published",
+          publishedAt: "2026-01-01T00:00:00.000Z",
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("publish-btn")).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId("title-input"), {
+        target: { value: "Changed title" },
+      });
+      fireEvent.click(screen.getByTestId("publish-btn"));
+
+      expect(mockAutosaveState.flush).toHaveBeenCalledTimes(1);
+      expect(mockPublishWorkspaceContentEntry).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolveFlush?.();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(mockPublishWorkspaceContentEntry).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("does not publish when autosave flush fails", async () => {
+      mockAutosaveState = {
+        ...mockAutosaveState,
+        flush: vi.fn().mockRejectedValue(new Error("save failed")),
+      };
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("publish-btn")).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId("title-input"), {
+        target: { value: "Changed title" },
+      });
+      fireEvent.click(screen.getByTestId("publish-btn"));
+
+      await waitFor(() => {
+        expect(mockAutosaveState.flush).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockPublishWorkspaceContentEntry).not.toHaveBeenCalled();
     });
   });
 
