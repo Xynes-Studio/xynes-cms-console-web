@@ -224,6 +224,24 @@ export function CmsEditorScreen({
     saveDraft: saveDraftFn,
   });
 
+  const updateDraft = useCallback(
+    (updater: (previous: EditorDraftValue) => EditorDraftValue) => {
+      if (isPublishing) {
+        return;
+      }
+      setDraft(updater);
+    },
+    [isPublishing],
+  );
+
+  const retryAutosave = useCallback(() => {
+    void Promise.resolve()
+      .then(() => autosave.retry())
+      .catch(() => {
+        // Autosave failures are reflected via hook state and inline editor UI.
+      });
+  }, [autosave]);
+
   // ── unsaved guard ────────────────────────────────────────────────────────
   const hasUnsavedChanges =
     autosave.saveState === "saving" ||
@@ -331,24 +349,28 @@ export function CmsEditorScreen({
         saveState={autosave.saveState}
         lastSavedAt={autosave.lastSavedAt}
         hasUnsavedChanges={hasUnsavedChanges}
+        isPublishing={isPublishing}
         onBack={handleBack}
         onTitleChange={(value) =>
-          setDraft((prev) => ({ ...prev, title: value }))
+          updateDraft((prev) => ({ ...prev, title: value }))
         }
         onDescriptionChange={(value) =>
-          setDraft((prev) => ({ ...prev, description: value }))
+          updateDraft((prev) => ({ ...prev, description: value }))
         }
-        onTagsChange={(value) => setDraft((prev) => ({ ...prev, tags: value }))}
-        onSaveDraft={() => void autosave.retry()}
+        onTagsChange={(value) =>
+          updateDraft((prev) => ({ ...prev, tags: value }))
+        }
+        onSaveDraft={retryAutosave}
         onPublish={() => {
           void handlePublish();
         }}
-        onRetrySave={() => void autosave.retry()}
+        onRetrySave={retryAutosave}
       >
         <LumiaEditor
           value={draft.body}
+          readOnly={isPublishing}
           onChange={(value) =>
-            setDraft((prev) => ({
+            updateDraft((prev) => ({
               ...prev,
               body: normalizeEditorBody(value),
             }))

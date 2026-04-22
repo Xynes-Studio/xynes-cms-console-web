@@ -16,6 +16,7 @@ export type CmsEditorLayoutProps = {
   saveState: CmsEditorSaveState;
   lastSavedAt?: string | null;
   hasUnsavedChanges?: boolean;
+  isPublishing?: boolean;
   onBack?: () => void;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
@@ -76,6 +77,7 @@ export function CmsEditorLayout({
   saveState,
   lastSavedAt,
   hasUnsavedChanges = false,
+  isPublishing = false,
   onBack,
   onTitleChange,
   onDescriptionChange,
@@ -142,18 +144,21 @@ export function CmsEditorLayout({
         aria-label="Content title"
         placeholder="Title"
         value={title}
+        disabled={isPublishing}
         onChange={(event) => onTitleChange(event.currentTarget.value)}
       />
       <Textarea
         aria-label="Content description"
         placeholder="Description"
         value={description}
+        disabled={isPublishing}
         onChange={(event) => onDescriptionChange(event.currentTarget.value)}
       />
       <Input
         aria-label="Content tags"
         placeholder="Tags (comma separated)"
         value={tags}
+        disabled={isPublishing}
         onChange={(event) => onTagsChange(event.currentTarget.value)}
       />
 
@@ -170,7 +175,13 @@ export function CmsEditorLayout({
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           {onBack ? (
-            <Button variant="ghost" size="sm" onClick={onBack} aria-label="Back to content list">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              aria-label="Back to content list"
+              disabled={isPublishing}
+            >
               <Icon name="chevron-left" size="sm" />
               Back
             </Button>
@@ -181,6 +192,7 @@ export function CmsEditorLayout({
             className="md:hidden"
             onClick={() => setIsMetaDrawerOpen(true)}
             aria-label="Open metadata panel"
+            disabled={isPublishing}
           >
             <Icon name="edit" size="sm" />
             Metadata
@@ -195,16 +207,28 @@ export function CmsEditorLayout({
               onClick={onRetrySave}
               aria-label="Retry save"
               className="text-destructive hover:text-destructive"
+              disabled={isPublishing}
             >
               Retry
             </Button>
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onSaveDraft} aria-label="Save draft">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSaveDraft}
+            aria-label="Save draft"
+            disabled={isPublishing}
+          >
             Save Draft
           </Button>
-          <Button size="sm" onClick={onPublish} aria-label="Publish content">
+          <Button
+            size="sm"
+            onClick={onPublish}
+            aria-label="Publish content"
+            disabled={isPublishing}
+          >
             Publish
           </Button>
         </div>
