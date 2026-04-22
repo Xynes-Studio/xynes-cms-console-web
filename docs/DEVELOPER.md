@@ -264,7 +264,8 @@ Rules:
   - save status messaging supports idle/saving/saved/error states.
   - optional retry action can be surfaced when save state is `error`.
 - Navigation resilience:
-  - optional `hasUnsavedChanges` guard registers a `beforeunload` prompt to prevent accidental tab close refresh loss.
+  - `hasUnsavedChanges` must register a `beforeunload` prompt to prevent accidental tab close or refresh loss.
+  - in-app exit confirmation remains feature-owned in `CmsEditorScreen`; `CmsEditorLayout` stays presentational and must not own route transitions.
 - Accessibility:
   - save status message uses `aria-live="polite"`.
   - all action buttons and metadata inputs must have explicit labels.
@@ -308,6 +309,8 @@ Rules:
   - treat the first loaded draft as the saved baseline; do not autosave untouched server state on mount.
   - guard browser storage access (`window.localStorage`) for SSR/runtime safety.
   - expose explicit retry path on save failure.
+  - expose deterministic `flush()` behavior for feature-owned actions that must persist the latest draft before continuing.
+  - `flush()` must reuse an in-flight save instead of starting a parallel save.
   - clear or suppress pending timers when autosave is disabled or the hook enters an error state.
 - Testing:
   - Tier 1 tests for client normalization/validation and hook state logic.
@@ -394,8 +397,9 @@ Rules:
   - fetch entry by `entryId` on mount.
   - pass entry data to `CmsEditorLayout` (metadata fields + editor canvas).
   - integrate `useCmsEntryAutosave` for debounced save.
-  - expose publish action that calls the publish mutation and updates status.
+  - expose publish action that first calls `autosave.flush()`, then calls the publish mutation, then updates status.
   - guard browser unload when `hasUnsavedChanges` is true.
+  - guard feature-owned in-app exit paths when `hasUnsavedChanges` is true.
 - Next.js standards:
   - route params (`workspaceSlug`, `entryId`) come from async `params` prop — must be `await`-ed in RSC.
   - route/layout files must remain thin; no direct data fetching or mutation logic.
@@ -404,13 +408,15 @@ Rules:
   - keep all stateful logic (autosave, publish, unsaved guard) inside `CmsEditorScreen`; keep `CmsEditorLayout` presentational.
   - initialize content state from loaded entry; track local draft separately from saved state.
   - load Lumia editor styling centrally from `app/globals.css`; do not import editor CSS ad hoc inside route or feature components.
+  - do not introduce a second manual-save path for publish; use `useCmsEntryAutosave` as the single draft persistence abstraction.
 - Security and resilience:
   - treat `entryId` as untrusted; validate via API response before rendering content.
   - do not expose raw error messages in editor UI.
   - unsaved-change prompt must cover both in-app navigation and browser tab close/refresh.
   - generated link metadata remains visible in `CmsEditorLayout`, but only internal relative or same-origin absolute URLs may render as anchors.
+  - publish must not proceed when the required pre-publish save fails.
 - TDD and coverage:
-  - Tier 2 tests for: loading state, entry display, autosave trigger, publish action, unsaved guard.
+  - Tier 2 tests for: loading state, entry display, autosave trigger, save-before-publish behavior, publish action, unsaved guard.
   - Tier 2 tests for route page and layout files (thin RSC — assert correct prop passthrough).
   - maintain >=80% statements/branches for all editor route files.
 

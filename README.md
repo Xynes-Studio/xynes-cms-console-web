@@ -170,6 +170,14 @@ Validated end-to-end card actions:
 5. `CmsEditorScreen` loads entry via `getWorkspaceContentEntryById`
 6. `useCmsEntryAutosave` debounces PATCH saves every 2 s
 
+**Edit → Autosave → Publish**
+1. User edits metadata or body in `CmsEditorScreen`
+2. `useCmsEntryAutosave` debounces the workspace entry PATCH call and caches a recovery snapshot locally
+3. `Publish` calls `autosave.flush()` first to persist the latest draft deterministically
+4. Only after the save succeeds does `CmsEditorScreen` call `publishWorkspaceContentEntry`
+5. If the pre-publish save fails, publish is aborted and the editor remains on the current draft state
+6. If the editor has unsaved changes, the Back action confirms before leaving the route
+
 **Debug logging**
 Set `localStorage["cms.debug"] = "1"` in browser console to enable verbose `[CMS][create]` logs. Clear with `localStorage.removeItem("cms.debug")`.
 

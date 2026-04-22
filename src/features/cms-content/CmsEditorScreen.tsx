@@ -224,6 +224,24 @@ export function CmsEditorScreen({
     saveDraft: saveDraftFn,
   });
 
+  const updateDraft = useCallback(
+    (updater: (previous: EditorDraftValue) => EditorDraftValue) => {
+      if (isPublishing) {
+        return;
+      }
+      setDraft(updater);
+    },
+    [isPublishing],
+  );
+
+  const retryAutosave = useCallback(() => {
+    void Promise.resolve()
+      .then(() => autosave.retry())
+      .catch(() => {
+        // Autosave failures are reflected via hook state and inline editor UI.
+      });
+  }, [autosave]);
+
   // ── unsaved guard ────────────────────────────────────────────────────────
   const hasUnsavedChanges =
     autosave.saveState === "saving" ||
@@ -233,9 +251,15 @@ export function CmsEditorScreen({
 
   // ── publish ───────────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
-    if (!currentWorkspace?.id || !accessToken || isPublishing) return;
+    if (!entry || !currentWorkspace?.id || !accessToken || isPublishing) return;
     setIsPublishing(true);
     setPublishError(null);
+
+    try {
+      await autosave.flush();
+    } catch {
+      return;
+    }
 
     try {
       const updated = await publishWorkspaceContentEntry({
@@ -254,12 +278,19 @@ export function CmsEditorScreen({
     } finally {
       setIsPublishing(false);
     }
-  }, [currentWorkspace?.id, accessToken, entryId, isPublishing, autosave]);
+  }, [entry, currentWorkspace?.id, accessToken, entryId, isPublishing, autosave]);
 
   // ── back navigation ───────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
+    if (
+      hasUnsavedChanges &&
+      typeof window !== "undefined" &&
+      !window.confirm("You have unsaved changes. Leave this editor?")
+    ) {
+      return;
+    }
     router.push(buildBackPath(resolvedSlug));
-  }, [router, resolvedSlug]);
+  }, [hasUnsavedChanges, resolvedSlug, router]);
 
   // ── render ────────────────────────────────────────────────────────────────
   if (isLoading || isAuthLoading) {
@@ -318,24 +349,28 @@ export function CmsEditorScreen({
         saveState={autosave.saveState}
         lastSavedAt={autosave.lastSavedAt}
         hasUnsavedChanges={hasUnsavedChanges}
+        isPublishing={isPublishing}
         onBack={handleBack}
         onTitleChange={(value) =>
-          setDraft((prev) => ({ ...prev, title: value }))
+          updateDraft((prev) => ({ ...prev, title: value }))
         }
         onDescriptionChange={(value) =>
-          setDraft((prev) => ({ ...prev, description: value }))
+          updateDraft((prev) => ({ ...prev, description: value }))
         }
-        onTagsChange={(value) => setDraft((prev) => ({ ...prev, tags: value }))}
-        onSaveDraft={() => void autosave.retry()}
+        onTagsChange={(value) =>
+          updateDraft((prev) => ({ ...prev, tags: value }))
+        }
+        onSaveDraft={retryAutosave}
         onPublish={() => {
           void handlePublish();
         }}
-        onRetrySave={() => void autosave.retry()}
+        onRetrySave={retryAutosave}
       >
         <LumiaEditor
           value={draft.body}
+          readOnly={isPublishing}
           onChange={(value) =>
-            setDraft((prev) => ({
+            updateDraft((prev) => ({
               ...prev,
               body: normalizeEditorBody(value),
             }))

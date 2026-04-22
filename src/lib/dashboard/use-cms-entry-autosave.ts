@@ -18,6 +18,7 @@ export type UseCmsEntryAutosaveResult<TValue> = {
   error: Error | null;
   pendingSnapshot: TValue | null;
   retry: () => Promise<void>;
+  flush: () => Promise<void>;
   restoreSnapshot: () => TValue | null;
   clearSnapshot: () => void;
 };
@@ -107,6 +108,14 @@ export function useCmsEntryAutosave<TValue>({
   const latestValueRef = useRef<TValue>(value);
   const lastSnapshotSerializedRef = useRef<string | null>(null);
   const lastSavedSerializedRef = useRef<string | null>(null);
+  const savePromiseRef = useRef<Promise<void> | null>(null);
+
+  const clearPendingTimer = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     latestValueRef.current = value;
@@ -159,52 +168,97 @@ export function useCmsEntryAutosave<TValue>({
     [storageKey],
   );
 
-  const runSave = useCallback(
-    async (snapshot: TValue) => {
-      setSaveState("saving");
-      setError(null);
+  const setBaselineIfUnset = useCallback((snapshot: TValue) => {
+    if (
+      pendingSnapshot === null &&
+      lastSavedSerializedRef.current === null
+    ) {
+      lastSavedSerializedRef.current = serializeSnapshot(snapshot);
+      return true;
+    }
 
-      try {
-        await saveDraft(snapshot);
-        setSaveState("saved");
-        setLastSavedAt(new Date().toISOString());
-        lastSavedSerializedRef.current = serializeSnapshot(snapshot);
-        clearSnapshot();
-      } catch (saveError) {
-        const normalizedError =
-          saveError instanceof Error ? saveError : new Error("Autosave failed");
-        setSaveState("error");
-        setError(normalizedError);
-        persistSnapshot(snapshot);
+    return false;
+  }, [pendingSnapshot]);
+
+  const runSave = useCallback(
+    (snapshot: TValue) => {
+      if (savePromiseRef.current) {
+        return savePromiseRef.current;
       }
+
+      const saveTask = (async () => {
+        setSaveState("saving");
+        setError(null);
+
+        try {
+          await saveDraft(snapshot);
+          setSaveState("saved");
+          setLastSavedAt(new Date().toISOString());
+          lastSavedSerializedRef.current = serializeSnapshot(snapshot);
+          clearSnapshot();
+        } catch (saveError) {
+          const normalizedError =
+            saveError instanceof Error ? saveError : new Error("Autosave failed");
+          setSaveState("error");
+          setError(normalizedError);
+          persistSnapshot(snapshot);
+          throw normalizedError;
+        } finally {
+          savePromiseRef.current = null;
+        }
+      })();
+
+      savePromiseRef.current = saveTask;
+      return saveTask;
     },
     [clearSnapshot, persistSnapshot, saveDraft],
   );
 
+  const flush = useCallback(async () => {
+    clearPendingTimer();
+
+    if (!enabled) {
+      throw new Error(
+        "Autosave flush is unavailable because the editor entry, workspace, or access token is missing.",
+      );
+    }
+
+    while (true) {
+      const snapshot = latestValueRef.current;
+      const serializedSnapshot = serializeSnapshot(snapshot);
+
+      if (setBaselineIfUnset(snapshot)) {
+        return;
+      }
+
+      if (serializedSnapshot === lastSavedSerializedRef.current) {
+        return;
+      }
+
+      if (savePromiseRef.current) {
+        await savePromiseRef.current;
+        continue;
+      }
+
+      await runSave(snapshot);
+      return;
+    }
+  }, [clearPendingTimer, enabled, runSave, setBaselineIfUnset]);
+
   useEffect(() => {
     if (saveState === "error") {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-      }
+      clearPendingTimer();
       return;
     }
 
     if (!enabled) {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-      }
+      clearPendingTimer();
       return;
     }
 
     const serializedValue = serializeSnapshot(value);
 
-    if (
-      pendingSnapshot === null &&
-      lastSavedSerializedRef.current === null
-    ) {
-      lastSavedSerializedRef.current = serializedValue;
+    if (setBaselineIfUnset(value)) {
       return;
     }
 
@@ -231,16 +285,25 @@ export function useCmsEntryAutosave<TValue>({
 
     saveTimer.current = setTimeout(() => {
       const snapshot = latestValueRef.current;
-      void runSave(snapshot);
+      void runSave(snapshot).catch(() => {
+        // Save failures are already reflected in hook state.
+      });
     }, delayMs);
 
     return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-      }
+      clearPendingTimer();
     };
-  }, [delayMs, enabled, pendingSnapshot, runSave, saveState, storageKey, value]);
+  }, [
+    clearPendingTimer,
+    delayMs,
+    enabled,
+    pendingSnapshot,
+    runSave,
+    saveState,
+    setBaselineIfUnset,
+    storageKey,
+    value,
+  ]);
 
   const retry = useCallback(async () => {
     const snapshot = pendingSnapshot ?? latestValueRef.current;
@@ -262,6 +325,7 @@ export function useCmsEntryAutosave<TValue>({
     error,
     pendingSnapshot,
     retry,
+    flush,
     restoreSnapshot,
     clearSnapshot,
   };

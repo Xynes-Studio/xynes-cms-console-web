@@ -152,6 +152,21 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByText("Save failed, retrying")).toBeInTheDocument();
   });
 
+  it("disables editing controls while publishing is in progress", () => {
+    render(
+      <CmsEditorLayout {...buildProps()} isPublishing>
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    expect(screen.getByRole("button", { name: "Back to content list" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Publish content" })).toBeDisabled();
+    expect(screen.getByLabelText("Content title")).toBeDisabled();
+    expect(screen.getByLabelText("Content description")).toBeDisabled();
+    expect(screen.getByLabelText("Content tags")).toBeDisabled();
+  });
+
   it("renders unsafe generated links as plain text", () => {
     render(
       <CmsEditorLayout {...buildProps()} generatedLink="javascript:alert(1)">

@@ -344,6 +344,22 @@ describe("useCmsEntryAutosave", () => {
     expect(saveDraft).not.toHaveBeenCalled();
   });
 
+  it("rejects flush when autosave is disabled because draft persistence prerequisites are missing", async () => {
+    const { result } = renderHook(() =>
+      useCmsEntryAutosave({
+        enabled: false,
+        cacheKey: "entry-disabled-flush",
+        value: { title: "draft" },
+        delayMs: 100,
+        saveDraft: vi.fn().mockResolvedValue(undefined),
+      }),
+    );
+
+    await expect(result.current.flush()).rejects.toThrow(
+      "Autosave flush is unavailable because the editor entry, workspace, or access token is missing.",
+    );
+  });
+
   it("keeps the same pending snapshot reference when the same snapshot fails again", async () => {
     const saveDraft = vi.fn().mockRejectedValue(new Error("fail"));
 
@@ -372,11 +388,143 @@ describe("useCmsEntryAutosave", () => {
 
     const firstPendingSnapshot = result.current.pendingSnapshot;
 
-    await act(async () => {
-      await result.current.retry();
-    });
+    await expect(result.current.retry()).rejects.toThrow("fail");
 
     expect(result.current.pendingSnapshot).toBe(firstPendingSnapshot);
     expect(saveDraft).toHaveBeenCalledTimes(2);
+  });
+
+  it("flushes the latest draft immediately without waiting for the debounce timer", async () => {
+    const saveDraft = vi.fn().mockResolvedValue(undefined);
+
+    const { result, rerender } = renderHook(
+      ({ value }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey: "entry-flush-now",
+          value,
+          delayMs: 1000,
+          saveDraft,
+        }),
+      {
+        initialProps: {
+          value: { title: "loaded" },
+        },
+      },
+    );
+
+    rerender({ value: { title: "draft" } });
+
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+    expect(saveDraft).toHaveBeenCalledWith({ title: "draft" });
+  });
+
+  it("reuses an in-flight save when flush is called during an active save", async () => {
+    let resolveSave: (() => void) | null = null;
+    const saveDraft = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ value }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey: "entry-flush-inflight",
+          value,
+          delayMs: 100,
+          saveDraft,
+        }),
+      {
+        initialProps: {
+          value: { title: "loaded" },
+        },
+      },
+    );
+
+    rerender({ value: { title: "draft" } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
+    const flushPromise = result.current.flush();
+
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveSave?.();
+      await flushPromise;
+    });
+
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+    expect(result.current.saveState).toBe("saved");
+  });
+
+  it("rejects flush when the immediate save fails", async () => {
+    const saveDraft = vi.fn().mockRejectedValue(new Error("save failed"));
+
+    const { result, rerender } = renderHook(
+      ({ value }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey: "entry-flush-error",
+          value,
+          delayMs: 1000,
+          saveDraft,
+        }),
+      {
+        initialProps: {
+          value: { title: "loaded" },
+        },
+      },
+    );
+
+    rerender({ value: { title: "draft" } });
+
+    await act(async () => {
+      await expect(result.current.flush()).rejects.toThrow("save failed");
+    });
+
+    expect(result.current.saveState).toBe("error");
+  });
+
+  it("resolves flush without saving when the current value already matches the persisted baseline", async () => {
+    const saveDraft = vi.fn().mockResolvedValue(undefined);
+
+    const { result, rerender } = renderHook(
+      ({ value }) =>
+        useCmsEntryAutosave({
+          enabled: true,
+          cacheKey: "entry-flush-clean",
+          value,
+          delayMs: 100,
+          saveDraft,
+        }),
+      {
+        initialProps: {
+          value: { title: "loaded" },
+        },
+      },
+    );
+
+    rerender({ value: { title: "draft" } });
+
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    expect(saveDraft).toHaveBeenCalledTimes(1);
   });
 });
