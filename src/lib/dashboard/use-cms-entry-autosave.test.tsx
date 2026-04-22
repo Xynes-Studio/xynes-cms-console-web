@@ -344,6 +344,22 @@ describe("useCmsEntryAutosave", () => {
     expect(saveDraft).not.toHaveBeenCalled();
   });
 
+  it("rejects flush when autosave is disabled because draft persistence prerequisites are missing", async () => {
+    const { result } = renderHook(() =>
+      useCmsEntryAutosave({
+        enabled: false,
+        cacheKey: "entry-disabled-flush",
+        value: { title: "draft" },
+        delayMs: 100,
+        saveDraft: vi.fn().mockResolvedValue(undefined),
+      }),
+    );
+
+    await expect(result.current.flush()).rejects.toThrow(
+      "Autosave flush is unavailable because the editor entry, workspace, or access token is missing.",
+    );
+  });
+
   it("keeps the same pending snapshot reference when the same snapshot fails again", async () => {
     const saveDraft = vi.fn().mockRejectedValue(new Error("fail"));
 

@@ -168,6 +168,18 @@ export function useCmsEntryAutosave<TValue>({
     [storageKey],
   );
 
+  const setBaselineIfUnset = useCallback((snapshot: TValue) => {
+    if (
+      pendingSnapshot === null &&
+      lastSavedSerializedRef.current === null
+    ) {
+      lastSavedSerializedRef.current = serializeSnapshot(snapshot);
+      return true;
+    }
+
+    return false;
+  }, [pendingSnapshot]);
+
   const runSave = useCallback(
     (snapshot: TValue) => {
       if (savePromiseRef.current) {
@@ -206,18 +218,16 @@ export function useCmsEntryAutosave<TValue>({
     clearPendingTimer();
 
     if (!enabled) {
-      return;
+      throw new Error(
+        "Autosave flush is unavailable because the editor entry, workspace, or access token is missing.",
+      );
     }
 
     while (true) {
       const snapshot = latestValueRef.current;
       const serializedSnapshot = serializeSnapshot(snapshot);
 
-      if (
-        pendingSnapshot === null &&
-        lastSavedSerializedRef.current === null
-      ) {
-        lastSavedSerializedRef.current = serializedSnapshot;
+      if (setBaselineIfUnset(snapshot)) {
         return;
       }
 
@@ -233,7 +243,7 @@ export function useCmsEntryAutosave<TValue>({
       await runSave(snapshot);
       return;
     }
-  }, [clearPendingTimer, enabled, pendingSnapshot, runSave]);
+  }, [clearPendingTimer, enabled, runSave, setBaselineIfUnset]);
 
   useEffect(() => {
     if (saveState === "error") {
@@ -248,11 +258,7 @@ export function useCmsEntryAutosave<TValue>({
 
     const serializedValue = serializeSnapshot(value);
 
-    if (
-      pendingSnapshot === null &&
-      lastSavedSerializedRef.current === null
-    ) {
-      lastSavedSerializedRef.current = serializedValue;
+    if (setBaselineIfUnset(value)) {
       return;
     }
 
@@ -294,6 +300,7 @@ export function useCmsEntryAutosave<TValue>({
     pendingSnapshot,
     runSave,
     saveState,
+    setBaselineIfUnset,
     storageKey,
     value,
   ]);

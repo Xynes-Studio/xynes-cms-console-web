@@ -251,7 +251,7 @@ export function CmsEditorScreen({
 
   // ── publish ───────────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
-    if (!currentWorkspace?.id || !accessToken || isPublishing) return;
+    if (!entry || !currentWorkspace?.id || !accessToken || isPublishing) return;
     setIsPublishing(true);
     setPublishError(null);
 
@@ -278,7 +278,7 @@ export function CmsEditorScreen({
     } finally {
       setIsPublishing(false);
     }
-  }, [currentWorkspace?.id, accessToken, entryId, isPublishing, autosave]);
+  }, [entry, currentWorkspace?.id, accessToken, entryId, isPublishing, autosave]);
 
   // ── back navigation ───────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
