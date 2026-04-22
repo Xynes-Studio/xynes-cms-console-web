@@ -21,3 +21,9 @@
   - `pnpm test -- src/lib/dashboard/use-cms-entry-autosave.test.tsx src/features/cms-content/CmsEditorScreen.test.tsx`
   - `pnpm test:coverage -- src/lib/dashboard/use-cms-entry-autosave.test.tsx src/features/cms-content/CmsEditorScreen.test.tsx src/components/dashboard/CmsEditorLayout.test.tsx`
   - `pnpm lint`
+- Revalidated the finished story by:
+  - reviewing the branch diff against `origin/main`
+  - auditing `README.md` and `docs/DEVELOPER.md` for standards drift
+  - updating docs to describe deterministic save-before-publish flow and
+    feature-owned in-app exit confirmation
+  - rerunning targeted editor tests and ESLint on the current branch state

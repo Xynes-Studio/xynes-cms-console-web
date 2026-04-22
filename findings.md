@@ -33,3 +33,12 @@
     `93.47%` branches
 - No feature flag was required for this story. The change stayed within the
   existing editor route and hook boundaries.
+- Revalidation result:
+  - no missing `CMS-UI-008` behavior was found in the editor save/publish/guard flow
+  - route/layout ownership remains thin and consistent with the repo’s
+    Next.js App Router standards
+  - stateful editor behavior remains segregated to `CmsEditorScreen` and
+    `useCmsEntryAutosave`; `CmsEditorLayout` remains presentational
+  - no redundant second save path was introduced for publish
+  - developer docs needed one follow-up update so the documented standards
+    matched the implemented `flush()` and in-app navigation guard behavior
