@@ -402,6 +402,9 @@ Rules:
 - Route ownership:
   - `app/dashboard/[workspaceSlug]/content/entry/[entryId]/edit/page.tsx`: thin Next.js RSC — awaits async params, passes `workspaceSlug` + `entryId` to `CmsEditorScreen`.
   - `app/dashboard/[workspaceSlug]/content/entry/[entryId]/edit/layout.tsx`: full-screen overlay layout (`fixed inset-0 z-50`) to escape the dashboard shell chrome.
+- Overlay layering contract:
+  - Lumia DS dialogs opened from the full-screen editor must render their scrim and content above the editor layout shell.
+  - Keep modal stacking in `@lumia-ui/components` (`Dialog` / `ConfirmDialog`) rather than adding app-local z-index overrides in CMS routes or layouts.
 - Feature container:
   - `src/features/cms-content/CmsEditorScreen.tsx`: client component that loads entry by id, orchestrates autosave, publish, and unsaved-change guard.
 - Responsibilities of CmsEditorScreen:

@@ -43,8 +43,8 @@ Environment is loaded via `xynes-front-end/infra/scripts/with-env.mjs`. Required
 pnpm dev          # development server
 pnpm build        # production build
 pnpm lint         # ESLint check
-pnpm test         # run Vitest in watch mode
-pnpm test:run     # run Vitest once
+pnpm test         # run Vitest once
+pnpm test:watch   # run Vitest in watch mode
 pnpm test:coverage # run with coverage report (target: ≥80% statements + branches)
 ```
 
