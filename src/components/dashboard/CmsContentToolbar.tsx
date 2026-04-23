@@ -140,6 +140,7 @@ export function CmsContentToolbar({
         <div
           ref={secondaryRowRef}
           data-testid="cms-content-toolbar-secondary-row"
+          inert={secondaryRowHidden}
           className={cx(
             "flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-all duration-200 ease-out",
             secondaryRowHidden && "pointer-events-none -translate-y-2 opacity-0",

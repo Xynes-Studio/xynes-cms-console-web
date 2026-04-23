@@ -91,6 +91,17 @@ describe("CMS middleware auth protection", () => {
     expect(response.status).toBe(200);
   });
 
+  it("does not treat sibling e2e-like paths as public fixtures", () => {
+    setMiddlewareEnv({ NEXT_PUBLIC_ENABLE_E2E_FIXTURES: "1" });
+    const request = new NextRequest("http://localhost:3000/e2e-foo");
+    const response = middleware(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fe2e-foo"
+    );
+  });
+
   it("protects dashboard routes behind auth redirect", () => {
     setMiddlewareEnv();
     const request = new NextRequest("http://localhost:3000/dashboard");

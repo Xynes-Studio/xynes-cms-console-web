@@ -228,5 +228,8 @@ describe("CmsContentToolbar", () => {
     expect(
       screen.getByTestId("cms-content-toolbar-secondary-row"),
     ).toHaveAttribute("aria-hidden", "true");
+    expect(
+      screen.getByTestId("cms-content-toolbar-secondary-row"),
+    ).toHaveAttribute("inert");
   });
 });

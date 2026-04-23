@@ -23,7 +23,8 @@ function isPublicPath(pathname: string): boolean {
   }
 
   if (
-    pathname.startsWith(E2E_FIXTURE_PREFIX) &&
+    (pathname === E2E_FIXTURE_PREFIX ||
+      pathname.startsWith(`${E2E_FIXTURE_PREFIX}/`)) &&
     process.env.NEXT_PUBLIC_ENABLE_E2E_FIXTURES === "1"
   ) {
     return true;

@@ -27,7 +27,18 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "CMS_CONSOLE_PORT=3200 NEXT_PUBLIC_SUPABASE_URL=https://fixtures.supabase.local NEXT_PUBLIC_SUPABASE_ANON_KEY=fixture-anon-key NEXT_PUBLIC_API_URL=http://127.0.0.1:3200/api/unused NEXT_PUBLIC_AUTH_APP_URL=http://127.0.0.1:3100 NEXT_PUBLIC_APP_URL=http://127.0.0.1:3200 NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS=127.0.0.1:3200,localhost:3200 NEXT_PUBLIC_ENABLE_E2E_FIXTURES=1 node ../infra/scripts/with-env.mjs next dev --hostname 127.0.0.1 --port 3200",
+      "node ../infra/scripts/with-env.mjs next dev --hostname 127.0.0.1 --port 3200",
+    env: {
+      ...process.env,
+      CMS_CONSOLE_PORT: String(e2ePort),
+      NEXT_PUBLIC_SUPABASE_URL: "https://fixtures.supabase.local",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "fixture-anon-key",
+      NEXT_PUBLIC_API_URL: `${e2eBaseUrl}/api/unused`,
+      NEXT_PUBLIC_AUTH_APP_URL: "http://127.0.0.1:3100",
+      NEXT_PUBLIC_APP_URL: e2eBaseUrl,
+      NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS: "127.0.0.1:3200,localhost:3200",
+      NEXT_PUBLIC_ENABLE_E2E_FIXTURES: "1",
+    },
     url: e2eBaseUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
