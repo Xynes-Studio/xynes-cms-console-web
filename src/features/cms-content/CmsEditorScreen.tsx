@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
-import { Alert } from "@lumia-ui/components";
+import { Alert, ConfirmDialog } from "@lumia-ui/components";
 import { LumiaEditor } from "@lumia-ui/editor";
 import { CmsEditorLayout } from "../../components/dashboard/CmsEditorLayout";
 import {
@@ -139,6 +139,8 @@ export function CmsEditorScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [editorSeedRevision, setEditorSeedRevision] = useState(0);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   // ── draft form state ─────────────────────────────────────────────────────
   const [draft, setDraft] = useState<EditorDraftValue>({
@@ -173,6 +175,7 @@ export function CmsEditorScreen({
         setEntry(loadedEntry);
         setDraft(initialDraft);
         lastSavedDraftRef.current = initialDraft;
+        setEditorSeedRevision((revision) => revision + 1);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -282,15 +285,16 @@ export function CmsEditorScreen({
 
   // ── back navigation ───────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
-    if (
-      hasUnsavedChanges &&
-      typeof window !== "undefined" &&
-      !window.confirm("You have unsaved changes. Leave this editor?")
-    ) {
+    if (hasUnsavedChanges) {
+      setShowLeaveConfirm(true);
       return;
     }
     router.push(buildBackPath(resolvedSlug));
   }, [hasUnsavedChanges, resolvedSlug, router]);
+
+  const handleConfirmLeave = useCallback(() => {
+    router.push(buildBackPath(resolvedSlug));
+  }, [resolvedSlug, router]);
 
   // ── render ────────────────────────────────────────────────────────────────
   if (isLoading || isAuthLoading) {
@@ -323,10 +327,6 @@ export function CmsEditorScreen({
   }
 
   const pathLabel = `/${resolvedSlug}/content/${entry.id}`;
-  const generatedLink = entry.publishedAt
-    ? `/dashboard/${resolvedSlug}/content/${entry.id}`
-    : `/dashboard/${resolvedSlug}/content/entry/${entry.id}/edit`;
-
   return (
     <>
       {publishError ? (
@@ -339,9 +339,17 @@ export function CmsEditorScreen({
           />
         </div>
       ) : null}
+      <ConfirmDialog
+        open={showLeaveConfirm}
+        onOpenChange={setShowLeaveConfirm}
+        title="Leave editor?"
+        description="You have unsaved changes. Leave this editor?"
+        confirmLabel="Leave editor"
+        cancelLabel="Stay here"
+        onConfirm={handleConfirmLeave}
+      />
       <CmsEditorLayout
         pathLabel={pathLabel}
-        generatedLink={generatedLink}
         title={draft.title}
         description={draft.description}
         tags={draft.tags}
@@ -367,6 +375,7 @@ export function CmsEditorScreen({
         onRetrySave={retryAutosave}
       >
         <LumiaEditor
+          key={`${entryId}:${editorSeedRevision}`}
           value={draft.body}
           readOnly={isPublishing}
           onChange={(value) =>

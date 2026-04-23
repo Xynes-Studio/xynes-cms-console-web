@@ -190,12 +190,73 @@ const cloneJsonValue = (value: unknown): unknown => {
   return value;
 };
 
+const sanitizeJsonValue = (
+  value: unknown,
+  ancestors: Set<object>,
+): unknown => {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (
+    value === undefined ||
+    typeof value === "bigint" ||
+    typeof value === "function" ||
+    typeof value === "symbol"
+  ) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    if (ancestors.has(value)) {
+      return undefined;
+    }
+
+    ancestors.add(value);
+    const sanitized = value
+      .map((item) => sanitizeJsonValue(item, ancestors))
+      .filter((item) => item !== undefined);
+    ancestors.delete(value);
+    return sanitized;
+  }
+
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  if (ancestors.has(value)) {
+    return undefined;
+  }
+
+  ancestors.add(value);
+  const sanitized = Object.keys(value).reduce<Record<string, unknown>>(
+    (acc, key) => {
+      const nextValue = sanitizeJsonValue(value[key], ancestors);
+      if (nextValue !== undefined) {
+        acc[key] = nextValue;
+      }
+      return acc;
+    },
+    Object.create(null) as Record<string, unknown>,
+  );
+  ancestors.delete(value);
+  return sanitized;
+};
+
 export const createEmptyLumiaDocument = (): LumiaEditorDocument => ({
   root: cloneJsonValue(EMPTY_DOCUMENT.root) as LumiaEditorRootNode,
 });
 
 export const normalizeEditorBody = (value: unknown): LumiaEditorDocument => {
-  const candidate = normalizeBodyCandidate(value);
+  const candidate = sanitizeJsonValue(normalizeBodyCandidate(value), new Set());
   if (!isValidLumiaDocument(candidate)) {
     return createEmptyLumiaDocument();
   }

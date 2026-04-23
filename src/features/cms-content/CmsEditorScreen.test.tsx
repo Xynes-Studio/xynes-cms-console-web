@@ -1,4 +1,4 @@
-import type React from "react";
+import React from "react";
 import {
   act,
   cleanup,
@@ -41,6 +41,8 @@ const {
   mockLumiaEditor: vi.fn(),
 }));
 
+type MockLumiaEditorMode = "passthrough" | "sticky-on-mount";
+
 let mockIsAuthLoading = false;
 let mockIsAuthenticated = true;
 let mockCurrentWorkspace = {
@@ -48,6 +50,7 @@ let mockCurrentWorkspace = {
   slug: "acme-team",
   name: "Acme Team",
 };
+let mockLumiaEditorMode: MockLumiaEditorMode = "passthrough";
 let mockAutosaveState = {
   saveState: "idle" as const,
   lastSavedAt: null as string | null,
@@ -98,7 +101,6 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     saveState,
     isPublishing,
     pathLabel,
-    generatedLink,
     onBack,
     onPublish,
     onSaveDraft,
@@ -115,7 +117,6 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     saveState: string;
     isPublishing?: boolean;
     pathLabel?: string;
-    generatedLink?: string;
     onBack?: () => void;
     onPublish?: () => void;
     onSaveDraft?: () => void;
@@ -130,7 +131,6 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
       data-save-state={saveState}
       data-is-publishing={isPublishing ? "true" : "false"}
       data-path-label={pathLabel}
-      data-generated-link={generatedLink}
     >
       <span data-testid="editor-title">{title}</span>
       <span data-testid="editor-description">{description}</span>
@@ -204,6 +204,45 @@ vi.mock("@lumia-ui/components", () => ({
       <span>{description}</span>
     </div>
   ),
+  ConfirmDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel = "Confirm",
+    cancelLabel = "Cancel",
+    onConfirm,
+    onOpenChange,
+  }: {
+    open?: boolean;
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void | Promise<void>;
+    onOpenChange?: (open: boolean) => void;
+  }) =>
+    open ? (
+      <div data-testid="leave-editor-confirm-dialog">
+        <span>{title}</span>
+        <span>{description}</span>
+        <button
+          data-testid="leave-editor-cancel"
+          type="button"
+          onClick={() => onOpenChange?.(false)}
+        >
+          {cancelLabel}
+        </button>
+        <button
+          data-testid="leave-editor-confirm"
+          type="button"
+          onClick={() => {
+            void Promise.resolve(onConfirm());
+          }}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
 }));
 
 vi.mock("@lumia-ui/editor", () => ({
@@ -215,10 +254,18 @@ vi.mock("@lumia-ui/editor", () => ({
     media?: unknown;
   }) => {
     mockLumiaEditor(props);
+    const [renderedValue, setRenderedValue] = React.useState(props.value);
+
+    React.useEffect(() => {
+      if (mockLumiaEditorMode === "passthrough") {
+        setRenderedValue(props.value);
+      }
+    }, [props.value]);
+
     return (
       <div data-testid="lumia-editor-mock">
         <div data-testid="lumia-editor-value">
-          {JSON.stringify(props.value)}
+          {JSON.stringify(renderedValue)}
         </div>
       </div>
     );
@@ -288,6 +335,7 @@ afterEach(() => {
   vi.clearAllMocks();
   mockIsAuthLoading = false;
   mockIsAuthenticated = true;
+  mockLumiaEditorMode = "passthrough";
   mockCurrentWorkspace = { id: "ws-1", slug: "acme-team", name: "Acme Team" };
   mockAutosaveState = {
     saveState: "idle",
@@ -462,6 +510,21 @@ describe("CmsEditorScreen", () => {
       );
     });
 
+    it("remounts the editor after async entry hydration so loaded body is applied", async () => {
+      mockLumiaEditorMode = "sticky-on-mount";
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({ body: makeEditorBody() }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("lumia-editor-value")).toHaveTextContent(
+          JSON.stringify(makeEditorBody()),
+        );
+      });
+    });
+
     it("propagates editor body changes into the autosave payload", async () => {
       mockGetWorkspaceContentEntryById.mockResolvedValue(
         makeEntry({ body: makeEditorBody() }),
@@ -625,9 +688,7 @@ describe("CmsEditorScreen", () => {
       expect(mockPush).toHaveBeenCalledWith("/dashboard/real-slug/content");
     });
 
-    it("prompts before navigating away when unsaved changes exist and stays put on cancel", async () => {
-      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-
+    it("shows a Lumia confirm dialog and stays put on cancel when unsaved changes exist", async () => {
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
 
       await waitFor(() => {
@@ -639,13 +700,17 @@ describe("CmsEditorScreen", () => {
       });
       fireEvent.click(screen.getByTestId("back-btn"));
 
-      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByTestId("leave-editor-confirm-dialog"),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("leave-editor-cancel"));
+      expect(
+        screen.queryByTestId("leave-editor-confirm-dialog"),
+      ).not.toBeInTheDocument();
       expect(mockPush).not.toHaveBeenCalled();
     });
 
-    it("prompts before navigating away when unsaved changes exist and exits on confirm", async () => {
-      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-
+    it("shows a Lumia confirm dialog and exits on confirm when unsaved changes exist", async () => {
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
 
       await waitFor(() => {
@@ -657,7 +722,10 @@ describe("CmsEditorScreen", () => {
       });
       fireEvent.click(screen.getByTestId("back-btn"));
 
-      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByTestId("leave-editor-confirm-dialog"),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("leave-editor-confirm"));
       expect(mockPush).toHaveBeenCalledWith("/dashboard/acme-team/content");
     });
   });
@@ -1216,51 +1284,6 @@ describe("CmsEditorScreen", () => {
       });
 
       expect(screen.getByText("Entry not found.")).toBeInTheDocument();
-    });
-  });
-
-  // ─── generated link ───────────────────────────────────────────────────────
-
-  describe("generated link", () => {
-    beforeEach(() => {
-      mockGetAccessToken.mockResolvedValue("token");
-    });
-
-    it("provides edit-route link for draft entries (no publishedAt)", async () => {
-      mockGetWorkspaceContentEntryById.mockResolvedValue(
-        makeEntry({ publishedAt: null }),
-      );
-
-      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("cms-editor-layout")).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
-        "data-generated-link",
-        "/dashboard/acme-team/content/entry/entry-1/edit",
-      );
-    });
-
-    it("provides published content link for entries with publishedAt", async () => {
-      mockGetWorkspaceContentEntryById.mockResolvedValue(
-        makeEntry({
-          publishedAt: "2026-01-01T00:00:00.000Z",
-          status: "published",
-        }),
-      );
-
-      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("cms-editor-layout")).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
-        "data-generated-link",
-        "/dashboard/acme-team/content/entry-1",
-      );
     });
   });
 

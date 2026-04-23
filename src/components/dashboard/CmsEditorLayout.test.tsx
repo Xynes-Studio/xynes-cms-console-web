@@ -45,7 +45,6 @@ afterEach(() => {
 
 const buildProps = () => ({
   pathLabel: "workspace-id/content/level1/level2",
-  generatedLink: "/content/entry-123/edit",
   title: "Entry title",
   description: "Entry description",
   tags: "alpha,beta",
@@ -69,10 +68,7 @@ describe("CmsEditorLayout", () => {
     );
 
     expect(screen.getByText("workspace-id/content/level1/level2")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "/content/entry-123/edit" })).toHaveAttribute(
-      "href",
-      "/content/entry-123/edit",
-    );
+    expect(screen.queryByText("Generated Link")).toBeNull();
     expect(screen.getByLabelText("Content title")).toHaveValue("Entry title");
     expect(screen.getByLabelText("Content description")).toHaveValue("Entry description");
     expect(screen.getByLabelText("Content tags")).toHaveValue("alpha,beta");
@@ -167,29 +163,6 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByLabelText("Content tags")).toBeDisabled();
   });
 
-  it("renders unsafe generated links as plain text", () => {
-    render(
-      <CmsEditorLayout {...buildProps()} generatedLink="javascript:alert(1)">
-        <div>Editor Body</div>
-      </CmsEditorLayout>,
-    );
-
-    expect(screen.getByText("Generated Link")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "javascript:alert(1)" })).toBeNull();
-    expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
-  });
-
-  it("renders protocol-relative generated links as plain text", () => {
-    render(
-      <CmsEditorLayout {...buildProps()} generatedLink="//evil.example/path">
-        <div>Editor Body</div>
-      </CmsEditorLayout>,
-    );
-
-    expect(screen.queryByRole("link", { name: "//evil.example/path" })).toBeNull();
-    expect(screen.getByText("//evil.example/path")).toBeInTheDocument();
-  });
-
   it("registers beforeunload guard when there are unsaved changes", () => {
     render(
       <CmsEditorLayout {...buildProps()} hasUnsavedChanges>
@@ -234,33 +207,6 @@ describe("CmsEditorLayout", () => {
     );
 
     expect(screen.getByText("Saved at --:--:--")).toBeInTheDocument();
-  });
-
-  it("renders external absolute generated links as plain text", () => {
-    render(
-      <CmsEditorLayout {...buildProps()} generatedLink="https://example.com/entry/1/edit">
-        <div>Editor Body</div>
-      </CmsEditorLayout>,
-    );
-
-    expect(
-      screen.queryByRole("link", { name: "https://example.com/entry/1/edit" }),
-    ).toBeNull();
-    expect(screen.getByText("https://example.com/entry/1/edit")).toBeInTheDocument();
-  });
-
-  it("renders same-origin absolute generated links as clickable", () => {
-    const sameOriginLink = `${window.location.origin}/content/entry/42/edit`;
-    render(
-      <CmsEditorLayout {...buildProps()} generatedLink={sameOriginLink}>
-        <div>Editor Body</div>
-      </CmsEditorLayout>,
-    );
-
-    expect(screen.getByRole("link", { name: sameOriginLink })).toHaveAttribute(
-      "href",
-      sameOriginLink,
-    );
   });
 
   it("renders published badge when status is published", () => {

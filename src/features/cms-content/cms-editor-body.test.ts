@@ -172,6 +172,167 @@ describe("normalizeEditorBody", () => {
     const value = createEmptyLumiaDocument();
     expect(normalizeEditorBody(value)).toEqual(value);
   });
+
+  it("preserves rich Lexical documents by pruning undefined-only fields", () => {
+    const tableLikeDocument = {
+      root: {
+        type: "root",
+        version: 1,
+        direction: "ltr",
+        format: "",
+        indent: 0,
+        children: [
+          {
+            type: "heading",
+            version: 1,
+            tag: "h2",
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            children: [
+              {
+                type: "text",
+                version: 1,
+                text: "Complex body",
+                detail: 0,
+                format: 0,
+                mode: "normal",
+                style: "",
+              },
+            ],
+          },
+          {
+            type: "table",
+            version: 1,
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            children: [
+              {
+                type: "tablerow",
+                version: 1,
+                direction: "ltr",
+                format: "",
+                indent: 0,
+                children: [
+                  {
+                    type: "tablecell",
+                    version: 1,
+                    direction: "ltr",
+                    format: "",
+                    indent: 0,
+                    colSpan: 1,
+                    rowSpan: 1,
+                    headerState: 1,
+                    width: undefined,
+                    children: [
+                      {
+                        type: "paragraph",
+                        version: 1,
+                        direction: "ltr",
+                        format: "",
+                        indent: 0,
+                        children: [
+                          {
+                            type: "text",
+                            version: 1,
+                            text: "Header 1",
+                            detail: 0,
+                            format: 0,
+                            mode: "normal",
+                            style: "",
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(normalizeEditorBody(tableLikeDocument)).toEqual({
+      root: {
+        type: "root",
+        version: 1,
+        direction: "ltr",
+        format: "",
+        indent: 0,
+        children: [
+          {
+            type: "heading",
+            version: 1,
+            tag: "h2",
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            children: [
+              {
+                type: "text",
+                version: 1,
+                text: "Complex body",
+                detail: 0,
+                format: 0,
+                mode: "normal",
+                style: "",
+              },
+            ],
+          },
+          {
+            type: "table",
+            version: 1,
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            children: [
+              {
+                type: "tablerow",
+                version: 1,
+                direction: "ltr",
+                format: "",
+                indent: 0,
+                children: [
+                  {
+                    type: "tablecell",
+                    version: 1,
+                    direction: "ltr",
+                    format: "",
+                    indent: 0,
+                    colSpan: 1,
+                    rowSpan: 1,
+                    headerState: 1,
+                    children: [
+                      {
+                        type: "paragraph",
+                        version: 1,
+                        direction: "ltr",
+                        format: "",
+                        indent: 0,
+                        children: [
+                          {
+                            type: "text",
+                            version: 1,
+                            text: "Header 1",
+                            detail: 0,
+                            format: 0,
+                            mode: "normal",
+                            style: "",
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
 });
 
 describe("hasEditorDraftChanged", () => {
