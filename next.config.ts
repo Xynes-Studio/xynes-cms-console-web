@@ -1,8 +1,15 @@
+import path from "node:path";
 import type { NextConfig } from "next";
+
+const turbopackRoot =
+  process.env.TURBOPACK_ROOT ?? path.join(__dirname, "..");
 
 const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
+  },
+  turbopack: {
+    root: turbopackRoot,
   },
   transpilePackages: [
     "@xynes/auth-sdk",

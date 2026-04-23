@@ -9,7 +9,8 @@
     "lint": "node ../infra/scripts/with-env.mjs eslint .",
     "test": "node ../infra/scripts/with-env.mjs vitest run",
     "test:watch": "node ../infra/scripts/with-env.mjs vitest",
-    "test:coverage": "node ../infra/scripts/with-env.mjs vitest run --coverage"
+    "test:coverage": "node ../infra/scripts/with-env.mjs vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@lumia-ui/components": "link:../lumia-ds/packages/components",
@@ -38,6 +39,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",

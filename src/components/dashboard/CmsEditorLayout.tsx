@@ -8,7 +8,6 @@ export type CmsEditorSaveState = "idle" | "saving" | "saved" | "error";
 
 export type CmsEditorLayoutProps = {
   pathLabel: string;
-  generatedLink: string;
   title: string;
   description: string;
   tags: string;
@@ -39,37 +38,8 @@ const formatSavedAt = (value?: string | null) => {
   }).format(parsed);
 };
 
-const getSafeHref = (value: string) => {
-  if (value.startsWith("/") && !value.startsWith("//")) {
-    return value;
-  }
-
-  if (!/^https?:\/\//i.test(value)) {
-    return null;
-  }
-
-  try {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    const parsed = new URL(value, window.location.origin);
-    if (
-      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
-      parsed.origin === window.location.origin
-    ) {
-      return value;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-};
-
 export function CmsEditorLayout({
   pathLabel,
-  generatedLink,
   title,
   description,
   tags,
@@ -89,7 +59,6 @@ export function CmsEditorLayout({
 }: CmsEditorLayoutProps) {
   const [isMetaDrawerOpen, setIsMetaDrawerOpen] = useState(false);
   const savedAt = useMemo(() => formatSavedAt(lastSavedAt), [lastSavedAt]);
-  const safeGeneratedHref = useMemo(() => getSafeHref(generatedLink), [generatedLink]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -119,25 +88,6 @@ export function CmsEditorLayout({
         <p className="truncate text-sm text-foreground" title={pathLabel}>
           {pathLabel}
         </p>
-      </div>
-
-      <div className="space-y-1">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Generated Link
-        </p>
-        {safeGeneratedHref ? (
-          <a
-            href={safeGeneratedHref}
-            className="truncate text-sm text-primary underline underline-offset-2"
-            title={generatedLink}
-          >
-            {generatedLink}
-          </a>
-        ) : (
-          <p className="truncate text-sm text-foreground" title={generatedLink}>
-            {generatedLink}
-          </p>
-        )}
       </div>
 
       <Input

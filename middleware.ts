@@ -7,6 +7,7 @@ import { getCmsServerAuthRuntimeConfig } from "./src/lib/auth/server-config";
 
 const PUBLIC_PATHS = new Set<string>(["/", "/logout"]);
 const PUBLIC_PREFIXES = ["/_next", "/favicon.ico", "/api"];
+const E2E_FIXTURE_PREFIX = "/e2e";
 const AUTH_COOKIE_KEY_PATTERNS = [
   /^sb-.+-auth-token$/,
   /^sb-.+-auth-token\.\d+$/,
@@ -18,6 +19,13 @@ type ParsedCookie = { name: string; value: string };
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) {
+    return true;
+  }
+
+  if (
+    pathname.startsWith(E2E_FIXTURE_PREFIX) &&
+    process.env.NEXT_PUBLIC_ENABLE_E2E_FIXTURES === "1"
+  ) {
     return true;
   }
 

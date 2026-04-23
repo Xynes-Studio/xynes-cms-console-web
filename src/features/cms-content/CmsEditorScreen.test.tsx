@@ -98,7 +98,6 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     saveState,
     isPublishing,
     pathLabel,
-    generatedLink,
     onBack,
     onPublish,
     onSaveDraft,
@@ -115,7 +114,6 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     saveState: string;
     isPublishing?: boolean;
     pathLabel?: string;
-    generatedLink?: string;
     onBack?: () => void;
     onPublish?: () => void;
     onSaveDraft?: () => void;
@@ -130,7 +128,6 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
       data-save-state={saveState}
       data-is-publishing={isPublishing ? "true" : "false"}
       data-path-label={pathLabel}
-      data-generated-link={generatedLink}
     >
       <span data-testid="editor-title">{title}</span>
       <span data-testid="editor-description">{description}</span>
@@ -1216,51 +1213,6 @@ describe("CmsEditorScreen", () => {
       });
 
       expect(screen.getByText("Entry not found.")).toBeInTheDocument();
-    });
-  });
-
-  // ─── generated link ───────────────────────────────────────────────────────
-
-  describe("generated link", () => {
-    beforeEach(() => {
-      mockGetAccessToken.mockResolvedValue("token");
-    });
-
-    it("provides edit-route link for draft entries (no publishedAt)", async () => {
-      mockGetWorkspaceContentEntryById.mockResolvedValue(
-        makeEntry({ publishedAt: null }),
-      );
-
-      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("cms-editor-layout")).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
-        "data-generated-link",
-        "/dashboard/acme-team/content/entry/entry-1/edit",
-      );
-    });
-
-    it("provides published content link for entries with publishedAt", async () => {
-      mockGetWorkspaceContentEntryById.mockResolvedValue(
-        makeEntry({
-          publishedAt: "2026-01-01T00:00:00.000Z",
-          status: "published",
-        }),
-      );
-
-      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("cms-editor-layout")).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
-        "data-generated-link",
-        "/dashboard/acme-team/content/entry-1",
-      );
     });
   });
 

@@ -323,10 +323,6 @@ export function CmsEditorScreen({
   }
 
   const pathLabel = `/${resolvedSlug}/content/${entry.id}`;
-  const generatedLink = entry.publishedAt
-    ? `/dashboard/${resolvedSlug}/content/${entry.id}`
-    : `/dashboard/${resolvedSlug}/content/entry/${entry.id}/edit`;
-
   return (
     <>
       {publishError ? (
@@ -341,7 +337,6 @@ export function CmsEditorScreen({
       ) : null}
       <CmsEditorLayout
         pathLabel={pathLabel}
-        generatedLink={generatedLink}
         title={draft.title}
         description={draft.description}
         tags={draft.tags}

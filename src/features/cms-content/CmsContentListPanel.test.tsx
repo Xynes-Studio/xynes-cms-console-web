@@ -154,6 +154,7 @@ vi.mock("../../components/dashboard/CmsContentToolbar", () => ({
     view,
     followingOnly,
     favoritesOnly,
+    secondaryRowHidden,
   }: {
     breadcrumbItems: Array<{ label: string; onClick?: () => void }>;
     itemCount: number;
@@ -169,65 +170,73 @@ vi.mock("../../components/dashboard/CmsContentToolbar", () => ({
     view: string;
     followingOnly: boolean;
     favoritesOnly: boolean;
+    secondaryRowHidden?: boolean;
   }) => (
     <section data-testid="toolbar">
-      <span>{breadcrumbItems.map((item) => item.label).join(" / ")}</span>
-      <span data-testid="toolbar-count">{itemCount} Items</span>
-      <span data-testid="toolbar-state">
-        {`${query}|${sortBy}|${view}|${followingOnly}|${favoritesOnly}`}
-      </span>
-      <button
-        type="button"
-        onClick={() => onQueryChange("updated query")}
-        aria-label="update query"
-      >
-        update query
-      </button>
-      <button
-        type="button"
-        onClick={() => breadcrumbItems[0]?.onClick?.()}
-        aria-label="open root breadcrumb"
-      >
-        open root breadcrumb
-      </button>
-      <button type="button" onClick={onCreate} aria-label="create content">
-        create
-      </button>
-      <button
-        type="button"
-        onClick={onSearchSubmit}
-        aria-label="search contents"
-      >
-        search
-      </button>
-      <button
-        type="button"
-        onClick={() => onSortChange("title")}
-        aria-label="change sort"
-      >
-        change sort
-      </button>
-      <button
-        type="button"
-        onClick={() => onViewChange("grid")}
-        aria-label="change view"
-      >
-        change view
-      </button>
-      <button
-        type="button"
-        onClick={onFollowingToggle}
-        aria-label="toggle following"
-      >
-        toggle following
-      </button>
-      <button
-        type="button"
-        onClick={onFavoritesToggle}
-        aria-label="toggle favorites"
-      >
-        toggle favorites
-      </button>
+      <div data-testid="toolbar-primary-row">
+        <span>{breadcrumbItems.map((item) => item.label).join(" / ")}</span>
+        <span data-testid="toolbar-count">{itemCount} Items</span>
+        <span data-testid="toolbar-state">
+          {`${query}|${sortBy}|${view}|${followingOnly}|${favoritesOnly}`}
+        </span>
+        <button
+          type="button"
+          onClick={() => onQueryChange("updated query")}
+          aria-label="update query"
+        >
+          update query
+        </button>
+        <button
+          type="button"
+          onClick={() => breadcrumbItems[0]?.onClick?.()}
+          aria-label="open root breadcrumb"
+        >
+          open root breadcrumb
+        </button>
+        <button type="button" onClick={onCreate} aria-label="create content">
+          create
+        </button>
+        <button
+          type="button"
+          onClick={onSearchSubmit}
+          aria-label="search contents"
+        >
+          search
+        </button>
+      </div>
+      <div data-testid="toolbar-secondary-row">
+        <span data-testid="toolbar-secondary-hidden">
+          {String(Boolean(secondaryRowHidden))}
+        </span>
+        <button
+          type="button"
+          onClick={() => onSortChange("title")}
+          aria-label="change sort"
+        >
+          change sort
+        </button>
+        <button
+          type="button"
+          onClick={() => onViewChange("grid")}
+          aria-label="change view"
+        >
+          change view
+        </button>
+        <button
+          type="button"
+          onClick={onFollowingToggle}
+          aria-label="toggle following"
+        >
+          toggle following
+        </button>
+        <button
+          type="button"
+          onClick={onFavoritesToggle}
+          aria-label="toggle favorites"
+        >
+          toggle favorites
+        </button>
+      </div>
     </section>
   ),
 }));
@@ -390,6 +399,7 @@ vi.mock("@lumia-ui/components", () => ({
 }));
 
 const mockClipboardWrite = vi.fn();
+const originalApiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
 
 afterEach(() => {
   cleanup();
@@ -465,10 +475,16 @@ afterEach(() => {
     isLoading: false,
     error: null,
   };
+  if (typeof originalApiBaseUrl === "string") {
+    process.env.NEXT_PUBLIC_API_URL = originalApiBaseUrl;
+  } else {
+    delete process.env.NEXT_PUBLIC_API_URL;
+  }
 });
 
 beforeEach(() => {
   vi.useFakeTimers();
+  process.env.NEXT_PUBLIC_API_URL = "http://localhost:4100";
   // Provide clipboard stub so handleShare can call navigator.clipboard.writeText
   Object.defineProperty(navigator, "clipboard", {
     value: { writeText: mockClipboardWrite },
@@ -485,6 +501,8 @@ describe("CmsContentListPanel", () => {
       screen.getByText("Contents / level-1-2 / level-2"),
     ).toBeInTheDocument();
     expect(screen.getByTestId("toolbar")).toBeInTheDocument();
+    expect(screen.getByTestId("toolbar-primary-row")).toBeInTheDocument();
+    expect(screen.getByTestId("toolbar-secondary-row")).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "Content list panel" }),
     ).toBeInTheDocument();
@@ -723,6 +741,18 @@ describe("CmsContentListPanel", () => {
     expect(screen.getByText("About us")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
     expect(screen.getByText("2 Items")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("content-results-scroll-region").className,
+    ).toContain("overflow-y-auto");
+    expect(
+      screen.getByTestId("content-results-scroll-region"),
+    ).toHaveAttribute("role", "region");
+    expect(
+      screen.getByTestId("content-results-scroll-region"),
+    ).toHaveAttribute("aria-label", "Content results");
+    expect(
+      screen.getByTestId("content-results-scroll-region"),
+    ).toHaveAttribute("tabindex", "0");
   });
 
   it("renders list cards in single-column layout when view=list", () => {
@@ -748,6 +778,9 @@ describe("CmsContentListPanel", () => {
     render(<CmsContentListPanel />);
 
     const listContainer = screen.getByRole("list", { name: "Content entries" });
+    expect(screen.getByTestId("content-results-ready").className).not.toContain(
+      "border",
+    );
     expect(listContainer.className).toContain("grid-cols-1");
     expect(screen.getByTestId("list-card-entry-list-1")).toBeInTheDocument();
     expect(
@@ -789,6 +822,146 @@ describe("CmsContentListPanel", () => {
     ).not.toBeInTheDocument();
     expect(renderGridItem).toHaveBeenCalledTimes(1);
     expect(renderListItem).not.toHaveBeenCalled();
+  });
+
+  it("hides the secondary toolbar row on downward results scroll and reopens it on upward scroll", () => {
+    mockedEntriesState = {
+      ...mockedEntriesState,
+      items: [
+        {
+          id: "entry-scroll-1",
+          title: "Scroll entry",
+          description: "scroll mode",
+          status: "draft",
+          ownerName: "Owner",
+          isFavorite: false,
+        },
+      ],
+      count: 1,
+    };
+
+    render(<CmsContentListPanel />);
+
+    const resultsScrollRegion = screen.getByTestId("content-results-scroll-region");
+    Object.defineProperty(resultsScrollRegion, "scrollHeight", {
+      value: 1600,
+      configurable: true,
+    });
+    Object.defineProperty(resultsScrollRegion, "clientHeight", {
+      value: 600,
+      configurable: true,
+    });
+    expect(screen.getByTestId("toolbar-secondary-hidden")).toHaveTextContent(
+      "false",
+    );
+
+    Object.defineProperty(resultsScrollRegion, "scrollTop", {
+      value: 96,
+      writable: true,
+      configurable: true,
+    });
+    fireEvent.scroll(resultsScrollRegion);
+
+    expect(screen.getByTestId("toolbar-secondary-hidden")).toHaveTextContent(
+      "true",
+    );
+
+    resultsScrollRegion.scrollTop = 12;
+    fireEvent.scroll(resultsScrollRegion);
+
+    expect(screen.getByTestId("toolbar-secondary-hidden")).toHaveTextContent(
+      "false",
+    );
+  });
+
+  it("handles trackpad-style small scroll deltas without requiring a large upward fling", () => {
+    mockedEntriesState = {
+      ...mockedEntriesState,
+      items: [
+        {
+          id: "entry-trackpad-1",
+          title: "Trackpad entry",
+          description: "momentum mode",
+          status: "draft",
+          ownerName: "Owner",
+          isFavorite: false,
+        },
+      ],
+      count: 1,
+    };
+
+    render(<CmsContentListPanel />);
+
+    const resultsScrollRegion = screen.getByTestId("content-results-scroll-region");
+    Object.defineProperty(resultsScrollRegion, "scrollHeight", {
+      value: 1600,
+      configurable: true,
+    });
+    Object.defineProperty(resultsScrollRegion, "clientHeight", {
+      value: 600,
+      configurable: true,
+    });
+    Object.defineProperty(resultsScrollRegion, "scrollTop", {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+
+    [20, 24].forEach((scrollTop) => {
+      resultsScrollRegion.scrollTop = scrollTop;
+      fireEvent.scroll(resultsScrollRegion);
+    });
+
+    expect(screen.getByTestId("toolbar-secondary-hidden")).toHaveTextContent(
+      "true",
+    );
+
+    resultsScrollRegion.scrollTop = 20;
+    fireEvent.scroll(resultsScrollRegion);
+
+    expect(screen.getByTestId("toolbar-secondary-hidden")).toHaveTextContent(
+      "false",
+    );
+  });
+
+  it("keeps the secondary toolbar visible when the results area does not overflow", () => {
+    mockedEntriesState = {
+      ...mockedEntriesState,
+      items: [
+        {
+          id: "entry-no-overflow-1",
+          title: "Small list entry",
+          description: "no overflow",
+          status: "draft",
+          ownerName: "Owner",
+          isFavorite: false,
+        },
+      ],
+      count: 1,
+    };
+
+    render(<CmsContentListPanel />);
+
+    const resultsScrollRegion = screen.getByTestId("content-results-scroll-region");
+    Object.defineProperty(resultsScrollRegion, "scrollHeight", {
+      value: 320,
+      configurable: true,
+    });
+    Object.defineProperty(resultsScrollRegion, "clientHeight", {
+      value: 600,
+      configurable: true,
+    });
+    Object.defineProperty(resultsScrollRegion, "scrollTop", {
+      value: 120,
+      writable: true,
+      configurable: true,
+    });
+
+    fireEvent.scroll(resultsScrollRegion);
+
+    expect(screen.getByTestId("toolbar-secondary-hidden")).toHaveTextContent(
+      "false",
+    );
   });
 
   // ─── card open action ──────────────────────────────────────────────────────

@@ -124,6 +124,12 @@ describe("CmsContentToolbar", () => {
     render(<CmsContentToolbar {...buildProps()} />);
 
     expect(
+      screen.getByTestId("cms-content-toolbar-primary-row"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("cms-content-toolbar-secondary-row"),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("navigation", { name: "Breadcrumb" }),
     ).toBeInTheDocument();
     expect(
@@ -214,5 +220,13 @@ describe("CmsContentToolbar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "List view" }));
     expect(props.onViewChange).toHaveBeenCalledWith("list");
+  });
+
+  it("marks the secondary row aria-hidden when requested", () => {
+    render(<CmsContentToolbar {...buildProps()} secondaryRowHidden />);
+
+    expect(
+      screen.getByTestId("cms-content-toolbar-secondary-row"),
+    ).toHaveAttribute("aria-hidden", "true");
   });
 });

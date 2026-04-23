@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import type { BreadcrumbItem } from "@lumia-ui/components";
-import { Alert, Card, ConfirmDialog, useToast } from "@lumia-ui/components";
+import { Alert, ConfirmDialog, useToast } from "@lumia-ui/components";
 import { CmsContentCardGrid } from "../../components/dashboard/CmsContentCardGrid";
 import { CmsContentCardList } from "../../components/dashboard/CmsContentCardList";
 import {
@@ -18,6 +24,7 @@ import {
   CmsContentListState,
   resolveCmsContentListState,
 } from "./CmsContentListState";
+import { useCmsContentToolbarScrollStack } from "./useCmsContentToolbarScrollStack";
 import { listWorkspaceContentDirectories } from "../../lib/dashboard/content-directories-client";
 import {
   getContentDirectoryPathIds,
@@ -35,6 +42,9 @@ const QUERY_REPLACE_DEBOUNCE_MS = 300;
 const mutationErrorDescription =
   "Please try again. If the issue persists, contact your workspace owner.";
 export const UNMATCHED_DIRECTORY_ID = "__UNMATCHED_DIRECTORY_ID__";
+
+const cx = (...classes: Array<string | false | null | undefined>) =>
+  classes.filter(Boolean).join(" ");
 
 const safeDecodePathSegment = (segment: string) => {
   try {
@@ -481,10 +491,28 @@ export function CmsContentListPanel() {
     query: state.query,
     breadcrumbParts,
   });
+  const resultsScrollRef = useRef<HTMLDivElement | null>(null);
+  const secondaryToolbarRowRef = useRef<HTMLDivElement | null>(null);
+  const {
+    isSecondaryToolbarVisible,
+    secondaryToolbarContainerStyle,
+    handleResultsScroll,
+  } = useCmsContentToolbarScrollStack({
+    resetKeys: [
+      pathname,
+      listViewState.kind,
+      state.view,
+      state.query,
+      state.sortBy,
+      state.followingOnly,
+      state.favoritesOnly,
+    ],
+    secondaryToolbarRowRef,
+  });
 
   return (
     <section
-      className="flex h-full min-h-0 flex-col"
+      className="flex h-full min-h-0 flex-col overflow-hidden"
       aria-label="Content list panel"
     >
       <ConfirmDialog
@@ -502,148 +530,167 @@ export function CmsContentListPanel() {
         destructive
         onConfirm={confirmDelete}
       />
-      <CmsContentToolbar
-        breadcrumbItems={breadcrumbItems}
-        itemCount={visibleCount}
-        query={isQueryEditing ? queryDraft : state.query}
-        sortBy={state.sortBy}
-        view={state.view}
-        followingOnly={state.followingOnly}
-        favoritesOnly={state.favoritesOnly}
-        onCreate={() => {
-          setCreateError(null);
+      <div data-testid="content-toolbar-stack" className="shrink-0 bg-background">
+        <CmsContentToolbar
+          breadcrumbItems={breadcrumbItems}
+          itemCount={visibleCount}
+          query={isQueryEditing ? queryDraft : state.query}
+          sortBy={state.sortBy}
+          view={state.view}
+          followingOnly={state.followingOnly}
+          favoritesOnly={state.favoritesOnly}
+          secondaryRowHidden={!isSecondaryToolbarVisible}
+          secondaryRowRef={secondaryToolbarRowRef}
+          secondaryRowContainerClassName={cx(
+            "transition-[max-height,border-color] duration-200 ease-out",
+            isSecondaryToolbarVisible ? "border-b border-border" : "border-b border-transparent",
+          )}
+          secondaryRowContainerStyle={secondaryToolbarContainerStyle}
+          onCreate={() => {
+            setCreateError(null);
 
-          if (isCreatingEntry) {
-            return;
-          }
-
-          if (isDirectoryResolving || isUnmatchedDirectoryPath) {
-            // Resolution is in flight — using resolvedDirectoryId here would
-            // create the entry in the wrong (stale/unmatched) directory. Block until done.
-            return;
-          }
-
-          if (
-            !apiBaseUrl ||
-            !currentWorkspace?.id ||
-            !accessToken ||
-            !resolvedWorkspaceSlug
-          ) {
-            setCreateError("Please sign in again and retry.");
-            return;
-          }
-
-          setIsCreatingEntry(true);
-
-          void (async () => {
-            try {
-              const editPath = await createDraftEntryAndResolveEditPath({
-                apiBaseUrl,
-                workspaceId: currentWorkspace.id,
-                workspaceSlug: resolvedWorkspaceSlug,
-                accessToken,
-                // Use the path-resolved directory UUID so new entries land in
-                // the currently-browsed directory, not the query-param one.
-                directoryId: resolvedDirectoryId,
-              });
-
-              router.push(editPath);
-            } catch (error) {
-              const message = getCreateEntryErrorMessage(error);
-              console.error("[CMS][create] toolbar flow failed", {
-                workspaceId: currentWorkspace.id,
-                workspaceSlug: resolvedWorkspaceSlug,
-                // Use the path-resolved UUID, not the (deprecated) URL query-param directoryId
-                resolvedDirectoryId,
-                errorMessage:
-                  error instanceof Error
-                    ? error.message
-                    : String(error ?? "unknown"),
-                userMessage: message,
-              });
-              setCreateError(message);
-            } finally {
-              setIsCreatingEntry(false);
+            if (isCreatingEntry) {
+              return;
             }
-          })();
-        }}
-        onQueryChange={(query) => {
-          setQueryDraft(query);
-          setIsQueryEditing(true);
-        }}
-        onSearchSubmit={() => {
-          const normalizedQuery = (
-            isQueryEditing ? queryDraft : state.query
-          ).trim();
-          setQueryDraft(normalizedQuery);
-          setIsQueryEditing(false);
-          setState({ query: normalizedQuery, offset: 0 });
-        }}
-        onSortChange={(sortBy) => {
-          setState({ sortBy, offset: 0 });
-        }}
-        onViewChange={(view) => {
-          setState({ view });
-        }}
-        onFollowingToggle={() => {
-          setState({ followingOnly: !state.followingOnly, offset: 0 });
-        }}
-        onFavoritesToggle={() => {
-          setState({ favoritesOnly: !state.favoritesOnly, offset: 0 });
-        }}
-      />
 
-      {createError ? (
-        <div className="px-4 pt-3">
-          <Alert
-            variant="error"
-            title="Unable to create content"
-            description={createError}
-            closable
-            onClose={() => setCreateError(null)}
-          />
-        </div>
-      ) : null}
-
-      <CmsContentListState
-        state={listViewState}
-        onRetry={() => void refresh()}
-      />
-
-      {listViewState.kind === "ready" ? (
-        <Card className="m-4 border border-border bg-background p-4">
-          <ul
-            aria-label="Content entries"
-            className={
-              state.view === "grid"
-                ? "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
-                : "grid grid-cols-1 gap-3"
+            if (isDirectoryResolving || isUnmatchedDirectoryPath) {
+              // Resolution is in flight — using resolvedDirectoryId here would
+              // create the entry in the wrong (stale/unmatched) directory. Block until done.
+              return;
             }
-          >
-            {visibleItems.map((item) => (
-              <li key={item.id}>
-                {state.view === "grid" ? (
-                  <CmsContentCardGrid
-                    {...mapEntryToGridCardProps({
-                      entry: item,
-                      onOpen: handleOpen,
-                    })}
-                  />
-                ) : (
-                  <CmsContentCardList
-                    {...mapEntryToListCardProps({
-                      entry: item,
-                      handlers: listHandlers,
-                      isDeleting: Boolean(pendingDeleteIds[item.id]),
-                      isFavoritePending: Boolean(pendingFavoriteIds[item.id]),
-                    })}
-                  />
-                )}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
+
+            if (
+              !apiBaseUrl ||
+              !currentWorkspace?.id ||
+              !accessToken ||
+              !resolvedWorkspaceSlug
+            ) {
+              setCreateError("Please sign in again and retry.");
+              return;
+            }
+
+            setIsCreatingEntry(true);
+
+            void (async () => {
+              try {
+                const editPath = await createDraftEntryAndResolveEditPath({
+                  apiBaseUrl,
+                  workspaceId: currentWorkspace.id,
+                  workspaceSlug: resolvedWorkspaceSlug,
+                  accessToken,
+                  // Use the path-resolved directory UUID so new entries land in
+                  // the currently-browsed directory, not the query-param one.
+                  directoryId: resolvedDirectoryId,
+                });
+
+                router.push(editPath);
+              } catch (error) {
+                const message = getCreateEntryErrorMessage(error);
+                console.error("[CMS][create] toolbar flow failed", {
+                  workspaceId: currentWorkspace.id,
+                  workspaceSlug: resolvedWorkspaceSlug,
+                  // Use the path-resolved UUID, not the (deprecated) URL query-param directoryId
+                  resolvedDirectoryId,
+                  errorMessage:
+                    error instanceof Error
+                      ? error.message
+                      : String(error ?? "unknown"),
+                  userMessage: message,
+                });
+                setCreateError(message);
+              } finally {
+                setIsCreatingEntry(false);
+              }
+            })();
+          }}
+          onQueryChange={(query) => {
+            setQueryDraft(query);
+            setIsQueryEditing(true);
+          }}
+          onSearchSubmit={() => {
+            const normalizedQuery = (
+              isQueryEditing ? queryDraft : state.query
+            ).trim();
+            setQueryDraft(normalizedQuery);
+            setIsQueryEditing(false);
+            setState({ query: normalizedQuery, offset: 0 });
+          }}
+          onSortChange={(sortBy) => {
+            setState({ sortBy, offset: 0 });
+          }}
+          onViewChange={(view) => {
+            setState({ view });
+          }}
+          onFollowingToggle={() => {
+            setState({ followingOnly: !state.followingOnly, offset: 0 });
+          }}
+          onFavoritesToggle={() => {
+            setState({ favoritesOnly: !state.favoritesOnly, offset: 0 });
+          }}
+        />
+      </div>
+
+      <div
+        ref={resultsScrollRef}
+        role="region"
+        aria-label="Content results"
+        tabIndex={0}
+        data-testid="content-results-scroll-region"
+        className="min-h-0 flex-1 overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset"
+        onScroll={handleResultsScroll}
+      >
+        {createError ? (
+          <div className="px-4 pt-3">
+            <Alert
+              variant="error"
+              title="Unable to create content"
+              description={createError}
+              closable
+              onClose={() => setCreateError(null)}
+            />
+          </div>
+        ) : null}
+
+        <CmsContentListState
+          state={listViewState}
+          onRetry={() => void refresh()}
+        />
+
+        {listViewState.kind === "ready" ? (
+          <div data-testid="content-results-ready" className="px-4 py-4">
+            <ul
+              aria-label="Content entries"
+              className={
+                state.view === "grid"
+                  ? "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+                  : "grid grid-cols-1 gap-3"
+              }
+            >
+              {visibleItems.map((item) => (
+                <li key={item.id}>
+                  {state.view === "grid" ? (
+                    <CmsContentCardGrid
+                      {...mapEntryToGridCardProps({
+                        entry: item,
+                        onOpen: handleOpen,
+                      })}
+                    />
+                  ) : (
+                    <CmsContentCardList
+                      {...mapEntryToListCardProps({
+                        entry: item,
+                        handlers: listHandlers,
+                        isDeleting: Boolean(pendingDeleteIds[item.id]),
+                        isFavoritePending: Boolean(pendingFavoriteIds[item.id]),
+                      })}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

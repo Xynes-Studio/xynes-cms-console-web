@@ -106,14 +106,17 @@ Follows [ADR-001](../lumia-ds/docs/ADR-001-testing-standards.md) — three-tier 
 |---|---|---|---|
 | 1 | Pure functions | `*.test.ts` | 100% |
 | 2 | Components / hooks | `*.test.tsx` | ≥80% |
-| 3 | E2E / Playwright | (future) | smoke |
+| 3 | E2E / Playwright | `e2e/*.spec.ts` | smoke |
 
 **Coverage gate**: ≥ 80% statements and ≥ 80% branches per touched module.
+
+`app/e2e/*` fixture routes are test-only. They must stay disabled by default and are enabled only by the Playwright web-server env flag.
 
 ### Running Tests
 
 ```bash
 pnpm test:coverage
+pnpm test:e2e
 ```
 
 Targeted `CMS-UI-005` revalidation:

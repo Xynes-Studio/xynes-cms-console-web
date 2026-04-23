@@ -12,6 +12,8 @@ function setMiddlewareEnv(overrides: Partial<NodeJS.ProcessEnv> = {}) {
   process.env.NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS =
     overrides.NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS ??
     "localhost:3000,localhost:3100";
+  process.env.NEXT_PUBLIC_ENABLE_E2E_FIXTURES =
+    overrides.NEXT_PUBLIC_ENABLE_E2E_FIXTURES ?? "0";
 }
 
 function toBase64Url(value: string): string {
@@ -65,6 +67,25 @@ describe("CMS middleware auth protection", () => {
   it("skips auth redirect for API routes", () => {
     setMiddlewareEnv();
     const request = new NextRequest("http://localhost:3000/api/health");
+    const response = middleware(request);
+
+    expect(response.status).toBe(200);
+  });
+
+  it("protects local e2e fixture routes by default", () => {
+    setMiddlewareEnv();
+    const request = new NextRequest("http://localhost:3000/e2e/cms-dashboard-scroll");
+    const response = middleware(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fe2e%2Fcms-dashboard-scroll"
+    );
+  });
+
+  it("keeps local e2e fixture routes public only when the test fixture flag is enabled", () => {
+    setMiddlewareEnv({ NEXT_PUBLIC_ENABLE_E2E_FIXTURES: "1" });
+    const request = new NextRequest("http://localhost:3000/e2e/cms-dashboard-scroll");
     const response = middleware(request);
 
     expect(response.status).toBe(200);

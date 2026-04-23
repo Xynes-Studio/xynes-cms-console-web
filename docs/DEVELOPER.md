@@ -63,6 +63,8 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 - Protected route redirects must use auth-sdk URL helpers and preserve safe return URLs.
 - Never pass unvalidated external redirect values directly into auth/logout URLs.
 - Logout authority is `xynes-auth-app`; CMS must not clear Supabase auth cookies directly.
+- `app/e2e/*` fixture routes are test-only and must remain deny-by-default in app runtime.
+- Only the Playwright harness may enable fixture access via `NEXT_PUBLIC_ENABLE_E2E_FIXTURES=1`.
 
 ## Dashboard Route Contract
 
@@ -235,16 +237,27 @@ Rules:
 
 - Component ownership:
   - `src/components/dashboard/CmsContentToolbar.tsx`
+- Feature wiring ownership:
+  - `src/features/cms-content/useCmsContentToolbarScrollStack.ts`
+  - `src/features/cms-content/content-toolbar-scroll-stack.ts`
 - State model:
   - controlled props for `query`, `sortBy`, `view`, `followingOnly`, `favoritesOnly`.
   - URL/query synchronization should be owned by a dedicated hook in `src/lib/dashboard/*`.
+  - sticky/hide-on-scroll state is feature-owned; keep it out of `CmsContentToolbar`.
 - Rendering:
   - row 1: path label + item count (left), create/search controls (right).
   - row 2: following/favorites/filter chips (left), sort/view controls (right).
+  - row 2 visibility must be driven only by the results scroller, not `window`.
+  - when the results area does not overflow, row 2 must remain visible.
+- Interaction rules:
+  - hide requires accumulated downward scroll intent; do not depend on a single large wheel-style delta.
+  - reveal uses a smaller upward threshold so MacBook trackpad scrolling reopens reliably.
+  - keep scroll-state transitions in the pure helper and keep the hook as a thin React adapter.
 - Accessibility:
   - search is form-submittable with keyboard enter.
   - toggle chips expose toggle semantics through DS chip behavior.
   - create/search/sort/view controls must keep explicit accessible names.
+  - the results scroller must remain keyboard-focusable and explicitly named.
 - DS usage:
   - use Lumia DS controls (`Button`, `Input`, `Select`, `ViewToggle`, `Chip`) and Lumia icon primitives.
 - Security:
@@ -258,7 +271,7 @@ Rules:
   - desktop uses two-column split (`20%` metadata, `80%` editor canvas).
   - tablet/mobile uses drawer access for metadata editing.
 - Metadata sections:
-  - path preview, generated link, title, description, tags, status badge.
+  - path preview, title, description, tags, status badge.
 - Top actions:
   - back navigation (optional), save draft, publish.
   - save status messaging supports idle/saving/saved/error states.
@@ -271,9 +284,7 @@ Rules:
   - all action buttons and metadata inputs must have explicit labels.
   - metadata drawer trigger must remain keyboard accessible.
 - Security:
-  - generated link and metadata values are treated as untrusted user data.
-  - generated link is clickable only for internal paths (relative or same-origin absolute); external/unsafe URLs render as plain text.
-  - do not remove generated-link metadata from the layout to simplify sanitization; keep the field and enforce same-origin/path-only linking in the component.
+  - metadata values are treated as untrusted user data.
 
 ### CMS Entry Data Layer Standards
 
@@ -413,7 +424,6 @@ Rules:
   - treat `entryId` as untrusted; validate via API response before rendering content.
   - do not expose raw error messages in editor UI.
   - unsaved-change prompt must cover both in-app navigation and browser tab close/refresh.
-  - generated link metadata remains visible in `CmsEditorLayout`, but only internal relative or same-origin absolute URLs may render as anchors.
   - publish must not proceed when the required pre-publish save fails.
 - TDD and coverage:
   - Tier 2 tests for: loading state, entry display, autosave trigger, save-before-publish behavior, publish action, unsaved guard.
@@ -464,11 +474,14 @@ Reference: `../../lumia-ds/docs/ADR-001-testing-standards.md`
   - route/layout behavior under `app/*.test.tsx`
   - middleware policy under `middleware.test.ts`
   - provider/config behavior under `src/app/*.test.tsx` and `src/lib/**/*.test.ts`
+  - pure scroll-state logic under `src/features/cms-content/*.test.ts`
+  - route-level browser regressions under `e2e/*.spec.ts` with fixture routes in `app/e2e/*`
 
 Verification commands:
 - `pnpm test`
 - `pnpm test:coverage`
 - `pnpm lint`
+- `pnpm test:e2e`
 
 ## Lint Strategy
 
