@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { ToastProvider } from "@lumia-ui/components";
 import { AuthProvider, WorkspaceProvider } from "@xynes/auth-sdk";
 import { getCmsAuthConfig } from "../lib/auth/config";
@@ -12,10 +12,14 @@ type ProvidersProps = {
 const cmsAuthConfig = getCmsAuthConfig();
 
 export function Providers({ children }: ProvidersProps) {
+  const workspaceChildren = children as ComponentProps<
+    typeof WorkspaceProvider
+  >["children"];
+
   return (
     <ToastProvider>
       <AuthProvider config={cmsAuthConfig}>
-        <WorkspaceProvider>{children}</WorkspaceProvider>
+        <WorkspaceProvider>{workspaceChildren}</WorkspaceProvider>
       </AuthProvider>
     </ToastProvider>
   );

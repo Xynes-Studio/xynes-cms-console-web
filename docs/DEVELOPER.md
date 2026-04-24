@@ -411,9 +411,25 @@ Rules:
   - fetch entry by `entryId` on mount.
   - pass entry data to `CmsEditorLayout` (metadata fields + editor canvas).
   - integrate `useCmsEntryAutosave` for debounced save.
-  - expose publish action that first calls `autosave.flush()`, then calls the publish mutation, then updates status.
+  - expose publication actions that always call `autosave.flush()` before mutating live/scheduled state.
   - guard browser unload when `hasUnsavedChanges` is true.
   - guard feature-owned in-app exit paths when `hasUnsavedChanges` is true.
+- Publication-state contract:
+  - persisted backend `status` values are `draft`, `scheduled`, `published`, and `archived`.
+  - editor-only `publicationState` extends persisted status with `published-with-changes` when a published entry has newer saved edits than `publishedAt`.
+  - `CmsEditorScreen` owns the derived `publicationState`; `CmsEditorLayout` stays presentational and receives the derived state as a prop.
+- Publication action semantics:
+  - `draft`: top-level actions are `Save Draft`, `Schedule`, and `Publish`.
+  - `scheduled`: top-level actions are `Save Draft`, `Reschedule`, and `Manage`; `Manage` contains `Publish now`, `Move to draft`, and `Archive entry`.
+  - `published`: top-level actions are `Save Draft` and `Manage`; there is no schedule action when the live page is already current.
+  - `published-with-changes`: top-level actions are `Save Draft` and `Manage`; `Manage` contains `Republish now`, `Unpublish to draft`, and `Archive entry`.
+  - `archived`: top-level action remains `Manage`; restore/archive transitions stay in the publication menu rather than adding a second archive-specific toolbar.
+- Scheduling semantics:
+  - schedule inputs are shown only when there is a non-live entry to schedule (`draft` or `scheduled`).
+  - do not expose scheduling for `published-with-changes` until the backend has separate live-vs-draft revision support.
+  - browser-local date and time are converted to UTC ISO before calling `setWorkspaceContentEntryStatus({ status: "scheduled", publishAt })`.
+  - schedule popover defaults should initialize to the next valid future slot for draft scheduling; only real scheduled entries should seed from `publishedAt`.
+  - the status API rejects scheduling entries that are already `published`; use `Republish now` for immediate updates.
 - Next.js standards:
   - route params (`workspaceSlug`, `entryId`) come from async `params` prop — must be `await`-ed in RSC.
   - route/layout files must remain thin; no direct data fetching or mutation logic.
@@ -429,7 +445,7 @@ Rules:
   - unsaved-change prompt must cover both in-app navigation and browser tab close/refresh.
   - publish must not proceed when the required pre-publish save fails.
 - TDD and coverage:
-  - Tier 2 tests for: loading state, entry display, autosave trigger, save-before-publish behavior, publish action, unsaved guard.
+  - Tier 2 tests for: loading state, entry display, autosave trigger, save-before-publish behavior, publish action, status mutation actions, schedule action, and unsaved guard.
   - Tier 2 tests for route page and layout files (thin RSC — assert correct prop passthrough).
   - maintain >=80% statements/branches for all editor route files.
 

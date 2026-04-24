@@ -5,14 +5,12 @@ type MockAuthConfigInput = {
   supabase: { url: string; anonKey: string };
   api: { baseUrl: string };
   auth: { appUrl: string };
-  crossApp: unknown;
 };
 
 type MockAuthConfig = {
   supabase: { url: string; anonKey: string };
   api: { baseUrl: string };
   auth: { appUrl: string };
-  crossApp: unknown;
 };
 
 const createAuthConfigMock = (input: MockAuthConfigInput): MockAuthConfig => ({
@@ -26,7 +24,6 @@ const createAuthConfigMock = (input: MockAuthConfigInput): MockAuthConfig => ({
   auth: {
     appUrl: input.auth.appUrl,
   },
-  crossApp: input.crossApp,
 });
 
 vi.mock("@xynes/auth-sdk", () => ({
@@ -65,12 +62,10 @@ describe("getCmsAuthConfig", () => {
     expect(config.apiBaseUrl).toBe("http://127.0.0.1:4100");
     expect(config.authAppUrl).toBe("http://localhost:3100");
     expect(config.appUrl).toBe("http://localhost:3000");
-    expect(config.crossApp?.redirects?.appUrl).toBe("http://localhost:3000");
-    expect(config.crossApp?.redirects?.allowedDomains).toEqual([
+    expect(config.allowedRedirectDomains).toEqual([
       "localhost:3000",
       "localhost:3100",
     ]);
-    expect(config.crossApp?.redirects?.fallbackPath).toBe("/");
   });
 
   it("throws when redirect-domain env is missing", () => {

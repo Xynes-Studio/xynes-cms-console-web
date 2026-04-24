@@ -22,6 +22,7 @@ const {
   mockGetWorkspaceContentEntryById,
   mockUpdateWorkspaceContentEntry,
   mockPublishWorkspaceContentEntry,
+  mockSetWorkspaceContentEntryStatus,
   mockAutosaveRetry,
   mockAutosaveFlush,
   mockAutosaveClearSnapshot,
@@ -33,6 +34,7 @@ const {
   mockGetWorkspaceContentEntryById: vi.fn(),
   mockUpdateWorkspaceContentEntry: vi.fn(),
   mockPublishWorkspaceContentEntry: vi.fn(),
+  mockSetWorkspaceContentEntryStatus: vi.fn(),
   mockAutosaveRetry: vi.fn(),
   mockAutosaveFlush: vi.fn(),
   mockAutosaveClearSnapshot: vi.fn(),
@@ -81,6 +83,7 @@ vi.mock("../../lib/dashboard/content-entries-client", () => ({
   getWorkspaceContentEntryById: mockGetWorkspaceContentEntryById,
   updateWorkspaceContentEntry: mockUpdateWorkspaceContentEntry,
   publishWorkspaceContentEntry: mockPublishWorkspaceContentEntry,
+  setWorkspaceContentEntryStatus: mockSetWorkspaceContentEntryStatus,
 }));
 
 vi.mock("../../lib/dashboard/use-cms-entry-autosave", () => ({
@@ -98,11 +101,14 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     description,
     tags,
     status,
+    publicationState,
     saveState,
     isPublishing,
     pathLabel,
     onBack,
     onPublish,
+    onChangeStatus,
+    onSchedule,
     onSaveDraft,
     onTitleChange,
     onDescriptionChange,
@@ -114,11 +120,14 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     description?: string;
     tags?: string;
     status: string;
+    publicationState?: string;
     saveState: string;
     isPublishing?: boolean;
     pathLabel?: string;
     onBack?: () => void;
     onPublish?: () => void;
+    onChangeStatus?: (status: "draft" | "archived") => void;
+    onSchedule?: (publishAt: string) => void;
     onSaveDraft?: () => void;
     onTitleChange?: (v: string) => void;
     onDescriptionChange?: (v: string) => void;
@@ -128,6 +137,7 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     <div
       data-testid="cms-editor-layout"
       data-status={status}
+      data-publication-state={publicationState}
       data-save-state={saveState}
       data-is-publishing={isPublishing ? "true" : "false"}
       data-path-label={pathLabel}
@@ -144,6 +154,44 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
         <button data-testid="publish-btn" onClick={onPublish} disabled={isPublishing}>
           Publish
         </button>
+      )}
+      {onChangeStatus && (
+        <>
+          <button
+            data-testid="status-draft-btn"
+            onClick={() => onChangeStatus("draft")}
+            disabled={isPublishing}
+          >
+            Move to draft
+          </button>
+          <button
+            data-testid="status-archived-btn"
+            onClick={() => onChangeStatus("archived")}
+            disabled={isPublishing}
+          >
+            Archive
+          </button>
+        </>
+      )}
+      {onSchedule &&
+        (publicationState === "draft" ||
+          publicationState === "scheduled") && (
+        <>
+          <button
+            data-testid="schedule-btn"
+            onClick={() => onSchedule("2026-04-24T14:30:00.000Z")}
+            disabled={isPublishing}
+          >
+            Schedule
+          </button>
+          <button
+            data-testid="schedule-invalid-btn"
+            onClick={() => onSchedule("2026-04-22T10:00:00.000Z")}
+            disabled={isPublishing}
+          >
+            Schedule invalid
+          </button>
+        </>
       )}
       {onSaveDraft && (
         <button
@@ -479,6 +527,30 @@ describe("CmsEditorScreen", () => {
       );
     });
 
+    it("renders editor layout with archived status for archived entries", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({
+          status: "archived",
+          publishedAt: null,
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cms-editor-layout")).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+        "data-status",
+        "archived",
+      );
+      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+        "data-publication-state",
+        "archived",
+      );
+    });
+
     it("renders the real editor instead of the placeholder", async () => {
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
 
@@ -806,6 +878,55 @@ describe("CmsEditorScreen", () => {
       });
     });
 
+    it("marks published entries with newer saved edits as needing republish", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({
+          status: "published",
+          publishedAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:05:00.000Z",
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+          "data-publication-state",
+          "published-with-changes",
+        );
+      });
+    });
+
+    it("switches published entries into republish state as soon as new edits are made", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({
+          status: "published",
+          publishedAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("title-input")).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+        "data-publication-state",
+        "published",
+      );
+
+      fireEvent.change(screen.getByTestId("title-input"), {
+        target: { value: "Edited after publish" },
+      });
+
+      expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+        "data-publication-state",
+        "published-with-changes",
+      );
+    });
+
     it("waits for autosave flush before publishing", async () => {
       let resolveFlush: (() => void) | null = null;
       mockAutosaveState = {
@@ -845,6 +966,177 @@ describe("CmsEditorScreen", () => {
 
       await waitFor(() => {
         expect(mockPublishWorkspaceContentEntry).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("schedules a draft entry through the status endpoint", async () => {
+      mockSetWorkspaceContentEntryStatus.mockResolvedValue(
+        makeEntry({
+          status: "scheduled",
+          publishedAt: "2026-04-24T14:30:00.000Z",
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("schedule-btn")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId("schedule-btn"));
+
+      await waitFor(() => {
+        expect(mockSetWorkspaceContentEntryStatus).toHaveBeenCalledWith(
+          expect.objectContaining({
+            payload: {
+              status: "scheduled",
+              publishAt: "2026-04-24T14:30:00.000Z",
+            },
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+          "data-status",
+          "scheduled",
+        );
+      });
+    });
+
+    it("does not expose scheduling for published entries with newer saved edits", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({
+          status: "published",
+          title: "Live title",
+          publishedAt: "2026-04-23T08:00:00.000Z",
+          updatedAt: "2026-04-23T08:00:00.000Z",
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("title-input")).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId("title-input"), {
+        target: { value: "Queued title change" },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+          "data-publication-state",
+          "published-with-changes",
+        );
+      });
+
+      expect(screen.queryByTestId("schedule-btn")).toBeNull();
+    });
+
+    it("publishes scheduled entries immediately through the status endpoint", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({
+          status: "scheduled",
+          publishedAt: "2026-04-24T14:30:00.000Z",
+        }),
+      );
+      mockSetWorkspaceContentEntryStatus.mockResolvedValue(
+        makeEntry({
+          status: "published",
+          publishedAt: "2026-04-23T08:00:00.000Z",
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("publish-btn")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId("publish-btn"));
+
+      await waitFor(() => {
+        expect(mockSetWorkspaceContentEntryStatus).toHaveBeenCalledWith(
+          expect.objectContaining({
+            payload: { status: "published" },
+          }),
+        );
+      });
+      expect(mockPublishWorkspaceContentEntry).not.toHaveBeenCalled();
+    });
+
+    it("unpublishes a published entry through the status endpoint", async () => {
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({
+          status: "published",
+          publishedAt: "2026-01-01T00:00:00.000Z",
+        }),
+      );
+      mockSetWorkspaceContentEntryStatus.mockResolvedValue(
+        makeEntry({
+          status: "draft",
+          publishedAt: null,
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("status-draft-btn")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId("status-draft-btn"));
+
+      await waitFor(() => {
+        expect(mockSetWorkspaceContentEntryStatus).toHaveBeenCalledWith(
+          expect.objectContaining({
+            workspaceId: "ws-1",
+            entryId: "entry-1",
+            payload: { status: "draft" },
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+          "data-status",
+          "draft",
+        );
+      });
+    });
+
+    it("archives an entry through the status endpoint", async () => {
+      mockSetWorkspaceContentEntryStatus.mockResolvedValue(
+        makeEntry({
+          status: "archived",
+          publishedAt: null,
+        }),
+      );
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("status-archived-btn")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId("status-archived-btn"));
+
+      await waitFor(() => {
+        expect(mockSetWorkspaceContentEntryStatus).toHaveBeenCalledWith(
+          expect.objectContaining({
+            workspaceId: "ws-1",
+            entryId: "entry-1",
+            payload: { status: "archived" },
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+          "data-status",
+          "archived",
+        );
       });
     });
 
@@ -917,6 +1209,12 @@ describe("CmsEditorScreen", () => {
       });
 
       expect(mockPublishWorkspaceContentEntry).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute(
+          "data-is-publishing",
+          "false",
+        );
+      });
     });
   });
 

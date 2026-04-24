@@ -6,12 +6,43 @@ const turbopackRoot = configuredTurbopackRoot
   ? path.resolve(__dirname, configuredTurbopackRoot)
   : path.resolve(__dirname, "..");
 
+const appReactAliases = {
+  react: path.resolve(__dirname, "node_modules/react"),
+  "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
+  "react/jsx-runtime": path.resolve(
+    __dirname,
+    "node_modules/react/jsx-runtime.js",
+  ),
+  "react/jsx-dev-runtime": path.resolve(
+    __dirname,
+    "node_modules/react/jsx-dev-runtime.js",
+  ),
+  "react-dom/client": path.resolve(
+    __dirname,
+    "node_modules/react-dom/client.js",
+  ),
+  "react-dom/server": path.resolve(
+    __dirname,
+    "node_modules/react-dom/server.node.js",
+  ),
+};
+
+const turbopackReactAliases = {
+  react: "./node_modules/react",
+  "react-dom": "./node_modules/react-dom",
+  "react/jsx-runtime": "./node_modules/react/jsx-runtime.js",
+  "react/jsx-dev-runtime": "./node_modules/react/jsx-dev-runtime.js",
+  "react-dom/client": "./node_modules/react-dom/client.js",
+  "react-dom/server": "./node_modules/react-dom/server.node.js",
+};
+
 const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
   turbopack: {
     root: turbopackRoot,
+    resolveAlias: turbopackReactAliases,
   },
   transpilePackages: [
     "@xynes/auth-sdk",
@@ -60,6 +91,20 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+  webpack(config) {
+    config.resolve = config.resolve ?? {};
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      react$: appReactAliases.react,
+      "react-dom$": appReactAliases["react-dom"],
+      "react/jsx-runtime$": appReactAliases["react/jsx-runtime"],
+      "react/jsx-dev-runtime$": appReactAliases["react/jsx-dev-runtime"],
+      "react-dom/client$": appReactAliases["react-dom/client"],
+      "react-dom/server$": appReactAliases["react-dom/server"],
+    };
+
+    return config;
   },
 };
 

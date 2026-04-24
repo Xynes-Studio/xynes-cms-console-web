@@ -4,13 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import { Alert, ConfirmDialog } from "@lumia-ui/components";
-import { LumiaEditor } from "@lumia-ui/editor";
+import { LumiaEditor, type LumiaEditorStateJSON } from "@lumia-ui/editor";
 import { CmsEditorLayout } from "../../components/dashboard/CmsEditorLayout";
 import {
   getWorkspaceContentEntryById,
+  setWorkspaceContentEntryStatus,
   updateWorkspaceContentEntry,
   publishWorkspaceContentEntry,
   type WorkspaceContentEntry,
+  type WorkspaceContentEntryStatus,
 } from "../../lib/dashboard/content-entries-client";
 import { useCmsEntryAutosave } from "../../lib/dashboard/use-cms-entry-autosave";
 import {
@@ -63,12 +65,52 @@ function sanitizePublishError(error: unknown): string {
   return "Failed to publish entry. Please try again.";
 }
 
+function sanitizeStatusUpdateError(
+  error: unknown,
+  status: Extract<
+    WorkspaceContentEntryStatus,
+    "draft" | "scheduled" | "published" | "archived"
+  >,
+): string {
+  const raw = error instanceof Error ? error.message : "";
+  if (EDITOR_PERMISSION_PATTERN.test(raw)) {
+    if (status === "draft") {
+      return "You don't have permission to move this entry back to draft.";
+    }
+    if (status === "scheduled") {
+      return "You don't have permission to schedule this entry.";
+    }
+    if (status === "published") {
+      return "You don't have permission to publish this entry.";
+    }
+    return "You don't have permission to archive this entry.";
+  }
+  if (EDITOR_NOT_FOUND_PATTERN.test(raw)) {
+    return "Entry not found.";
+  }
+  if (EDITOR_SERVICE_UNAVAILABLE_PATTERN.test(raw)) {
+    return "CMS service is temporarily unavailable. Please try again.";
+  }
+  if (status === "draft") {
+    return "Failed to move entry back to draft. Please try again.";
+  }
+  if (status === "scheduled") {
+    return "Failed to schedule entry. Please try again.";
+  }
+  if (status === "published") {
+    return "Failed to publish entry. Please try again.";
+  }
+  return "Failed to archive entry. Please try again.";
+}
+
 type EditorDraftValue = {
   title: string;
   description: string;
   tags: string;
   body: ReturnType<typeof normalizeEditorBody>;
 };
+
+const PUBLISH_CHANGE_THRESHOLD_MS = 1000;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -83,6 +125,21 @@ function buildDraftFromEntry(entry: WorkspaceContentEntry): EditorDraftValue {
 
 function buildBackPath(workspaceSlug: string): string {
   return `/dashboard/${encodeURIComponent(workspaceSlug)}/content`;
+}
+
+function hasSavedChangesSincePublish(entry: WorkspaceContentEntry): boolean {
+  if (entry.status !== "published" || !entry.publishedAt) {
+    return false;
+  }
+
+  const publishedAt = Date.parse(entry.publishedAt);
+  const updatedAt = Date.parse(entry.updatedAt);
+
+  if (Number.isNaN(publishedAt) || Number.isNaN(updatedAt)) {
+    return false;
+  }
+
+  return updatedAt - publishedAt > PUBLISH_CHANGE_THRESHOLD_MS;
 }
 
 // ─── component ───────────────────────────────────────────────────────────────
@@ -252,6 +309,14 @@ export function CmsEditorScreen({
     (lastSavedDraftRef.current !== null &&
       hasEditorDraftChanged(lastSavedDraftRef.current, draft));
 
+  const publicationState = entry
+    ? entry.status === "published"
+      ? hasUnsavedChanges || hasSavedChangesSincePublish(entry)
+        ? "published-with-changes"
+        : "published"
+      : entry.status
+    : "draft";
+
   // ── publish ───────────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
     if (!entry || !currentWorkspace?.id || !accessToken || isPublishing) return;
@@ -261,27 +326,117 @@ export function CmsEditorScreen({
     try {
       await autosave.flush();
     } catch {
+      setIsPublishing(false);
       return;
     }
 
     try {
-      const updated = await publishWorkspaceContentEntry({
-        apiBaseUrl: API_BASE_URL,
-        workspaceId: currentWorkspace.id,
-        entryId,
-        accessToken,
-      });
+      const updated =
+        entry.status === "scheduled"
+          ? await setWorkspaceContentEntryStatus({
+              apiBaseUrl: API_BASE_URL,
+              workspaceId: currentWorkspace.id,
+              entryId,
+              accessToken,
+              payload: { status: "published" },
+            })
+          : await publishWorkspaceContentEntry({
+              apiBaseUrl: API_BASE_URL,
+              workspaceId: currentWorkspace.id,
+              entryId,
+              accessToken,
+            });
       const newDraft = buildDraftFromEntry(updated);
       setEntry(updated);
       lastSavedDraftRef.current = newDraft;
       setDraft(newDraft);
       autosave.clearSnapshot();
     } catch (err: unknown) {
-      setPublishError(sanitizePublishError(err));
+      setPublishError(
+        entry.status === "scheduled"
+          ? sanitizeStatusUpdateError(err, "published")
+          : sanitizePublishError(err),
+      );
     } finally {
       setIsPublishing(false);
     }
   }, [entry, currentWorkspace?.id, accessToken, entryId, isPublishing, autosave]);
+
+  const handleChangeStatus = useCallback(
+    async (nextStatus: Extract<WorkspaceContentEntryStatus, "draft" | "archived">) => {
+      if (!entry || !currentWorkspace?.id || !accessToken || isPublishing) {
+        return;
+      }
+
+      setIsPublishing(true);
+      setPublishError(null);
+
+      try {
+        await autosave.flush();
+      } catch {
+        setIsPublishing(false);
+        return;
+      }
+
+      try {
+        const updated = await setWorkspaceContentEntryStatus({
+          apiBaseUrl: API_BASE_URL,
+          workspaceId: currentWorkspace.id,
+          entryId,
+          accessToken,
+          payload: { status: nextStatus },
+        });
+        const newDraft = buildDraftFromEntry(updated);
+        setEntry(updated);
+        lastSavedDraftRef.current = newDraft;
+        setDraft(newDraft);
+        autosave.clearSnapshot();
+      } catch (err: unknown) {
+        setPublishError(sanitizeStatusUpdateError(err, nextStatus));
+      } finally {
+        setIsPublishing(false);
+      }
+    },
+    [entry, currentWorkspace?.id, accessToken, entryId, isPublishing, autosave],
+  );
+
+  const handleSchedule = useCallback(
+    async (publishAt: string) => {
+      if (!entry || !currentWorkspace?.id || !accessToken || isPublishing) {
+        return;
+      }
+
+      setIsPublishing(true);
+      setPublishError(null);
+
+      try {
+        await autosave.flush();
+      } catch {
+        setIsPublishing(false);
+        return;
+      }
+
+      try {
+        const updated = await setWorkspaceContentEntryStatus({
+          apiBaseUrl: API_BASE_URL,
+          workspaceId: currentWorkspace.id,
+          entryId,
+          accessToken,
+          payload: { status: "scheduled", publishAt },
+        });
+        const newDraft = buildDraftFromEntry(updated);
+        setEntry(updated);
+        lastSavedDraftRef.current = newDraft;
+        setDraft(newDraft);
+        autosave.clearSnapshot();
+      } catch (err: unknown) {
+        setPublishError(sanitizeStatusUpdateError(err, "scheduled"));
+      } finally {
+        setIsPublishing(false);
+      }
+    },
+    [entry, currentWorkspace?.id, accessToken, entryId, isPublishing, autosave],
+  );
 
   // ── back navigation ───────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
@@ -353,9 +508,11 @@ export function CmsEditorScreen({
         title={draft.title}
         description={draft.description}
         tags={draft.tags}
-        status={entry.status === "published" ? "published" : "draft"}
+        status={entry.status}
+        publicationState={publicationState}
         saveState={autosave.saveState}
         lastSavedAt={autosave.lastSavedAt}
+        lastPublishedAt={entry.publishedAt}
         hasUnsavedChanges={hasUnsavedChanges}
         isPublishing={isPublishing}
         onBack={handleBack}
@@ -372,11 +529,17 @@ export function CmsEditorScreen({
         onPublish={() => {
           void handlePublish();
         }}
+        onChangeStatus={(nextStatus) => {
+          void handleChangeStatus(nextStatus);
+        }}
+        onSchedule={(publishAt) => {
+          void handleSchedule(publishAt);
+        }}
         onRetrySave={retryAutosave}
       >
         <LumiaEditor
           key={`${entryId}:${editorSeedRevision}`}
-          value={draft.body}
+          value={draft.body as unknown as LumiaEditorStateJSON}
           readOnly={isPublishing}
           onChange={(value) =>
             updateDraft((prev) => ({

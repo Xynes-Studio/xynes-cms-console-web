@@ -3,11 +3,6 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import RootLayout from "./layout";
 
-vi.mock("next/font/google", () => ({
-  Geist: () => ({ variable: "geist-sans" }),
-  Geist_Mono: () => ({ variable: "geist-mono" }),
-}));
-
 vi.mock("@lumia-ui/icons", () => ({
   IconSprite: () => <span data-testid="icon-sprite" aria-hidden="true" />,
 }));

@@ -30,13 +30,97 @@ vi.mock("@lumia-ui/components", () => ({
   Input: ({
     ...props
   }: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  DatePicker: ({
+    label,
+    value,
+    onChange,
+  }: {
+    label?: string;
+    value?: Date;
+    onChange: (value?: Date) => void;
+  }) => (
+    <input
+      aria-label={label}
+      data-testid="schedule-date-input"
+      value={value ? value.toISOString().slice(0, 10) : ""}
+      onChange={(event) => {
+        const next = event.currentTarget.value;
+        onChange(next ? new Date(`${next}T00:00:00.000`) : undefined);
+      }}
+    />
+  ),
+  Menu: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  MenuContent: ({
+    children,
+  }: {
+    children?: React.ReactNode;
+  }) => <div>{children}</div>,
+  MenuItem: ({
+    children,
+    label,
+    onSelect,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    children?: React.ReactNode;
+    label?: string;
+    onSelect?: () => void;
+  }) => (
+    <button
+      type="button"
+      {...props}
+      onClick={() => {
+        onSelect?.();
+      }}
+    >
+      {children ?? label}
+    </button>
+  ),
+  MenuLabel: ({
+    children,
+  }: {
+    children?: React.ReactNode;
+  }) => <span>{children}</span>,
+  MenuSeparator: () => <hr />,
+  MenuTrigger: ({
+    children,
+  }: {
+    children?: React.ReactNode;
+    asChild?: boolean;
+  }) => <>{children}</>,
+  Popover: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  PopoverContent: ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  PopoverTrigger: ({
+    children,
+  }: {
+    children?: React.ReactNode;
+    asChild?: boolean;
+  }) => <>{children}</>,
   Textarea: ({
     ...props
   }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} />,
+  TimePicker: ({
+    label,
+    value,
+    onChange,
+  }: {
+    label?: string;
+    value?: string;
+    onChange: (value?: string) => void;
+  }) => (
+    <input
+      aria-label={label}
+      data-testid="schedule-time-input"
+      value={value ?? ""}
+      onChange={(event) => onChange(event.currentTarget.value || undefined)}
+    />
+  ),
 }));
 
 vi.mock("@lumia-ui/icons", () => ({
   Icon: ({ name }: { name: string }) => <span aria-hidden="true">{name}</span>,
+  registerIcon: vi.fn(),
 }));
 
 afterEach(() => {
@@ -49,18 +133,22 @@ const buildProps = () => ({
   description: "Entry description",
   tags: "alpha,beta",
   status: "draft" as const,
+  publicationState: "draft" as const,
   saveState: "saved" as const,
   lastSavedAt: "2026-02-26T06:30:00.000Z",
+  lastPublishedAt: null,
   onBack: vi.fn(),
   onTitleChange: vi.fn(),
   onDescriptionChange: vi.fn(),
   onTagsChange: vi.fn(),
   onSaveDraft: vi.fn(),
   onPublish: vi.fn(),
+  onChangeStatus: vi.fn(),
+  onSchedule: vi.fn(),
 });
 
 describe("CmsEditorLayout", () => {
-  it("renders metadata panel fields, status, and editor content", () => {
+  it("renders metadata panel fields, a compact publication summary, and editor content", () => {
     render(
       <CmsEditorLayout {...buildProps()}>
         <div>Editor Body</div>
@@ -72,7 +160,8 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByLabelText("Content title")).toHaveValue("Entry title");
     expect(screen.getByLabelText("Content description")).toHaveValue("Entry description");
     expect(screen.getByLabelText("Content tags")).toHaveValue("alpha,beta");
-    expect(screen.getByText("Draft")).toBeInTheDocument();
+    expect(screen.getAllByText("Draft")).toHaveLength(1);
+    expect(screen.getByText("Private draft. Not visible yet.")).toBeInTheDocument();
 
     const canvas = screen.getByLabelText("Content editor canvas");
     expect(within(canvas).getByText("Editor Body")).toBeInTheDocument();
@@ -118,6 +207,61 @@ describe("CmsEditorLayout", () => {
     expect(props.onBack).toHaveBeenCalledTimes(1);
     expect(props.onSaveDraft).toHaveBeenCalledTimes(1);
     expect(props.onPublish).toHaveBeenCalledTimes(1);
+  });
+
+  it("schedules a draft entry from the schedule popover", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-23T08:00:00.000Z"));
+    const props = buildProps();
+
+    render(
+      <CmsEditorLayout {...props}>
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Schedule content" }));
+    fireEvent.change(screen.getByTestId("schedule-date-input"), {
+      target: { value: "2026-04-24" },
+    });
+    fireEvent.change(screen.getByTestId("schedule-time-input"), {
+      target: { value: "14:30" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm schedule" }));
+
+    expect(props.onSchedule).toHaveBeenCalledWith(
+      new Date(2026, 3, 24, 14, 30, 0, 0).toISOString(),
+    );
+
+    vi.useRealTimers();
+  });
+
+  it("blocks past schedule dates and shows an error", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-23T08:00:00.000Z"));
+    const props = buildProps();
+
+    render(
+      <CmsEditorLayout {...props}>
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Schedule content" }));
+    fireEvent.change(screen.getByTestId("schedule-date-input"), {
+      target: { value: "2026-04-22" },
+    });
+    fireEvent.change(screen.getByTestId("schedule-time-input"), {
+      target: { value: "10:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm schedule" }));
+
+    expect(props.onSchedule).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Choose a future date and time to schedule publishing."),
+    ).toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 
   it("opens metadata drawer from mobile action", () => {
@@ -209,13 +353,122 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByText("Saved at --:--:--")).toBeInTheDocument();
   });
 
-  it("renders published badge when status is published", () => {
+  it("renders live status when the latest saved version is published", () => {
     render(
-      <CmsEditorLayout {...buildProps()} status="published">
+      <CmsEditorLayout
+        {...buildProps()}
+        status="published"
+        publicationState="published"
+        lastPublishedAt="2026-02-26T06:30:00.000Z"
+      >
         <div>Editor Body</div>
       </CmsEditorLayout>,
     );
 
-    expect(screen.getByText("Published")).toBeInTheDocument();
+    expect(screen.getAllByText("Live")).toHaveLength(1);
+    expect(screen.getByText(/Public page is up to date\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Manage publication" })).toBeInTheDocument();
+  });
+
+  it("renders a republish state when saved changes are newer than the live version", () => {
+    render(
+      <CmsEditorLayout
+        {...buildProps()}
+        status="published"
+        publicationState="published-with-changes"
+        lastPublishedAt="2026-02-26T06:30:00.000Z"
+      >
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    expect(screen.getAllByText("Live")).toHaveLength(1);
+    expect(screen.getByText(/Changes not live\./)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Schedule update content" }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Manage publication" })).toHaveTextContent(
+      "Republish",
+    );
+    expect(screen.getByRole("button", { name: "Republish now" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Unpublish to draft" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive entry" })).toBeInTheDocument();
+    expect(screen.getByText("chevron-down")).toBeInTheDocument();
+  });
+
+  it("triggers unpublish and archive status actions from the publication menu", () => {
+    const props = buildProps();
+
+    render(
+      <CmsEditorLayout
+        {...props}
+        status="published"
+        publicationState="published"
+        lastPublishedAt="2026-02-26T06:30:00.000Z"
+      >
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish to draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive entry" }));
+
+    expect(props.onChangeStatus).toHaveBeenNthCalledWith(1, "draft");
+    expect(props.onChangeStatus).toHaveBeenNthCalledWith(2, "archived");
+  });
+
+  it("does not expose scheduling for a live entry with unpublished changes", () => {
+    render(
+      <CmsEditorLayout
+        {...buildProps()}
+        status="published"
+        publicationState="published-with-changes"
+        lastPublishedAt="2026-02-26T06:30:00.000Z"
+      >
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Schedule update content" }),
+    ).toBeNull();
+    expect(screen.queryByText("Schedule update")).toBeNull();
+  });
+
+  it("shows scheduled summary and schedule controls for scheduled entries", () => {
+    render(
+      <CmsEditorLayout
+        {...buildProps()}
+        status="scheduled"
+        publicationState="scheduled"
+        lastPublishedAt="2026-02-26T06:30:00.000Z"
+      >
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    expect(screen.getByText("Scheduled")).toBeInTheDocument();
+    expect(screen.getByText(/Scheduled to go live/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reschedule content" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Publish now" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move to draft" })).toBeInTheDocument();
+  });
+
+  it("does not render schedule action when the live version is already up to date", () => {
+    render(
+      <CmsEditorLayout
+        {...buildProps()}
+        status="published"
+        publicationState="published"
+        lastPublishedAt="2026-02-26T06:30:00.000Z"
+      >
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Schedule content" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Schedule update content" }),
+    ).toBeNull();
   });
 });

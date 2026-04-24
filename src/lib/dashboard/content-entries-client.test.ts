@@ -7,6 +7,7 @@ import {
   listWorkspaceContentEntries,
   listWorkspaceFavoriteEntries,
   publishWorkspaceContentEntry,
+  setWorkspaceContentEntryStatus,
   setWorkspaceEntryCollaborators,
   toggleWorkspaceEntryFavorite,
   updateWorkspaceContentEntry,
@@ -85,6 +86,43 @@ describe("content-entries-client", () => {
       }),
     );
     expect(result).toEqual({ items: [sampleEntry], count: 1 });
+  });
+
+  it("preserves scheduled status in list queries", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            items: [
+              {
+                ...sampleEntry,
+                status: "scheduled",
+                publishedAt: "2026-02-27T10:00:00.000Z",
+              },
+            ],
+            count: 1,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      query: {
+        status: "scheduled",
+      },
+      fetchImpl: fetchMock,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/workspace-1/content/entries?status=scheduled",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(result.items[0]?.status).toBe("scheduled");
   });
 
   it("skips malformed list items instead of failing entire response", async () => {
@@ -496,6 +534,41 @@ describe("content-entries-client", () => {
     expect(published.id).toBe("entry-1");
     expect(deleted.success).toBe(true);
     expect(deleted.entryId).toBe("entry-1");
+  });
+
+  it("sets entry status through the status endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            entry: {
+              ...sampleEntry,
+              status: "archived",
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await setWorkspaceContentEntryStatus({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      entryId: "entry-1",
+      accessToken: "jwt-token",
+      payload: { status: "archived" },
+      fetchImpl: fetchMock,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4100/workspaces/workspace-1/content/entries/entry-1/status",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ status: "archived" }),
+      }),
+    );
+    expect(result.status).toBe("archived");
   });
 
   it("sends an explicit empty JSON body for delete requests", async () => {

@@ -1,7 +1,10 @@
 import type { AuthConfig } from "@xynes/auth-sdk";
 import { createAuthConfig, validateAuthConfig } from "@xynes/auth-sdk";
 
-const DEFAULT_FALLBACK_PATH = "/";
+export type CmsAuthConfig = AuthConfig & {
+  appUrl: string;
+  allowedRedirectDomains: string[];
+};
 
 function readRequiredEnv(name: string, rawValue: string | undefined): string {
   const value = rawValue?.trim();
@@ -29,7 +32,7 @@ function parseAllowedDomains(raw: string | undefined): string[] {
   return parsed;
 }
 
-export function getCmsAuthConfig(): AuthConfig {
+export function getCmsAuthConfig(): CmsAuthConfig {
   const supabaseUrl = readRequiredEnv(
     "NEXT_PUBLIC_SUPABASE_URL",
     process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -63,13 +66,6 @@ export function getCmsAuthConfig(): AuthConfig {
     auth: {
       appUrl: authAppUrl,
     },
-    crossApp: {
-      redirects: {
-        appUrl,
-        allowedDomains,
-        fallbackPath: DEFAULT_FALLBACK_PATH,
-      },
-    },
   });
 
   const validation = validateAuthConfig(sdkConfig);
@@ -86,6 +82,5 @@ export function getCmsAuthConfig(): AuthConfig {
     authAppUrl: sdkConfig.auth.appUrl,
     appUrl,
     allowedRedirectDomains: allowedDomains,
-    crossApp: sdkConfig.crossApp,
   };
 }

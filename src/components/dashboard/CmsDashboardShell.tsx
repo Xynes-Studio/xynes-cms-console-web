@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@lumia-ui/components";
@@ -34,7 +34,7 @@ import { getCmsDashboardNavItems } from "./navigation";
 import { WorkspaceSelectionSync } from "./WorkspaceSelectionSync";
 
 type CmsDashboardShellProps = {
-  children: LumiaDashboardChildren;
+  children: ReactNode;
   workspaceSlug: string;
 };
 
@@ -578,6 +578,13 @@ export function CmsDashboardShell({
     );
   }
 
+  const shellChildren = (
+    <>
+      <WorkspaceSelectionSync workspaceSlug={workspaceSlug} />
+      {children}
+    </>
+  ) as LumiaDashboardChildren;
+
   return (
     <DashboardShell
       activePath={safeActivePath}
@@ -623,8 +630,7 @@ export function CmsDashboardShell({
         maxNameLength: maxContentDirectoryNameLength,
       }}
     >
-      <WorkspaceSelectionSync workspaceSlug={workspaceSlug} />
-      {children}
+      {shellChildren}
     </DashboardShell>
   );
 }

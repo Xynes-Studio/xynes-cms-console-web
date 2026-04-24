@@ -309,7 +309,7 @@ export const removeContentDirectory = ({
 }: {
   nodes: ContentDirectoryNode[];
   nodeId: string;
-}) =>
+}): ContentDirectoryNode[] =>
   nodes
     .filter((node) => node.id !== nodeId)
     .map((node) => ({

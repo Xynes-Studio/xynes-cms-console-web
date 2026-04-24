@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node ../infra/scripts/with-env.mjs next dev",
-    "build": "node ../infra/scripts/with-env.mjs next build",
+    "build": "NODE_ENV=production node ../infra/scripts/with-env.mjs next build",
     "start": "node ../infra/scripts/with-env.mjs next start",
     "lint": "node ../infra/scripts/with-env.mjs eslint .",
     "test": "node ../infra/scripts/with-env.mjs vitest run",

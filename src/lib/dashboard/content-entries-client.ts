@@ -7,7 +7,11 @@ import {
 
 type FetchLike = typeof fetch;
 
-export type WorkspaceContentEntryStatus = "draft" | "published" | "archived";
+export type WorkspaceContentEntryStatus =
+  | "draft"
+  | "scheduled"
+  | "published"
+  | "archived";
 export type WorkspaceContentEntrySortBy = "date" | "title" | "popularity";
 export type WorkspaceContentEntrySortDirection = "asc" | "desc";
 
@@ -65,6 +69,11 @@ export interface WorkspaceContentEntryUpdatePayload {
   avatarUrl?: string;
 }
 
+export interface WorkspaceContentEntrySetStatusPayload {
+  status: WorkspaceContentEntryStatus;
+  publishAt?: string;
+}
+
 const normalizeEntryId = (entryId: string) => {
   const normalizedEntryId = entryId.trim();
   if (!normalizedEntryId) {
@@ -95,8 +104,13 @@ const normalizeOffset = (offset: number | undefined, fallback: number) => {
 
 const normalizeStatus = (
   status: WorkspaceContentEntriesListQuery["status"],
-): WorkspaceContentEntriesListQuery["status"] => {
-  if (status === "draft" || status === "published" || status === "archived") {
+): WorkspaceContentEntryStatus | "all" => {
+  if (
+    status === "draft" ||
+    status === "scheduled" ||
+    status === "published" ||
+    status === "archived"
+  ) {
     return status;
   }
   return "all";
@@ -181,7 +195,10 @@ const isOptionalString = (value: unknown): boolean =>
 const isWorkspaceContentEntryStatus = (
   value: unknown,
 ): value is WorkspaceContentEntryStatus =>
-  value === "draft" || value === "published" || value === "archived";
+  value === "draft" ||
+  value === "scheduled" ||
+  value === "published" ||
+  value === "archived";
 
 const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
   if (!isRecord(value)) {
@@ -569,6 +586,45 @@ export async function publishWorkspaceContentEntry({
   return parseEntryResponse({
     response,
     errorContext: "publish content entry",
+  });
+}
+
+export async function setWorkspaceContentEntryStatus({
+  apiBaseUrl,
+  workspaceId,
+  entryId,
+  accessToken,
+  payload,
+  fetchImpl = fetch,
+  signal,
+}: {
+  apiBaseUrl: string;
+  workspaceId: string;
+  entryId: string;
+  accessToken: string;
+  payload: WorkspaceContentEntrySetStatusPayload;
+  fetchImpl?: FetchLike;
+  signal?: AbortSignal;
+}): Promise<WorkspaceContentEntry> {
+  const normalized = normalizeGatewayClientInputs({
+    apiBaseUrl,
+    workspaceId,
+    accessToken,
+    errorContext: "content entry status update",
+  });
+  const normalizedEntryId = normalizeEntryId(entryId);
+
+  const endpoint = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}/content/entries/${encodeURIComponent(normalizedEntryId)}/status`;
+  const response = await fetchImpl(endpoint, {
+    method: "POST",
+    headers: createJsonHeaders(normalized.accessToken),
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  return parseEntryResponse({
+    response,
+    errorContext: "set content entry status",
   });
 }
 
