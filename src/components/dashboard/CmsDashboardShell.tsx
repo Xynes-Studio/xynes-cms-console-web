@@ -39,6 +39,16 @@ type CmsDashboardShellProps = {
 };
 
 type LumiaDashboardChildren = ComponentProps<typeof DashboardShell>["children"];
+const authWorkspaceCreationPath = "/onboarding";
+
+function buildAuthWorkspaceCreationUrl(): string {
+  const authAppUrl = process.env.NEXT_PUBLIC_AUTH_APP_URL?.trim();
+  if (!authAppUrl) {
+    return authWorkspaceCreationPath;
+  }
+
+  return `${authAppUrl.replace(/\/+$/, "")}${authWorkspaceCreationPath}`;
+}
 
 type ContentTreeNavNode = ContentDirectoryNode & {
   href: string;
@@ -605,7 +615,15 @@ export function CmsDashboardShell({
         slug: workspace.slug,
       }))}
       onWorkspaceSelect={handleWorkspaceSelect}
-      onCreateWorkspace={() => router.push("/onboarding")}
+      onCreateWorkspace={() => {
+        const target = buildAuthWorkspaceCreationUrl();
+        if (/^https?:\/\//i.test(target)) {
+          window.location.assign(target);
+          return;
+        }
+
+        router.push(target);
+      }}
       enableWorkspaceCreation={true}
       userMenu={{
         name: user?.displayName || user?.email || "User",

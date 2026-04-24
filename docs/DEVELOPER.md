@@ -77,6 +77,7 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
   - renders an accessible 404-style state when workspace resolution fails
 - Legacy flat route `/:workspaceSlug` is retired and must not be reintroduced.
 - Logout redirects from dashboard pages must preserve the namespaced target (for example, `/logout?redirect=/dashboard/acme-team/content`).
+- Workspace creation is owned by `xynes-auth-app`. When the user triggers "Create Workspace" from `DashboardShell`, CMS redirects to `${NEXT_PUBLIC_AUTH_APP_URL}/onboarding` using `window.location.assign()`. If `NEXT_PUBLIC_AUTH_APP_URL` is unset, it falls back to a local `router.push("/onboarding")`.
 
 ### Dashboard Implementation Standards (Next.js + React)
 

@@ -45,6 +45,7 @@ describe("CmsDashboardShell", () => {
   });
 
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_AUTH_APP_URL = "http://localhost:3100";
     pathnameState.value = "/dashboard/acme/plugins";
     mockPush.mockReset();
     mockDashboardShell.mockReset();
@@ -332,8 +333,15 @@ describe("CmsDashboardShell", () => {
       "/logout?redirect=%2Fdashboard%2Facme%2Fplugins",
     );
 
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => undefined);
+
     props.onCreateWorkspace?.();
-    expect(mockPush).toHaveBeenCalledWith("/onboarding");
+    expect(assignSpy).toHaveBeenCalledWith("http://localhost:3100/onboarding");
+    expect(mockPush).not.toHaveBeenCalledWith("/onboarding");
+
+    assignSpy.mockRestore();
   });
 
   it("preserves nested content path when switching workspace", () => {
