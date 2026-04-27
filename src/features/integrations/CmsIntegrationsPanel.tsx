@@ -237,6 +237,24 @@ export function CmsIntegrationsPanel({
     null,
   );
 
+  // Track the "fetch context" (workspace id + auth state) that produced the
+  // current `status`. When that context changes — workspace switch, logout,
+  // re-auth — we reset `status` to `null` *during render* so the user never
+  // sees workspace A's counts while workspace B's fetch is in flight.
+  //
+  // This is the canonical React pattern for "adjust some state when a prop
+  // changes" (see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  // It is preferred over a `setState`-in-effect reset because (a) it avoids
+  // a flash of stale data between effect runs, and (b) it is allowed by the
+  // `react-hooks/set-state-in-effect` lint rule.
+  const fetchContextKey = `${isAuthenticated ? "auth" : "noauth"}|${currentWorkspace?.id ?? ""}`;
+  const [lastFetchContextKey, setLastFetchContextKey] =
+    useState(fetchContextKey);
+  if (lastFetchContextKey !== fetchContextKey) {
+    setLastFetchContextKey(fetchContextKey);
+    setStatus(null);
+  }
+
   useEffect(() => {
     if (isLoading || !isAuthenticated || !currentWorkspace?.id) {
       return;

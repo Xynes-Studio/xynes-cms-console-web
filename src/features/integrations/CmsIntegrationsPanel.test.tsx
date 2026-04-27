@@ -1,3 +1,4 @@
+import type React from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -350,5 +351,141 @@ describe("CmsIntegrationsPanel", () => {
     // The accessible name must include the opens-in-new-tab announcement so
     // sighted-via-icon (↗) users and AT users get the same affordance.
     expect(link).toHaveAccessibleName(/opens in new tab/i);
+  });
+
+  it("clears stale counts when the active workspace changes (no cross-workspace leak)", async () => {
+    // Workspace A: a "deferred" promise the test controls so the fetch is
+    // observably in-flight while we re-render with a new workspace.
+    let resolveA!: (status: {
+      verifiedDomainCount: number;
+      pendingDomainCount: number;
+      activeApiKeyCount: number;
+      cmsScopedApiKeyCount: number;
+      unavailable: boolean;
+    }) => void;
+    const pendingA = new Promise<{
+      verifiedDomainCount: number;
+      pendingDomainCount: number;
+      activeApiKeyCount: number;
+      cmsScopedApiKeyCount: number;
+      unavailable: boolean;
+    }>((resolve) => {
+      resolveA = resolve;
+    });
+
+    // Workspace B: also deferred so we can assert state mid-transition.
+    let resolveB!: (status: {
+      verifiedDomainCount: number;
+      pendingDomainCount: number;
+      activeApiKeyCount: number;
+      cmsScopedApiKeyCount: number;
+      unavailable: boolean;
+    }) => void;
+    const pendingB = new Promise<{
+      verifiedDomainCount: number;
+      pendingDomainCount: number;
+      activeApiKeyCount: number;
+      cmsScopedApiKeyCount: number;
+      unavailable: boolean;
+    }>((resolve) => {
+      resolveB = resolve;
+    });
+
+    fetchStatusMock.mockReset();
+    fetchStatusMock.mockImplementationOnce(() => pendingA);
+    fetchStatusMock.mockImplementationOnce(() => pendingB);
+
+    // Mount with workspace A.
+    mockUseWorkspace.mockReturnValue({
+      currentWorkspace: { id: "workspace-A", name: "Workspace A" },
+    });
+    const { rerender } = render(
+      <CmsIntegrationsPanel workspaceSlug="workspace-a" />,
+    );
+
+    // Workspace A's fetch resolves with very distinctive counts.
+    resolveA({
+      verifiedDomainCount: 999,
+      pendingDomainCount: 999,
+      activeApiKeyCount: 999,
+      cmsScopedApiKeyCount: 999,
+      unavailable: false,
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("cms-integrations-domains-verified-count"),
+      ).toHaveTextContent("999");
+    });
+
+    // Switch to workspace B. Workspace B's fetch is still pending — the user
+    // must NOT see the 999s from workspace A while B loads.
+    mockUseWorkspace.mockReturnValue({
+      currentWorkspace: { id: "workspace-B", name: "Workspace B" },
+    });
+    rerender(<CmsIntegrationsPanel workspaceSlug="workspace-b" />);
+
+    // Allow React to flush the effect cleanup + new effect run.
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("cms-integrations-domains-verified-count"),
+      ).not.toHaveTextContent("999");
+    });
+
+    // While workspace B's fetch is in flight, the panel should show
+    // placeholder dashes (the "—" we render when status is null).
+    expect(
+      screen.getByTestId("cms-integrations-domains-verified-count"),
+    ).toHaveTextContent("—");
+
+    // Resolve workspace B with its real counts; UI updates.
+    resolveB({
+      verifiedDomainCount: 1,
+      pendingDomainCount: 0,
+      activeApiKeyCount: 1,
+      cmsScopedApiKeyCount: 1,
+      unavailable: false,
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("cms-integrations-domains-verified-count"),
+      ).toHaveTextContent("1");
+    });
+  });
+
+  it("clears stale counts when the user logs out (auth state goes false)", async () => {
+    fetchStatusMock.mockResolvedValueOnce({
+      verifiedDomainCount: 42,
+      pendingDomainCount: 7,
+      activeApiKeyCount: 5,
+      cmsScopedApiKeyCount: 3,
+      unavailable: false,
+    });
+
+    const { rerender } = render(
+      <CmsIntegrationsPanel workspaceSlug="acme-demo" />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("cms-integrations-domains-verified-count"),
+      ).toHaveTextContent("42");
+    });
+
+    // Auth flips to "logged out" — the previous user's counts must clear,
+    // not persist on screen until middleware redirects.
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      getAccessToken: vi.fn(),
+    });
+    rerender(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("cms-integrations-domains-verified-count"),
+      ).toHaveTextContent("—");
+    });
   });
 });
