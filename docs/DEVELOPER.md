@@ -508,3 +508,71 @@ Verification commands:
 - Use ESLint flat config (`eslint.config.mjs`) as required by Next.js 16 / ESLint 9.
 - Canonical command: `pnpm lint` (executes `eslint .` through infra env wrapper).
 - Keep lint setup non-mutating and deterministic for local + CI usage.
+
+## Workspace Admin Integrations (CMS Contextual Consumer)
+
+Reference:
+- Epic: `xynes/xynes-infra/infra/architecture/epics/workspace-admin-integrations.md`
+- Implementation plan: `xynes/xynes-infra/docs/plans/2026-04-24-workspace-admin-integrations-cms-contextual-ui.md`
+
+### Ownership rule
+
+- The CMS console is a **contextual consumer** of workspace integration primitives (verified domains, workspace API keys, future webhooks). It must **not** host global lifecycle forms.
+- Verified domains and API keys are owned by the Workspace Admin (auth) app. CMS surfaces counts, helper context, and deep links to Workspace Admin.
+
+### Frontend ownership (segregation)
+
+- Route: `app/dashboard/[workspaceSlug]/integrations/page.tsx` — thin async RSC; awaits `params` and forwards `workspaceSlug` to the client panel. **No** data fetching, env reads, or lifecycle forms here.
+- Feature: `src/features/integrations/CmsIntegrationsPanel.tsx` — owns rendering and effect orchestration. Surfaces `workspaceSlug` in the page header for active-context disambiguation.
+- Pure URL/security helper: `src/features/integrations/workspace-admin-links.ts` (`buildWorkspaceAdminIntegrationUrl`) — generates Workspace Admin deep links.
+- Pure data client: `src/lib/dashboard/workspace-integrations-client.ts` — exports `fetchCmsWorkspaceIntegrationStatus`, the `CmsWorkspaceIntegrationStatus` type, and the canonical frozen sentinel `UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS`.
+
+### Canonical "unavailable" sentinel
+
+- `UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS` is exported once from the client and is `Object.freeze`d.
+- The panel imports the sentinel; it MUST NOT redeclare its own copy. This rule keeps the contract single-sourced and prevents drift if the shape ever changes.
+
+### Security and resilience
+
+- Only `http:` and `https:` `NEXT_PUBLIC_AUTH_APP_URL` values are honored when building Workspace Admin links. Anything else (missing, whitespace, malformed, `javascript:`, `data:`, `file:`, `vbscript:`, `ws:`, `ftp:`, embedded userinfo like `https://user:pass@host`) falls back to a relative `/dashboard/integrations?...` path so the link cannot be hijacked.
+- `react/jsx-no-target-blank` is active in this workspace's ESLint config (inherited from `eslint-config-next/core-web-vitals`); any future external link missing `rel="noopener"` will fail lint.
+- `fetchCmsWorkspaceIntegrationStatus` reuses `gateway-client-utils` (`unwrapGatewayEnvelope`, `normalizeGatewayClientInputs`) and **fails closed** to `unavailable: true` on:
+  - missing inputs (apiBaseUrl/workspaceId/accessToken)
+  - HTTP errors (non-2xx)
+  - malformed (non-array) payloads
+  - thrown exceptions / aborts
+- The client returns an object whose keys are exactly the documented contract (`verifiedDomainCount`, `pendingDomainCount`, `activeApiKeyCount`, `cmsScopedApiKeyCount`, `unavailable`). Hostile fields like `rawKey`/`keyHash`/`internalAuditNote` cannot bleed through (asserted by an explicit "documented-keys-only" test that injects hostile fields).
+- `catch {}` blocks are intentionally empty — no upstream payload, token, or stack trace is ever logged. Errors collapse to the canonical `UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS` sentinel.
+- `workspaceSlug` is rendered as a React text child (auto-escaped); never used in any URL or via `dangerouslySetInnerHTML`.
+
+### UI rules (do / do-not)
+
+The CMS integrations page MAY:
+- show counts, status copy, and Workspace Admin deep links
+- show informational cards for future Workspace Admin features (e.g. webhooks)
+
+The CMS integrations page MUST NOT host:
+- verified-domain lifecycle forms (add domain, verify domain, delete domain)
+- API-key lifecycle forms (create key, revoke key, copy raw key)
+- webhook lifecycle forms (create/delete webhook)
+
+### Lumia DS composition rules
+
+- Panel chrome uses Lumia DS only: `Card`, `Badge`, `Alert` from `@lumia-ui/components`.
+- Workspace Admin **deep links use a styled native `<a>`**, NOT `<Button>`. Lumia's `Button` is a real `<button>` element; nesting `<a>` inside `<button>` is invalid HTML and violates a11y (interactive content nested in interactive content). Use Lumia's exported `buttonStyles` to apply the visual treatment to the anchor.
+- External links (when `NEXT_PUBLIC_AUTH_APP_URL` resolves to a real `http(s)` origin) must include `target="_blank"`, `rel="noopener noreferrer"`, the visible `↗` glyph (with `aria-hidden="true"`), AND a screen-reader-only "(opens in new tab)" hint so AT users get the same affordance.
+- Relative-fallback links (when `NEXT_PUBLIC_AUTH_APP_URL` is missing/unsafe) must NOT carry `target="_blank"`.
+
+### Accessibility contract
+
+- Page heading is an `<h1>`.
+- Cards expose a real `<h2>` per card and a real `<h3>` for the future-webhooks section.
+- Counts are wrapped in semantic `<dl>/<dt>/<dd>`.
+- The unavailable Alert renders with `role="alert"` (Lumia maps `variant="warning"` and `variant="error"` to `role="alert"`; everything else maps to `role="status"`).
+
+### Testing
+
+- Tier 1 — pure URL builder: `src/features/integrations/workspace-admin-links.test.ts`.
+- Tier 1 — pure data client: `src/lib/dashboard/workspace-integrations-client.test.ts` (includes a "frozen sentinel + documented-keys-only" test and a "no leak from hostile upstream" test).
+- Tier 2 — panel composition: `src/features/integrations/CmsIntegrationsPanel.test.tsx` (covers slug-as-context, native-anchor deep links, safe `rel`, sr-only hint, `role="alert"` mapping, and absence of every disallowed lifecycle form).
+- Tier 2 — route orchestration: `app/dashboard/[workspaceSlug]/integrations/page.test.tsx`.
