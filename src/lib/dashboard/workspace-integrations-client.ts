@@ -109,6 +109,35 @@ async function fetchJsonArray({
   return unwrapped;
 }
 
+/**
+ * Per-row tolerance policy (intentional, not a bug):
+ *
+ * `summarizeDomains` and `summarizeApiKeys` skip rows that fail their type
+ * guards rather than tripping the entire workspace into "unavailable".
+ *
+ * The fail-closed contract documented in `docs/DEVELOPER.md` ("Workspace
+ * Admin Integrations (CMS Contextual Consumer)" → "Security and
+ * resilience") triggers on **payload-level** failures (HTTP error,
+ * non-array body, normalize error, thrown fetch). For a list endpoint
+ * delivering aggregate counts, per-row tolerance is the correct tradeoff:
+ *
+ *   - The result object is constructed from explicit integer counters this
+ *     function builds itself; no field from any individual row is ever
+ *     spread, copied, or serialized into the result. Hostile or malformed
+ *     row data therefore *cannot* bleed through (proven by the
+ *     "documented-keys-only" test in this file).
+ *   - Strict per-row fail-closed would create a forward-compatibility
+ *     footgun: a single transient garbage row, or a future Workspace Admin
+ *     row variant with a new optional column, would hide every other valid
+ *     row from the CMS integrations panel.
+ *   - Per-row tolerance matches industry conventions for list-aggregate
+ *     consumers (GraphQL clients, observability dashboards): skip
+ *     malformed entries, surface a count, never leak row contents.
+ *
+ * If a stricter contract is ever required (e.g. for an integrity-sensitive
+ * surface), prefer wiring it at the *payload* level via the type guard in
+ * `fetchJsonArray`, not by promoting per-row guard misses to fatal.
+ */
 function summarizeDomains(rows: unknown[]): {
   verifiedDomainCount: number;
   pendingDomainCount: number;

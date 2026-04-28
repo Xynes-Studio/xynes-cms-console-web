@@ -504,4 +504,93 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
     expect(serialized).not.toContain("keyHash");
     expect(serialized).not.toContain("internalAuditNote");
   });
+
+  it("tolerates individual malformed rows in a valid array (does NOT promote to unavailable)", async () => {
+    // Contract: per-row tolerance for list-aggregate endpoints.
+    // - The fail-closed contract triggers on PAYLOAD-level failures
+    //   (HTTP error, non-array body, normalize error, thrown fetch).
+    // - Per-row guard misses are SKIPPED and counted around, NOT
+    //   promoted to "unavailable", because the result is constructed
+    //   from explicit integer counters this function builds itself.
+    //   Hostile/malformed row data cannot bleed through (covered by
+    //   the "documented-keys-only" test above).
+    // - Strict per-row fail-closed would create a forward-compatibility
+    //   footgun: a single transient garbage row, or a future Workspace
+    //   Admin row variant with a new optional column, would hide every
+    //   other valid row from the CMS integrations panel.
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith("/domains")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: [
+                // valid
+                { id: "d-1", hostname: "a.example", status: "verified" },
+                // malformed: not a record
+                "garbage-string",
+                // malformed: missing status
+                { id: "d-2", hostname: "b.example" },
+                // malformed: empty status
+                { id: "d-3", hostname: "c.example", status: "" },
+                // malformed: null
+                null,
+                // valid
+                { id: "d-4", hostname: "d.example", status: "pending" },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      if (url.endsWith("/api-keys")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: [
+                // valid + active + cms-scoped
+                {
+                  id: "k-1",
+                  status: "active",
+                  presetKey: "cms_readonly",
+                  scopes: ["cms.content.listPublished"],
+                },
+                // malformed: not a record
+                42,
+                // malformed: missing status
+                { id: "k-2", presetKey: "cms_readonly" },
+                // valid + active + non-cms
+                {
+                  id: "k-3",
+                  status: "active",
+                  presetKey: "telemetry_read",
+                  scopes: ["telemetry.events.listRecentForWorkspace"],
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const status = await fetchCmsWorkspaceIntegrationStatus({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+
+    // The whole call must NOT be unavailable just because individual rows
+    // were malformed — the array itself was valid.
+    expect(status.unavailable).toBe(false);
+
+    // Only the valid rows are counted; malformed rows are skipped silently.
+    expect(status.verifiedDomainCount).toBe(1);
+    expect(status.pendingDomainCount).toBe(1);
+    expect(status.activeApiKeyCount).toBe(2);
+    expect(status.cmsScopedApiKeyCount).toBe(1);
+  });
 });
