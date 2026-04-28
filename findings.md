@@ -58,9 +58,13 @@
 
 ## Final result
 
-- 44 new tests; full repo regression `409/409` pass; lint clean; coverage
-  gate met (overall lines `92.2%`, branches `85.78%`; new files all `>= 93%`
-  lines; `workspace-admin-links.ts` at `100%` across the board).
+- All planned tests landed (link-builder, status client, panel, route);
+  the full test suite passes and lint is clean as validated by CI on this
+  PR. Coverage stays comfortably above the ADR-001 80% floor on every axis
+  (lines / branches / funcs / statements), with the pure URL builder
+  (`workspace-admin-links.ts`) running near total coverage as a
+  representative example. Refer to the latest CI run on the PR for the
+  current numeric snapshot rather than embedding totals here.
 - No feature flag required for this story. Workspace Admin lifecycle forms
   remain owned by `xynes-auth-app`; CMS only consumes status counts and
   deep-links into Workspace Admin.

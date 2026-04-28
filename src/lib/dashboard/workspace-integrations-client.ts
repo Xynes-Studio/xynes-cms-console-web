@@ -44,8 +44,6 @@ export const UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS: CmsWorkspaceIntegrati
     unavailable: true,
   });
 
-const UNAVAILABLE_STATUS = UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS;
-
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((entry) => typeof entry === "string");
 
@@ -180,7 +178,7 @@ export async function fetchCmsWorkspaceIntegrationStatus({
       errorContext: "workspace integration status",
     });
   } catch {
-    return UNAVAILABLE_STATUS;
+    return UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS;
   }
 
   const workspacePath = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}`;
@@ -201,7 +199,7 @@ export async function fetchCmsWorkspaceIntegrationStatus({
   ]);
 
   if (domainsRows === null || apiKeyRows === null) {
-    return UNAVAILABLE_STATUS;
+    return UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS;
   }
 
   const domainCounts = summarizeDomains(domainsRows);
