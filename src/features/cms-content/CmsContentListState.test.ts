@@ -26,6 +26,7 @@ describe("resolveCmsContentListState", () => {
     expect(state.kind).toBe("error");
     if (state.kind === "error") {
       expect(state.retryLabel).toBe("Retry");
+      expect(state.retryAriaLabel).toBe("Retry loading");
     }
   });
 
@@ -84,6 +85,7 @@ describe("resolveCmsContentListState", () => {
         errorTitle: "[UUnnaabbllee]",
         errorDescription: "[TTrryy aaggaaiinn]",
         retryLabel: "[RReettrryy]",
+        retryAriaLabel: "[RReettrryy llooaaddiinngg]",
         searchEmptyTitle: "[NNoo mmaattcchheess]",
         searchEmptyDescription: "[TTrryy aannootthheerr]",
         directoryEmptyTitle: "[EEmmppttyy ddiirreeccttoorryy]",
