@@ -1,6 +1,6 @@
 /* stylelint-disable at-rule-no-unknown, scss/at-rule-no-unknown */
 @import "tailwindcss";
-@import "../node_modules/@lumia-ui/editor/dist/index.css";
+@import "@lumia-ui/editor/styles.css";
 @source "../app/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../src/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../node_modules/@lumia-ui/components/dist/**/*.{js,mjs,cjs}";
