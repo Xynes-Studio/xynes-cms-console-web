@@ -12,6 +12,30 @@ const EXPECTED_STATUS_KEYS = [
   "unavailable",
 ] as const;
 
+/**
+ * Build a successful gateway envelope for the workspace-domains list
+ * endpoint. The canonical accounts-service contract is:
+ *
+ *   { ok: true, data: { domains: WorkspaceDomain[] } }
+ *
+ * (See `xynes-accounts-service/src/actions/handlers/integrations/domains.ts`
+ * — `return { domains: rows.map(toDto) }`.)
+ */
+const domainsEnvelope = (rows: unknown[]) =>
+  JSON.stringify({ ok: true, data: { domains: rows } });
+
+/**
+ * Build a successful gateway envelope for the workspace-api-keys list
+ * endpoint. Canonical accounts-service contract is:
+ *
+ *   { ok: true, data: { apiKeys: WorkspaceApiKey[] } }
+ *
+ * (See `xynes-accounts-service/src/actions/handlers/integrations/apiKeys.ts`
+ * — `return { apiKeys: rows.map(toDto) }`.)
+ */
+const apiKeysEnvelope = (rows: unknown[]) =>
+  JSON.stringify({ ok: true, data: { apiKeys: rows } });
+
 describe("fetchCmsWorkspaceIntegrationStatus", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -22,16 +46,13 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
           new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                { id: "d-1", hostname: "a.example", status: "verified" },
-                { id: "d-2", hostname: "b.example", status: "verified" },
-                { id: "d-3", hostname: "c.example", status: "pending" },
-                { id: "d-4", hostname: "d.example", status: "failed" },
-                { id: "d-5", hostname: "e.example", status: "disabled" },
-              ],
-            }),
+            domainsEnvelope([
+              { id: "d-1", hostname: "a.example", status: "verified" },
+              { id: "d-2", hostname: "b.example", status: "verified" },
+              { id: "d-3", hostname: "c.example", status: "pending" },
+              { id: "d-4", hostname: "d.example", status: "failed" },
+              { id: "d-5", hostname: "e.example", status: "disabled" },
+            ]),
             { status: 200 },
           ),
         );
@@ -39,35 +60,32 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       if (url.endsWith("/api-keys")) {
         return Promise.resolve(
           new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                {
-                  id: "k-1",
-                  status: "active",
-                  presetKey: "cms_readonly",
-                  scopes: ["cms.content.listPublished"],
-                },
-                {
-                  id: "k-2",
-                  status: "active",
-                  presetKey: "cms_publisher",
-                  scopes: ["cms.entry.publish"],
-                },
-                {
-                  id: "k-3",
-                  status: "active",
-                  presetKey: "telemetry_read",
-                  scopes: ["telemetry.events.listRecentForWorkspace"],
-                },
-                {
-                  id: "k-4",
-                  status: "revoked",
-                  presetKey: "cms_readonly",
-                  scopes: ["cms.content.listPublished"],
-                },
-              ],
-            }),
+            apiKeysEnvelope([
+              {
+                id: "k-1",
+                status: "active",
+                presetKey: "cms_readonly",
+                scopes: ["cms.content.listPublished"],
+              },
+              {
+                id: "k-2",
+                status: "active",
+                presetKey: "cms_publisher",
+                scopes: ["cms.entry.publish"],
+              },
+              {
+                id: "k-3",
+                status: "active",
+                presetKey: "telemetry_read",
+                scopes: ["telemetry.events.listRecentForWorkspace"],
+              },
+              {
+                id: "k-4",
+                status: "revoked",
+                presetKey: "cms_readonly",
+                scopes: ["cms.content.listPublished"],
+              },
+            ]),
             { status: 200 },
           ),
         );
@@ -114,6 +132,11 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
   });
 
   it("unwraps nested gateway envelopes for both endpoints", async () => {
+    // The real wire shape from the live gateway is double-wrapped:
+    //   { ok: true, data: { ok: true, data: { domains: [...] }, meta }, meta }
+    // `unwrapGatewayEnvelope` peels both layers and lands on
+    //   { domains: [...] }
+    // — the canonical accounts-service handler return shape.
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
@@ -122,10 +145,14 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
               ok: true,
               data: {
                 ok: true,
-                data: [
-                  { id: "d-1", hostname: "a.example", status: "verified" },
-                ],
+                data: {
+                  domains: [
+                    { id: "d-1", hostname: "a.example", status: "verified" },
+                  ],
+                },
+                meta: { requestId: "req_inner" },
               },
+              meta: { requestId: "req_outer" },
             }),
             { status: 200 },
           ),
@@ -138,8 +165,10 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
               ok: true,
               data: {
                 ok: true,
-                data: [],
+                data: { apiKeys: [] },
+                meta: { requestId: "req_inner" },
               },
+              meta: { requestId: "req_outer" },
             }),
             { status: 200 },
           ),
@@ -164,45 +193,42 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+          new Response(domainsEnvelope([]), { status: 200 }),
         );
       }
       if (url.endsWith("/api-keys")) {
         return Promise.resolve(
           new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                // Counts via scope prefix even with no preset
-                {
-                  id: "k-a",
-                  status: "active",
-                  presetKey: null,
-                  scopes: ["cms.entry.create"],
-                },
-                // Counts via preset even when preset uses a non-cms label
-                {
-                  id: "k-b",
-                  status: "active",
-                  presetKey: "cms_readonly",
-                  scopes: [],
-                },
-                // Does not count: revoked
-                {
-                  id: "k-c",
-                  status: "revoked",
-                  presetKey: "cms_readonly",
-                  scopes: ["cms.entry.create"],
-                },
-                // Does not count: no cms scope and non-cms preset
-                {
-                  id: "k-d",
-                  status: "active",
-                  presetKey: "telemetry_read",
-                  scopes: ["telemetry.events.listRecentForWorkspace"],
-                },
-              ],
-            }),
+            apiKeysEnvelope([
+              // Counts via scope prefix even with no preset
+              {
+                id: "k-a",
+                status: "active",
+                presetKey: null,
+                scopes: ["cms.entry.create"],
+              },
+              // Counts via preset even when preset uses a non-cms label
+              {
+                id: "k-b",
+                status: "active",
+                presetKey: "cms_readonly",
+                scopes: [],
+              },
+              // Does not count: revoked
+              {
+                id: "k-c",
+                status: "revoked",
+                presetKey: "cms_readonly",
+                scopes: ["cms.entry.create"],
+              },
+              // Does not count: no cms scope and non-cms preset
+              {
+                id: "k-d",
+                status: "active",
+                presetKey: "telemetry_read",
+                scopes: ["telemetry.events.listRecentForWorkspace"],
+              },
+            ]),
             { status: 200 },
           ),
         );
@@ -225,27 +251,24 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+          new Response(domainsEnvelope([]), { status: 200 }),
         );
       }
       if (url.endsWith("/api-keys")) {
         return Promise.resolve(
           new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                {
-                  id: "k-1",
-                  status: "active",
-                  presetKey: "cms_readonly",
-                  scopes: ["cms.content.listPublished"],
-                  // These should never be returned by gateway, but if they are
-                  // present they must NOT leak into the panel result.
-                  rawKey: "xynes_live_LEAKED",
-                  keyHash: "argon2id$LEAKED",
-                },
-              ],
-            }),
+            apiKeysEnvelope([
+              {
+                id: "k-1",
+                status: "active",
+                presetKey: "cms_readonly",
+                scopes: ["cms.content.listPublished"],
+                // These should never be returned by gateway, but if they are
+                // present they must NOT leak into the panel result.
+                rawKey: "xynes_live_LEAKED",
+                keyHash: "argon2id$LEAKED",
+              },
+            ]),
             { status: 200 },
           ),
         );
@@ -276,7 +299,7 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       }
       if (url.endsWith("/api-keys")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+          new Response(apiKeysEnvelope([]), { status: 200 }),
         );
       }
       throw new Error(`Unexpected URL: ${url}`);
@@ -302,7 +325,7 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+          new Response(domainsEnvelope([]), { status: 200 }),
         );
       }
       if (url.endsWith("/api-keys")) {
@@ -334,18 +357,18 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
     expect(status.unavailable).toBe(true);
   });
 
-  it("returns unavailable status when domains response is malformed", async () => {
+  it("returns unavailable status when domains response is malformed (not an object)", async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: "not-an-array" }), {
+          new Response(JSON.stringify({ ok: true, data: "not-an-object" }), {
             status: 200,
           }),
         );
       }
       if (url.endsWith("/api-keys")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+          new Response(apiKeysEnvelope([]), { status: 200 }),
         );
       }
       throw new Error(`Unexpected URL: ${url}`);
@@ -361,7 +384,40 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
     expect(status.unavailable).toBe(true);
   });
 
-  it("returns unavailable status when api keys response is malformed", async () => {
+  it("returns unavailable status when api keys response is malformed (missing apiKeys list)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith("/domains")) {
+        return Promise.resolve(
+          new Response(domainsEnvelope([]), { status: 200 }),
+        );
+      }
+      if (url.endsWith("/api-keys")) {
+        // Object envelope but missing the `apiKeys` key (e.g. server bug or
+        // schema drift). Must fail closed at the payload boundary.
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: { wrong: "shape" } }), {
+            status: 200,
+          }),
+        );
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const status = await fetchCmsWorkspaceIntegrationStatus({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+
+    expect(status.unavailable).toBe(true);
+  });
+
+  it("returns unavailable status when domains response delivers a bare array (legacy/incorrect contract)", async () => {
+    // Regression guard: the OLD pre-2026-05-09 contract (bare `data: []`)
+    // is no longer accepted. The canonical handler always returns
+    // `{ domains: [...] }` / `{ apiKeys: [...] }` — anything else is treated
+    // as malformed.
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
@@ -370,9 +426,7 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       }
       if (url.endsWith("/api-keys")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: { not: "array" } }), {
-            status: 200,
-          }),
+          new Response(apiKeysEnvelope([]), { status: 200 }),
         );
       }
       throw new Error(`Unexpected URL: ${url}`);
@@ -408,7 +462,7 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       .mockImplementation((_url: string, init: RequestInit) => {
         expect(init.signal).toBeInstanceOf(AbortSignal);
         return Promise.resolve(
-          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+          new Response(domainsEnvelope([]), { status: 200 }),
         );
       });
 
@@ -443,20 +497,17 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
           new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                {
-                  id: "d-1",
-                  hostname: "a.example",
-                  status: "verified",
-                  // Hostile fields below MUST NOT bleed through into the result.
-                  rawKey: "xynes_live_LEAKED",
-                  keyHash: "argon2id$LEAKED",
-                  internalAuditNote: "DO NOT EXPOSE",
-                },
-              ],
-            }),
+            domainsEnvelope([
+              {
+                id: "d-1",
+                hostname: "a.example",
+                status: "verified",
+                // Hostile fields below MUST NOT bleed through into the result.
+                rawKey: "xynes_live_LEAKED",
+                keyHash: "argon2id$LEAKED",
+                internalAuditNote: "DO NOT EXPOSE",
+              },
+            ]),
             { status: 200 },
           ),
         );
@@ -464,19 +515,16 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       if (url.endsWith("/api-keys")) {
         return Promise.resolve(
           new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                {
-                  id: "k-1",
-                  status: "active",
-                  presetKey: "cms_readonly",
-                  scopes: ["cms.content.listPublished"],
-                  rawKey: "xynes_live_LEAKED",
-                  keyHash: "argon2id$LEAKED",
-                },
-              ],
-            }),
+            apiKeysEnvelope([
+              {
+                id: "k-1",
+                status: "active",
+                presetKey: "cms_readonly",
+                scopes: ["cms.content.listPublished"],
+                rawKey: "xynes_live_LEAKED",
+                keyHash: "argon2id$LEAKED",
+              },
+            ]),
             { status: 200 },
           ),
         );
@@ -522,23 +570,20 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       if (url.endsWith("/domains")) {
         return Promise.resolve(
           new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                // valid
-                { id: "d-1", hostname: "a.example", status: "verified" },
-                // malformed: not a record
-                "garbage-string",
-                // malformed: missing status
-                { id: "d-2", hostname: "b.example" },
-                // malformed: empty status
-                { id: "d-3", hostname: "c.example", status: "" },
-                // malformed: null
-                null,
-                // valid
-                { id: "d-4", hostname: "d.example", status: "pending" },
-              ],
-            }),
+            domainsEnvelope([
+              // valid
+              { id: "d-1", hostname: "a.example", status: "verified" },
+              // malformed: not a record
+              "garbage-string",
+              // malformed: missing status
+              { id: "d-2", hostname: "b.example" },
+              // malformed: empty status
+              { id: "d-3", hostname: "c.example", status: "" },
+              // malformed: null
+              null,
+              // valid
+              { id: "d-4", hostname: "d.example", status: "pending" },
+            ]),
             { status: 200 },
           ),
         );
@@ -546,29 +591,26 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
       if (url.endsWith("/api-keys")) {
         return Promise.resolve(
           new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                // valid + active + cms-scoped
-                {
-                  id: "k-1",
-                  status: "active",
-                  presetKey: "cms_readonly",
-                  scopes: ["cms.content.listPublished"],
-                },
-                // malformed: not a record
-                42,
-                // malformed: missing status
-                { id: "k-2", presetKey: "cms_readonly" },
-                // valid + active + non-cms
-                {
-                  id: "k-3",
-                  status: "active",
-                  presetKey: "telemetry_read",
-                  scopes: ["telemetry.events.listRecentForWorkspace"],
-                },
-              ],
-            }),
+            apiKeysEnvelope([
+              // valid + active + cms-scoped
+              {
+                id: "k-1",
+                status: "active",
+                presetKey: "cms_readonly",
+                scopes: ["cms.content.listPublished"],
+              },
+              // malformed: not a record
+              42,
+              // malformed: missing status
+              { id: "k-2", presetKey: "cms_readonly" },
+              // valid + active + non-cms
+              {
+                id: "k-3",
+                status: "active",
+                presetKey: "telemetry_read",
+                scopes: ["telemetry.events.listRecentForWorkspace"],
+              },
+            ]),
             { status: 200 },
           ),
         );
