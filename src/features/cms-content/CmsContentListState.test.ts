@@ -70,4 +70,33 @@ describe("resolveCmsContentListState", () => {
       expect(state.title).toBe("This directory is empty");
     }
   });
+
+  it("uses provided translated copy for empty states", () => {
+    const state = resolveCmsContentListState({
+      isLoading: false,
+      error: null,
+      count: 0,
+      query: "",
+      breadcrumbParts: [],
+      copy: {
+        loadingTitle: "[LLooaaddiinngg]",
+        loadingDescription: "[FFeettcchhiinngg]",
+        errorTitle: "[UUnnaabbllee]",
+        errorDescription: "[TTrryy aaggaaiinn]",
+        retryLabel: "[RReettrryy]",
+        searchEmptyTitle: "[NNoo mmaattcchheess]",
+        searchEmptyDescription: "[TTrryy aannootthheerr]",
+        directoryEmptyTitle: "[EEmmppttyy ddiirreeccttoorryy]",
+        directoryEmptyDescription: "[CCrreeaattee hheerree]",
+        rootEmptyTitle: "[NNoo eennttrriieess yyeett]",
+        rootEmptyDescription: "[CCrreeaattee ffiirrsstt]",
+      },
+    });
+
+    expect(state.kind).toBe("empty");
+    if (state.kind === "empty") {
+      expect(state.title).toBe("[NNoo eennttrriieess yyeett]");
+      expect(state.description).toBe("[CCrreeaattee ffiirrsstt]");
+    }
+  });
 });

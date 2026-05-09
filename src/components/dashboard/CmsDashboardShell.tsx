@@ -9,6 +9,7 @@ import {
   type DashboardNavItem as LumiaDashboardNavItem,
 } from "@lumia-ui/layout";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
+import { useTranslations } from "next-intl";
 import {
   addContentDirectory,
   getContentDirectoryPathIds,
@@ -161,6 +162,7 @@ export function CmsDashboardShell({
   workspaceSlug,
 }: CmsDashboardShellProps) {
   const { show: showToast } = useToast();
+  const t = useTranslations("cms.shell");
   const router = useRouter();
   const activePath = usePathname();
   const {
@@ -182,8 +184,7 @@ export function CmsDashboardShell({
   );
   const contentDirectoryWorkspaceId = workspaceBySlug?.id ?? null;
   const canManageDirectories = workspaceBySlug?.role === "workspace_owner";
-  const directoryActionDisabledReason =
-    "Only workspace owners can manage directories right now.";
+  const directoryActionDisabledReason = t("directory.ownerOnly");
   const fallbackContentPath =
     buildDashboardSectionPath({
       workspaceSlug,
@@ -212,13 +213,11 @@ export function CmsDashboardShell({
       pathSegments: activeContentTailSegments,
     }),
   );
-  const notifyDirectoryActionFailed = (
-    title: "Could not create directory" | "Could not rename directory" | "Could not delete directory",
-  ) => {
+  const notifyDirectoryActionFailed = (title: string) => {
     showToast({
       variant: "error",
       title,
-      description: "Please try again. If the issue persists, contact your workspace owner.",
+      description: t("directory.mutationErrorDescription"),
     });
   };
 
@@ -281,14 +280,18 @@ export function CmsDashboardShell({
     isAuthenticated,
   ]);
 
-  const navItems: LumiaDashboardNavItem[] = getCmsDashboardNavItems(workspaceSlug).map(
-    (item) => ({
+  const navItems: LumiaDashboardNavItem[] = getCmsDashboardNavItems(workspaceSlug, {
+    contents: t("nav.contents"),
+    plugins: t("nav.plugins"),
+    "access-control": t("nav.accessControl"),
+    integrations: t("nav.integrations"),
+    settings: t("nav.settings"),
+  }).map((item) => ({
       id: item.key,
       label: item.label,
       href: item.href,
       icon: item.icon,
-    }),
-  );
+    }));
   const contentsHref =
     navItems.find((item) => item.id === "contents")?.href ?? fallbackContentPath;
   const currentDashboardPath = safeActivePath;
@@ -349,7 +352,7 @@ export function CmsDashboardShell({
 
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
     if (!apiBaseUrl) {
-      notifyDirectoryActionFailed("Could not create directory");
+      notifyDirectoryActionFailed(t("directory.createFailedTitle"));
       return;
     }
 
@@ -378,7 +381,7 @@ export function CmsDashboardShell({
               nodeId: optimisticDirectoryId,
             }),
           );
-          notifyDirectoryActionFailed("Could not create directory");
+          notifyDirectoryActionFailed(t("directory.createFailedTitle"));
           return;
         }
 
@@ -410,7 +413,7 @@ export function CmsDashboardShell({
             nodeId: optimisticDirectoryId,
           }),
         );
-        notifyDirectoryActionFailed("Could not create directory");
+        notifyDirectoryActionFailed(t("directory.createFailedTitle"));
         setDirectoryDataRevision((previous) => previous + 1);
       }
     })();
@@ -432,7 +435,7 @@ export function CmsDashboardShell({
 
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
     if (!apiBaseUrl) {
-      notifyDirectoryActionFailed("Could not rename directory");
+      notifyDirectoryActionFailed(t("directory.renameFailedTitle"));
       return;
     }
 
@@ -453,7 +456,7 @@ export function CmsDashboardShell({
         const accessToken = await getAccessToken();
         if (!accessToken) {
           setContentDirectories(previousTree);
-          notifyDirectoryActionFailed("Could not rename directory");
+          notifyDirectoryActionFailed(t("directory.renameFailedTitle"));
           return;
         }
 
@@ -468,7 +471,7 @@ export function CmsDashboardShell({
       } catch (error) {
         console.error("Failed to persist workspace content directory rename", error);
         setContentDirectories(previousTree);
-        notifyDirectoryActionFailed("Could not rename directory");
+        notifyDirectoryActionFailed(t("directory.renameFailedTitle"));
         setDirectoryDataRevision((previous) => previous + 1);
       }
     })();
@@ -490,7 +493,7 @@ export function CmsDashboardShell({
 
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
     if (!apiBaseUrl) {
-      notifyDirectoryActionFailed("Could not delete directory");
+      notifyDirectoryActionFailed(t("directory.deleteFailedTitle"));
       return;
     }
 
@@ -522,7 +525,7 @@ export function CmsDashboardShell({
         if (!accessToken) {
           setContentDirectories(previousTree);
           setExpandedDirectoryIds(previousExpandedIds);
-          notifyDirectoryActionFailed("Could not delete directory");
+          notifyDirectoryActionFailed(t("directory.deleteFailedTitle"));
           return;
         }
 
@@ -537,7 +540,7 @@ export function CmsDashboardShell({
         console.error("Failed to persist workspace content directory delete", error);
         setContentDirectories(previousTree);
         setExpandedDirectoryIds(previousExpandedIds);
-        notifyDirectoryActionFailed("Could not delete directory");
+        notifyDirectoryActionFailed(t("directory.deleteFailedTitle"));
         setDirectoryDataRevision((previous) => previous + 1);
       }
     })();

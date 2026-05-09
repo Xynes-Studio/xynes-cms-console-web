@@ -24,6 +24,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Badge, Card, buttonStyles } from "@lumia-ui/components";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
+import { useTranslations } from "next-intl";
 import {
   fetchCmsWorkspaceIntegrationStatus,
   UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS,
@@ -55,6 +56,7 @@ type IntegrationCardProps = {
 };
 
 const cardWrapperClasses = "flex h-full flex-col gap-5 p-6";
+type IntegrationTranslator = ReturnType<typeof useTranslations>;
 
 /** Pure helper: did the integration status load successfully? */
 function isStatusLive(
@@ -162,67 +164,65 @@ function IntegrationCard({
  */
 function buildIntegrationCards({
   status,
+  t,
 }: {
   status: CmsWorkspaceIntegrationStatus | null;
+  t: IntegrationTranslator;
 }): IntegrationCardProps[] {
   const live = isStatusLive(status);
   const fmt = (count: number): number | string => (live ? count : "—");
 
   return [
     {
-      eyebrow: "Workspace setup",
-      title: "Verified domains",
-      description:
-        "Verify domains in Workspace Admin once, then reuse them across CMS publishing, delivery, and any future workspace product.",
-      linkLabel: "Manage verified domains",
+      eyebrow: t("sections.domains.eyebrow"),
+      title: t("sections.domains.title"),
+      description: t("sections.domains.description"),
+      linkLabel: t("sections.domains.linkLabel"),
       linkTarget: "domains",
       metrics: [
         {
-          label: "Verified",
+          label: t("sections.domains.verifiedMetric"),
           value: fmt(status?.verifiedDomainCount ?? 0),
           testId: "cms-integrations-domains-verified-count",
         },
         {
-          label: "Pending",
+          label: t("sections.domains.pendingMetric"),
           value: fmt(status?.pendingDomainCount ?? 0),
           testId: "cms-integrations-domains-pending-count",
         },
       ],
     },
     {
-      eyebrow: "Workspace setup",
-      title: "Workspace API keys",
-      description:
-        "API keys are issued and scoped from Workspace Admin. Raw key values are shown once at creation and stored only as hashes — they cannot be revealed again.",
-      linkLabel: "Manage workspace API keys",
+      eyebrow: t("sections.apiKeys.eyebrow"),
+      title: t("sections.apiKeys.title"),
+      description: t("sections.apiKeys.description"),
+      linkLabel: t("sections.apiKeys.linkLabel"),
       linkTarget: "api_keys",
       metrics: [
         {
-          label: "Active",
+          label: t("sections.apiKeys.activeMetric"),
           value: fmt(status?.activeApiKeyCount ?? 0),
           testId: "cms-integrations-api-keys-active-count",
         },
         {
-          label: "CMS-scoped",
+          label: t("sections.apiKeys.cmsScopedMetric"),
           value: fmt(status?.cmsScopedApiKeyCount ?? 0),
           testId: "cms-integrations-api-keys-cms-scoped-count",
         },
       ],
     },
     {
-      eyebrow: "CMS delivery",
-      title: "Content API",
-      description:
-        "Issue a read-only API key for headless content delivery. The key only grants access to published content and cannot mutate entries.",
-      linkLabel: "Create a read-only Content API key",
+      eyebrow: t("sections.contentApi.eyebrow"),
+      title: t("sections.contentApi.title"),
+      description: t("sections.contentApi.description"),
+      linkLabel: t("sections.contentApi.linkLabel"),
       linkTarget: "cms_readonly_key",
     },
     {
-      eyebrow: "Publisher automation",
-      title: "Publisher automation",
-      description:
-        "Issue a publisher API key for build pipelines or scheduled publishing tools that need to author and publish entries on your behalf.",
-      linkLabel: "Create a publisher automation key",
+      eyebrow: t("sections.publisher.eyebrow"),
+      title: t("sections.publisher.title"),
+      description: t("sections.publisher.description"),
+      linkLabel: t("sections.publisher.linkLabel"),
       linkTarget: "cms_publisher_key",
     },
   ];
@@ -233,6 +233,7 @@ export function CmsIntegrationsPanel({
 }: CmsIntegrationsPanelProps) {
   const { isAuthenticated, isLoading, getAccessToken } = useAuth();
   const { currentWorkspace } = useWorkspace();
+  const t = useTranslations("cms.integrations");
   const [status, setStatus] = useState<CmsWorkspaceIntegrationStatus | null>(
     null,
   );
@@ -305,34 +306,31 @@ export function CmsIntegrationsPanel({
     };
   }, [isAuthenticated, isLoading, currentWorkspace?.id, getAccessToken]);
 
-  const cards = buildIntegrationCards({ status });
+  const cards = buildIntegrationCards({ status, t });
 
   return (
     <section className="flex h-full min-h-[420px] flex-col gap-6 p-6">
       <header className="flex flex-col gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Workspace Admin · CMS context
+          {t("slugLabel")}
           {" · "}
           <span data-testid="cms-integrations-workspace-slug">
             {workspaceSlug}
           </span>
         </p>
         <h1 className="text-2xl font-semibold leading-7 text-foreground">
-          Integrations
+          {t("heading")}
         </h1>
         <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
-          Verified domains, API keys, and future automation are managed from
-          Workspace Admin so the rest of the platform can reuse them. This page
-          summarizes what is configured for your workspace and links you to the
-          right Workspace Admin tab to make changes.
+          {t("summary")}
         </p>
       </header>
 
       {status?.unavailable ? (
         <Alert
           variant="warning"
-          title="Integration status unavailable"
-          description="Integration status is temporarily unavailable. Counts shown below may be out of date — refresh the page or open Workspace Admin to confirm."
+          title={t("statusUnavailableTitle")}
+          description={t("statusUnavailableDescription")}
         />
       ) : null}
 
@@ -345,15 +343,12 @@ export function CmsIntegrationsPanel({
       <Card className="flex flex-col gap-2 border-dashed p-6">
         <div className="flex items-center gap-2">
           <h3 className="text-base font-semibold leading-6 text-foreground">
-            Webhooks &amp; deployment hooks
+            {t("futureAutomationTitle")}
           </h3>
-          <Badge variant="outline">Coming soon</Badge>
+          <Badge variant="outline">{t("futureAutomationBadge")}</Badge>
         </div>
         <p className="text-sm leading-5 text-muted-foreground">
-          Workspace webhooks for content events and deployment hooks for
-          downstream rebuilds are part of the Workspace Admin roadmap. They will
-          appear here once Workspace Admin ships them — CMS does not own the
-          webhook lifecycle.
+          {t("futureAutomationDescription")}
         </p>
       </Card>
     </section>

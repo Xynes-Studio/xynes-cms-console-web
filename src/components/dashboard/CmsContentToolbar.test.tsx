@@ -3,6 +3,52 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CmsContentToolbar } from "./CmsContentToolbar";
 
+const translationState = vi.hoisted(() => ({
+  variant: "en" as "en" | "pseudo",
+}));
+
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace: string) => (key: string, values?: { count?: number }) => {
+    const english: Record<string, string> = {
+      "cms.content.toolbar.ariaLabel": "Content toolbar",
+      "cms.content.toolbar.create": "Create",
+      "cms.content.toolbar.createAriaLabel": "Create content",
+      "cms.content.toolbar.searchInputLabel": "Search for contents",
+      "cms.content.toolbar.searchPlaceholder": "Search for Contents",
+      "cms.content.toolbar.searchButton": "Search",
+      "cms.content.toolbar.searchButtonAriaLabel": "Search contents",
+      "cms.content.toolbar.following": "Following",
+      "cms.content.toolbar.followingAriaLabel": "Toggle following filter",
+      "cms.content.toolbar.favorites": "Favorites",
+      "cms.content.toolbar.favoritesAriaLabel": "Toggle favorites filter",
+      "cms.content.toolbar.filter": "Filter",
+      "cms.content.toolbar.filterAriaLabel": "Open advanced filters",
+      "cms.content.toolbar.sortLabel": "Sort content",
+      "cms.content.toolbar.sort.date": "Date",
+      "cms.content.toolbar.sort.title": "Title",
+      "cms.content.toolbar.sort.popularity": "Popularity",
+    };
+    const pseudo: Record<string, string> = {
+      ...english,
+      "cms.content.toolbar.ariaLabel": "[CCoonntteenntt ttoooollbbaarr]",
+      "cms.content.toolbar.create": "[CCrreeaattee]",
+      "cms.content.toolbar.createAriaLabel": "[CCrreeaattee ccoonntteenntt]",
+      "cms.content.toolbar.searchInputLabel": "[SSeeaarrcchh ffoorr ccoonntteennttss]",
+      "cms.content.toolbar.searchPlaceholder": "[SSeeaarrcchh ffoorr CCoonntteennttss]",
+      "cms.content.toolbar.searchButton": "[SSeeaarrcchh]",
+      "cms.content.toolbar.searchButtonAriaLabel": "[SSeeaarrcchh ccoonntteennttss]",
+    };
+
+    if (key === "itemCount") {
+      return `${values?.count ?? 0} Items`;
+    }
+
+    return (translationState.variant === "pseudo" ? pseudo : english)[
+      `${namespace}.${key}`
+    ];
+  },
+}));
+
 vi.mock("@lumia-ui/components", () => ({
   Breadcrumbs: ({
     items,
@@ -93,6 +139,7 @@ vi.mock("@lumia-ui/icons", () => ({
 }));
 
 afterEach(() => {
+  translationState.variant = "en";
   cleanup();
 });
 
@@ -231,5 +278,26 @@ describe("CmsContentToolbar", () => {
     expect(
       screen.getByTestId("cms-content-toolbar-secondary-row"),
     ).toHaveAttribute("inert");
+  });
+
+  it("renders translated visible and accessible toolbar labels", () => {
+    translationState.variant = "pseudo";
+
+    render(<CmsContentToolbar {...buildProps()} />);
+
+    expect(
+      screen.getByRole("region", { name: "[CCoonntteenntt ttoooollbbaarr]" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "[CCrreeaattee ccoonntteenntt]" }),
+    ).toHaveTextContent("[CCrreeaattee]");
+    expect(
+      screen.getByRole("textbox", {
+        name: "[SSeeaarrcchh ffoorr ccoonntteennttss]",
+      }),
+    ).toHaveAttribute("placeholder", "[SSeeaarrcchh ffoorr CCoonntteennttss]");
+    expect(
+      screen.getByRole("button", { name: "[SSeeaarrcchh ccoonntteennttss]" }),
+    ).toHaveTextContent("[SSeeaarrcchh]");
   });
 });

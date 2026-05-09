@@ -1,0 +1,14 @@
+{
+  "namespace": "cms.shell",
+  "owner": "xynes-cms-console-web",
+  "audience": "CMS dashboard users working inside a selected workspace",
+  "context": {
+    "navigation": "Dashboard sidebar navigation labels. Keep labels short enough for the Lumia dashboard shell.",
+    "directories": "Workspace content directory actions and errors. Directory lifecycle remains CMS-owned; keep error copy generic and avoid backend stack details.",
+    "a11y": "ariaLabel values are announced by assistive technology and should describe the control, not the visual icon."
+  },
+  "security": {
+    "secretPolicy": "Never include tokens, raw API keys, hashes, internal request ids, or stack traces in translated strings.",
+    "htmlPolicy": "Messages are rendered as text. Do not add HTML markup to catalog values."
+  }
+}

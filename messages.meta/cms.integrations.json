@@ -1,0 +1,16 @@
+{
+  "namespace": "cms.integrations",
+  "owner": "xynes-cms-console-web",
+  "audience": "CMS users viewing contextual integration status for the active workspace",
+  "context": {
+    "page": "CMS is a contextual consumer of Workspace Admin integrations. Copy may link users to Workspace Admin, but must not imply CMS owns domain, API key, or webhook lifecycle.",
+    "domains": "Verified domains are global workspace resources owned by Workspace Admin.",
+    "apiKeys": "Workspace API keys are global workspace resources. Raw key values are shown once in Workspace Admin and are never revealed by CMS.",
+    "futureAutomation": "Webhooks and deployment hooks are future Workspace Admin-owned capabilities. Keep this informational only."
+  },
+  "security": {
+    "secretPolicy": "Never include raw API keys, key hashes, JWTs, internal audit fields, or stack traces.",
+    "linkPolicy": "Workspace Admin links are built by code from allowlisted http/https origins or relative fallbacks; translators must not add URLs to message values.",
+    "htmlPolicy": "Messages are rendered as text. Do not add HTML markup to catalog values."
+  }
+}

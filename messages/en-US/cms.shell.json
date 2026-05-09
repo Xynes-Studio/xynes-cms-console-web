@@ -1,0 +1,16 @@
+{
+  "nav": {
+    "contents": "Contents",
+    "plugins": "Plugins",
+    "accessControl": "Access Control",
+    "integrations": "Integrations",
+    "settings": "Settings"
+  },
+  "directory": {
+    "ownerOnly": "Only workspace owners can manage directories right now.",
+    "mutationErrorDescription": "Please try again. If the issue persists, contact your workspace owner.",
+    "createFailedTitle": "Could not create directory",
+    "renameFailedTitle": "Could not rename directory",
+    "deleteFailedTitle": "Could not delete directory"
+  }
+}

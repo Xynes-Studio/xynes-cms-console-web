@@ -1,5 +1,6 @@
 import { Avatar, Badge, Button, Card } from "@lumia-ui/components";
 import { Icon } from "@lumia-ui/icons";
+import { useLocale, useTranslations } from "next-intl";
 
 export type CmsEntryCardListProps = {
   entryId: string;
@@ -19,11 +20,13 @@ export type CmsEntryCardListProps = {
   onToggleFavorite: (entryId: string) => void;
 };
 
-const fallbackOwner = "Unknown owner";
-const fallbackDate = "--";
 const maxVisibleCollaborators = 3;
 
-const formatCreatedDate = (createdAt?: string | null) => {
+const formatCreatedDate = (
+  locale: string,
+  fallbackDate: string,
+  createdAt?: string | null,
+) => {
   if (!createdAt) {
     return fallbackDate;
   }
@@ -33,7 +36,7 @@ const formatCreatedDate = (createdAt?: string | null) => {
     return fallbackDate;
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -69,8 +72,12 @@ export function CmsContentCardList({
   onShare,
   onToggleFavorite,
 }: CmsEntryCardListProps) {
-  const resolvedOwner = ownerName?.trim() ? ownerName.trim() : fallbackOwner;
-  const resolvedDate = formatCreatedDate(createdAt);
+  const locale = useLocale();
+  const t = useTranslations("cms.content.card");
+  const resolvedOwner = ownerName?.trim()
+    ? ownerName.trim()
+    : t("fallbackOwner");
+  const resolvedDate = formatCreatedDate(locale, t("fallbackDate"), createdAt);
   const collaboratorText = formatCollaborators(collaborators);
   const metaText = collaboratorText
     ? `${resolvedOwner} · ${resolvedDate} · ${collaboratorText}`
@@ -81,7 +88,7 @@ export function CmsContentCardList({
       <div
         role="button"
         tabIndex={0}
-        aria-label={`Open content ${title}`}
+        aria-label={t("openAriaLabel", { title })}
         className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         onClick={() => onOpen(entryId)}
         onKeyDown={(event) => {
@@ -95,7 +102,7 @@ export function CmsContentCardList({
           <Avatar
             size="md"
             src={avatarUrl ?? undefined}
-            alt={`${resolvedOwner} avatar`}
+            alt={t("avatarAlt", { owner: resolvedOwner })}
             fallbackInitials={resolvedOwner}
           />
           <div className="min-w-0 flex-1">
@@ -111,7 +118,7 @@ export function CmsContentCardList({
               variant="outline"
               className="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
             >
-              Draft
+              {t("draft")}
             </Badge>
           ) : null}
         </div>
@@ -124,7 +131,7 @@ export function CmsContentCardList({
         <Button
           variant="outline"
           size="sm"
-          aria-label={`Delete content ${title}`}
+          aria-label={t("deleteAriaLabel", { title })}
           disabled={isDeleting}
           onClick={(event) => {
             event.stopPropagation();
@@ -132,25 +139,28 @@ export function CmsContentCardList({
           }}
         >
           <Icon name="delete" size="sm" />
-          {isDeleting ? "Deleting..." : "Delete"}
+          {isDeleting ? t("deleting") : t("delete")}
         </Button>
         <Button
           variant="outline"
           size="sm"
-          aria-label={`Share content ${title}`}
+          aria-label={t("shareAriaLabel", { title })}
           onClick={(event) => {
             event.stopPropagation();
             onShare(entryId);
           }}
         >
           <Icon name="external-link" size="sm" />
-          Share
+          {t("share")}
         </Button>
         <Button
           variant={isFavorite ? "secondary" : "outline"}
           size="sm"
           aria-pressed={isFavorite}
-          aria-label={`${isFavorite ? "Unfavorite" : "Favorite"} content ${title}`}
+          aria-label={t(
+            isFavorite ? "unfavoriteAriaLabel" : "favoriteAriaLabel",
+            { title },
+          )}
           disabled={isFavoritePending}
           onClick={(event) => {
             event.stopPropagation();
@@ -159,10 +169,10 @@ export function CmsContentCardList({
         >
           <Icon name={isFavorite ? "check" : "add"} size="sm" />
           {isFavoritePending
-            ? "Updating..."
+            ? t("updating")
             : isFavorite
-              ? "Favourited"
-              : "Favourite"}
+              ? t("favorited")
+              : t("favorite")}
         </Button>
       </div>
     </Card>

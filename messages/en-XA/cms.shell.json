@@ -1,0 +1,16 @@
+{
+  "nav": {
+    "contents": "[CCoonntteennttss]",
+    "plugins": "[PPluuggiinnss]",
+    "accessControl": "[AAcccceessss CCoonnttrrooll]",
+    "integrations": "[IInntteeggrraattiioonnss]",
+    "settings": "[SSeettttiinnggss]"
+  },
+  "directory": {
+    "ownerOnly": "[OOnnllyy wwoorrkkssppaaccee oowwnneerrss ccaann mmaannaaggee ddiirreeccttoorriieess rriigghhtt nnooww.]",
+    "mutationErrorDescription": "[PPlleeaassee ttrryy aaggaaiinn. IIff tthhee iissssuuee ppeerrssiissttss, ccoonnttaacctt yyoouurr wwoorrkkssppaaccee oowwnneerr.]",
+    "createFailedTitle": "[CCoouulldd nnoott ccrreeaattee ddiirreeccttoorryy]",
+    "renameFailedTitle": "[CCoouulldd nnoott rreennaammee ddiirreeccttoorryy]",
+    "deleteFailedTitle": "[CCoouulldd nnoott ddeelleettee ddiirreeccttoorryy]"
+  }
+}

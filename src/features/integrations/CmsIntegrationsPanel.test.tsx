@@ -5,6 +5,56 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mockUseAuth = vi.fn();
 const mockUseWorkspace = vi.fn();
 
+const i18nState = vi.hoisted(() => {
+  const defaultMessages = {
+    heading: "Integrations",
+    summary:
+      "Verified domains, API keys, and future automation are managed from Workspace Admin so the rest of the platform can reuse them. This page summarizes what is configured for your workspace and links you to the right Workspace Admin tab to make changes.",
+    slugLabel: "Workspace Admin · CMS context",
+    statusUnavailableTitle: "Integration status unavailable",
+    statusUnavailableDescription:
+      "Integration status is temporarily unavailable. Counts shown below may be out of date -- refresh the page or open Workspace Admin to confirm.",
+    futureAutomationTitle: "Webhooks & deployment hooks",
+    futureAutomationDescription:
+      "Workspace webhooks for content events and deployment hooks for downstream rebuilds are part of the Workspace Admin roadmap. They will appear here once Workspace Admin ships them -- CMS does not own the webhook lifecycle.",
+    futureAutomationBadge: "Coming soon",
+    "sections.domains.eyebrow": "Workspace setup",
+    "sections.domains.title": "Verified domains",
+    "sections.domains.description":
+      "Verify domains in Workspace Admin once, then reuse them across CMS publishing, delivery, and any future workspace product.",
+    "sections.domains.linkLabel": "Manage verified domains",
+    "sections.domains.verifiedMetric": "Verified",
+    "sections.domains.pendingMetric": "Pending",
+    "sections.apiKeys.eyebrow": "Workspace setup",
+    "sections.apiKeys.title": "Workspace API keys",
+    "sections.apiKeys.description":
+      "API keys are issued and scoped from Workspace Admin. Raw key values are shown once at creation and stored only as hashes -- they cannot be revealed again.",
+    "sections.apiKeys.linkLabel": "Manage workspace API keys",
+    "sections.apiKeys.activeMetric": "Active",
+    "sections.apiKeys.cmsScopedMetric": "CMS-scoped",
+    "sections.contentApi.eyebrow": "CMS delivery",
+    "sections.contentApi.title": "Content API",
+    "sections.contentApi.description":
+      "Issue a read-only API key for headless content delivery. The key only grants access to published content and cannot mutate entries.",
+    "sections.contentApi.linkLabel": "Create a read-only Content API key",
+    "sections.publisher.eyebrow": "Publisher automation",
+    "sections.publisher.title": "Publisher automation",
+    "sections.publisher.description":
+      "Issue a publisher API key for build pipelines or scheduled publishing tools that need to author and publish entries on your behalf.",
+    "sections.publisher.linkLabel": "Create a publisher automation key",
+  };
+
+  return {
+    defaultMessages,
+    messages: { ...defaultMessages },
+  };
+});
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) =>
+    i18nState.messages[key as keyof typeof i18nState.defaultMessages] ?? key,
+}));
+
 vi.mock("@xynes/auth-sdk", () => ({
   useAuth: () => mockUseAuth(),
   useWorkspace: () => mockUseWorkspace(),
@@ -120,6 +170,7 @@ describe("CmsIntegrationsPanel", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    i18nState.messages = { ...i18nState.defaultMessages };
     restoreEnv();
     cleanup();
   });
@@ -129,6 +180,40 @@ describe("CmsIntegrationsPanel", () => {
 
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading).toHaveTextContent(/integrations/i);
+  });
+
+  it("renders translated panel copy from the active locale catalog", () => {
+    i18nState.messages = {
+      ...i18nState.defaultMessages,
+      heading: "[CCMMSS iinntteeggrraattiioonnss]",
+      summary: "[WWoorrkkssppaaccee AAddmmiinn ssuummmmaarryy]",
+      slugLabel: "[AAccttiivvee wwoorrkkssppaaccee]",
+      futureAutomationTitle: "[WWoorrkkssppaaccee wweebbhhooookkss]",
+      futureAutomationBadge: "[PPllaannnneedd]",
+      "sections.domains.linkLabel": "[MMaannaaggee vveerriiffiieedd ddoommaaiinnss]",
+    };
+
+    render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "[CCMMSS iinntteeggrraattiioonnss]" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("[WWoorrkkssppaaccee AAddmmiinn ssuummmmaarryy]")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("cms-integrations-workspace-slug").parentElement,
+    ).toHaveTextContent("[AAccttiivvee wwoorrkkssppaaccee]");
+    expect(
+      screen.getByRole("link", {
+        name: /\[MMaannaaggee vveerriiffiieedd ddoommaaiinnss\]/,
+      }),
+    ).toHaveAttribute(
+      "href",
+      "http://localhost:3100/dashboard/integrations?tab=domains",
+    );
+    expect(
+      screen.getByRole("heading", { name: "[WWoorrkkssppaaccee wweebbhhooookkss]" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("[PPllaannnneedd]")).toBeInTheDocument();
   });
 
   it("does not render the under-development placeholder", () => {

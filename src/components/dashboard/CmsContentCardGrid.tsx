@@ -1,4 +1,5 @@
 import { Avatar, Badge, Card } from "@lumia-ui/components";
+import { useLocale, useTranslations } from "next-intl";
 
 export type CmsEntryCardGridProps = {
   entryId: string;
@@ -11,10 +12,11 @@ export type CmsEntryCardGridProps = {
   onOpen: (entryId: string) => void;
 };
 
-const fallbackOwner = "Unknown owner";
-const fallbackDate = "--";
-
-const formatCreatedDate = (createdAt?: string | null) => {
+const formatCreatedDate = (
+  locale: string,
+  fallbackDate: string,
+  createdAt?: string | null,
+) => {
   if (!createdAt) {
     return fallbackDate;
   }
@@ -24,7 +26,7 @@ const formatCreatedDate = (createdAt?: string | null) => {
     return fallbackDate;
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -41,15 +43,19 @@ export function CmsContentCardGrid({
   status,
   onOpen,
 }: CmsEntryCardGridProps) {
-  const resolvedOwner = ownerName?.trim() ? ownerName.trim() : fallbackOwner;
-  const resolvedDate = formatCreatedDate(createdAt);
+  const locale = useLocale();
+  const t = useTranslations("cms.content.card");
+  const resolvedOwner = ownerName?.trim()
+    ? ownerName.trim()
+    : t("fallbackOwner");
+  const resolvedDate = formatCreatedDate(locale, t("fallbackDate"), createdAt);
   const metaText = `${resolvedOwner} · ${resolvedDate}`;
 
   return (
     <Card
       role="button"
       tabIndex={0}
-      aria-label={`Open content ${title}`}
+      aria-label={t("openAriaLabel", { title })}
       className="flex h-full cursor-pointer flex-col gap-4 border-border bg-background p-4 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       onClick={() => onOpen(entryId)}
       onKeyDown={(event) => {
@@ -63,7 +69,7 @@ export function CmsContentCardGrid({
         <Avatar
           size="md"
           src={avatarUrl ?? undefined}
-          alt={`${resolvedOwner} avatar`}
+          alt={t("avatarAlt", { owner: resolvedOwner })}
           fallbackInitials={resolvedOwner}
         />
         <div className="min-w-0 flex-1">
@@ -72,7 +78,7 @@ export function CmsContentCardGrid({
         </div>
         {status === "draft" ? (
           <Badge variant="outline" className="shrink-0 rounded-md px-2 py-1 text-xs font-medium">
-            Draft
+            {t("draft")}
           </Badge>
         ) : null}
       </div>
@@ -82,4 +88,3 @@ export function CmsContentCardGrid({
     </Card>
   );
 }
-

@@ -10,6 +10,7 @@ Next.js 16 dashboard application for the Xynes CMS console. Provides the authent
 - **Styling**: Tailwind CSS v4 via `@lumia-ui/tokens`
 - **UI Components**: `@lumia-ui/components`, `@lumia-ui/icons`, `@lumia-ui/forms`
 - **Auth / Workspace**: `@xynes/auth-sdk`
+- **Internationalization**: `next-intl` + shared `@xynes/i18n`
 - **Testing**: Vitest + React Testing Library
 - **Linting**: ESLint (Next.js config + `@typescript-eslint`)
 
@@ -46,6 +47,7 @@ pnpm lint         # ESLint check
 pnpm test         # run Vitest once
 pnpm test:watch   # run Vitest in watch mode
 pnpm test:coverage # run with coverage report (target: ≥80% statements + branches)
+pnpm test:e2e     # run Playwright browser smoke tests
 ```
 
 ## Folder Structure
@@ -96,7 +98,32 @@ src/
       gateway-client-utils.ts      # Shared fetch utilities
     auth/
       ...
+
+messages/
+  en-US/                         # source CMS message catalogs
+  en-XA/                         # pseudo-locale catalogs for layout stress
+
+messages.meta/                   # translator/agent context per namespace
 ```
+
+## Translation Prototype
+
+CMS Console uses stable routes and runtime message catalogs rather than locale-prefixed URLs. `app/layout.tsx` resolves the active locale from the allowlisted `xynes_locale` cookie first, then `Accept-Language`, then falls back to `en-US`. The root provider passes the selected locale and statically imported catalogs to `NextIntlClientProvider`.
+
+Supported prototype locales:
+
+| Locale | Purpose |
+|---|---|
+| `en-US` | Source English copy |
+| `en-XA` | Pseudo-locale for browser/layout validation |
+
+Catalog ownership:
+- `messages/*/cms.shell.json` — dashboard shell and directory copy.
+- `messages/*/cms.content.json` — content toolbar, cards, and list states.
+- `messages/*/cms.integrations.json` — CMS contextual Workspace Admin integrations copy.
+- `messages.meta/*.json` — translator and agent context, variable notes, ownership, and security rules.
+
+Security rules: locale input is allowlisted through `@xynes/i18n`; messages are rendered as text; do not put HTML, URLs, tokens, raw API keys, hashes, request internals, or stack traces in catalog values.
 
 ## Testing Standards
 

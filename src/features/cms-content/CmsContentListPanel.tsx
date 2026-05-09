@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import type { BreadcrumbItem } from "@lumia-ui/components";
 import { Alert, ConfirmDialog, useToast } from "@lumia-ui/components";
@@ -56,6 +57,7 @@ const safeDecodePathSegment = (segment: string) => {
 
 export function CmsContentListPanel() {
   const { show: showToast } = useToast();
+  const t = useTranslations("cms.content");
   const pathname = usePathname();
   const router = useRouter();
   const {
@@ -490,6 +492,19 @@ export function CmsContentListPanel() {
     count: visibleCount,
     query: state.query,
     breadcrumbParts,
+    copy: {
+      loadingTitle: t("state.loadingTitle"),
+      loadingDescription: t("state.loadingDescription"),
+      errorTitle: t("state.errorTitle"),
+      errorDescription: t("state.errorDescription"),
+      retryLabel: t("state.retry"),
+      searchEmptyTitle: t("state.searchEmptyTitle"),
+      searchEmptyDescription: t("state.searchEmptyDescription"),
+      directoryEmptyTitle: t("state.directoryEmptyTitle"),
+      directoryEmptyDescription: t("state.directoryEmptyDescription"),
+      rootEmptyTitle: t("state.rootEmptyTitle"),
+      rootEmptyDescription: t("state.rootEmptyDescription"),
+    },
   });
   const resultsScrollRef = useRef<HTMLDivElement | null>(null);
   const secondaryToolbarRowRef = useRef<HTMLDivElement | null>(null);

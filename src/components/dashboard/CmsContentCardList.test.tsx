@@ -3,6 +3,39 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CmsContentCardList } from "./CmsContentCardList";
 
+const i18nState = vi.hoisted(() => ({
+  locale: "en-US",
+  messages: {
+    fallbackOwner: "Unknown owner",
+    fallbackDate: "--",
+    draft: "Draft",
+    openAriaLabel: "Open content {title}",
+    avatarAlt: "{owner} avatar",
+    delete: "Delete",
+    deleting: "Deleting...",
+    deleteAriaLabel: "Delete content {title}",
+    share: "Share",
+    shareAriaLabel: "Share content {title}",
+    favorite: "Favourite",
+    favorited: "Favourited",
+    updating: "Updating...",
+    favoriteAriaLabel: "Favorite content {title}",
+    unfavoriteAriaLabel: "Unfavorite content {title}",
+  },
+}));
+
+vi.mock("next-intl", () => ({
+  useLocale: () => i18nState.locale,
+  useTranslations: () => (key: string, values?: Record<string, string>) => {
+    const template =
+      i18nState.messages[key as keyof typeof i18nState.messages] ?? key;
+    return Object.entries(values ?? {}).reduce(
+      (text, [name, value]) => text.replace(`{${name}}`, value),
+      template,
+    );
+  },
+}));
+
 vi.mock("@lumia-ui/components", () => ({
   Avatar: ({
     alt,
@@ -48,6 +81,25 @@ vi.mock("@lumia-ui/icons", () => ({
 }));
 
 afterEach(() => {
+  vi.restoreAllMocks();
+  i18nState.locale = "en-US";
+  i18nState.messages = {
+    fallbackOwner: "Unknown owner",
+    fallbackDate: "--",
+    draft: "Draft",
+    openAriaLabel: "Open content {title}",
+    avatarAlt: "{owner} avatar",
+    delete: "Delete",
+    deleting: "Deleting...",
+    deleteAriaLabel: "Delete content {title}",
+    share: "Share",
+    shareAriaLabel: "Share content {title}",
+    favorite: "Favourite",
+    favorited: "Favourited",
+    updating: "Updating...",
+    favoriteAriaLabel: "Favorite content {title}",
+    unfavoriteAriaLabel: "Unfavorite content {title}",
+  };
   cleanup();
 });
 
@@ -95,6 +147,64 @@ describe("CmsContentCardList", () => {
 
     expect(screen.getByText("Unknown owner · --")).toBeInTheDocument();
     expect(screen.queryByText("Draft")).toBeNull();
+  });
+
+  it("uses translated labels and the active locale for card metadata", () => {
+    i18nState.locale = "en-XA";
+    i18nState.messages = {
+      ...i18nState.messages,
+      fallbackOwner: "[UUnnkknnoowwnn oowwnneerr]",
+      draft: "[DDrraafftt]",
+      openAriaLabel: "[OOppeenn ccoonntteenntt {title}]",
+      avatarAlt: "[{owner} aavvaattaarr]",
+      delete: "[DDeelleettee]",
+      share: "[SShhaarree]",
+      favorite: "[FFaavvoouurriittee]",
+      deleteAriaLabel: "[DDeelleettee ccoonntteenntt {title}]",
+      shareAriaLabel: "[SShhaarree ccoonntteenntt {title}]",
+      favoriteAriaLabel: "[FFaavvoouurriittee ccoonntteenntt {title}]",
+    };
+    const dateTimeFormatSpy = vi.spyOn(Intl, "DateTimeFormat");
+
+    render(
+      <CmsContentCardList
+        entryId="entry-5"
+        title="Pseudo Card"
+        description="Localized metadata check."
+        ownerName={null}
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="draft"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("[DDrraafftt]")).toBeInTheDocument();
+    expect(
+      screen.getByText("[UUnnkknnoowwnn oowwnneerr] · Feb 23, 2026"),
+    ).toBeInTheDocument();
+    expect(dateTimeFormatSpy).toHaveBeenCalledWith("en-XA", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    expect(
+      screen.getByRole("button", {
+        name: "[OOppeenn ccoonntteenntt Pseudo Card]",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("[[UUnnkknnoowwnn oowwnneerr] aavvaattaarr]"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "[DDeelleettee ccoonntteenntt Pseudo Card]",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("invokes open handler by click and keyboard", () => {

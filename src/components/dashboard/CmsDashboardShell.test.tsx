@@ -25,6 +25,27 @@ vi.mock("@xynes/auth-sdk", () => ({
   useWorkspace: () => mockUseWorkspace(),
 }));
 
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace: string) => (key: string) => {
+    const messages: Record<string, string> = {
+      "cms.shell.nav.contents": "Contents",
+      "cms.shell.nav.plugins": "Plugins",
+      "cms.shell.nav.accessControl": "Access Control",
+      "cms.shell.nav.integrations": "Integrations",
+      "cms.shell.nav.settings": "Settings",
+      "cms.shell.directory.ownerOnly":
+        "Only workspace owners can manage directories right now.",
+      "cms.shell.directory.mutationErrorDescription":
+        "Please try again. If the issue persists, contact your workspace owner.",
+      "cms.shell.directory.createFailedTitle": "Could not create directory",
+      "cms.shell.directory.renameFailedTitle": "Could not rename directory",
+      "cms.shell.directory.deleteFailedTitle": "Could not delete directory",
+    };
+
+    return messages[`${namespace}.${key}`] ?? `${namespace}.${key}`;
+  },
+}));
+
 vi.mock("@lumia-ui/layout", () => ({
   DashboardShell: (props: DashboardShellProps) => {
     mockDashboardShell(props);

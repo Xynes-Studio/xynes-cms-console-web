@@ -1,0 +1,55 @@
+{
+  "toolbar": {
+    "ariaLabel": "[CCoonntteenntt ttoooollbbaarr]",
+    "itemCount": "{count, plural, one {[# IItteemm]} other {[# IItteemmss]}}",
+    "create": "[CCrreeaattee]",
+    "createAriaLabel": "[CCrreeaattee ccoonntteenntt]",
+    "searchInputLabel": "[SSeeaarrcchh ffoorr ccoonntteennttss]",
+    "searchPlaceholder": "[SSeeaarrcchh ffoorr CCoonntteennttss]",
+    "searchButton": "[SSeeaarrcchh]",
+    "searchButtonAriaLabel": "[SSeeaarrcchh ccoonntteennttss]",
+    "following": "[FFoolllloowwiinngg]",
+    "followingAriaLabel": "[TTooggggllee ffoolllloowwiinngg ffiilltteerr]",
+    "favorites": "[FFaavvoorriitteess]",
+    "favoritesAriaLabel": "[TTooggggllee ffaavvoorriitteess ffiilltteerr]",
+    "filter": "[FFiilltteerr]",
+    "filterAriaLabel": "[OOppeenn aaddvvaanncceedd ffiilltteerrss]",
+    "sortLabel": "[SSoorrtt ccoonntteenntt]",
+    "sort": {
+      "date": "[DDaattee]",
+      "title": "[TTiittllee]",
+      "popularity": "[PPooppuullaarriittyy]"
+    }
+  },
+  "card": {
+    "fallbackOwner": "[UUnnkknnoowwnn oowwnneerr]",
+    "fallbackDate": "--",
+    "draft": "[DDrraafftt]",
+    "openAriaLabel": "[OOppeenn ccoonntteenntt {title}]",
+    "avatarAlt": "[{owner} aavvaattaarr]",
+    "delete": "[DDeelleettee]",
+    "deleting": "[DDeelleettiinngg...]",
+    "deleteAriaLabel": "[DDeelleettee ccoonntteenntt {title}]",
+    "share": "[SShhaarree]",
+    "shareAriaLabel": "[SShhaarree ccoonntteenntt {title}]",
+    "favorite": "[FFaavvoouurriittee]",
+    "favorited": "[FFaavvoouurriitteedd]",
+    "updating": "[UUppddaattiinngg...]",
+    "favoriteAriaLabel": "[FFaavvoouurriittee ccoonntteenntt {title}]",
+    "unfavoriteAriaLabel": "[UUnnffaavvoouurriittee ccoonntteenntt {title}]"
+  },
+  "state": {
+    "loadingTitle": "[LLooaaddiinngg ccoonntteenntt eennttrriieess]",
+    "loadingDescription": "[FFeettcchhiinngg eennttrriieess ffoorr tthhiiss wwoorrkkssppaaccee.]",
+    "errorTitle": "[UUnnaabbllee ttoo llooaadd ccoonntteenntt eennttrriieess]",
+    "errorDescription": "[PPlleeaassee ttrryy aaggaaiinn. IIff tthhee pprroobblleemm ccoonnttiinnuueess, ccoonnttaacctt yyoouurr wwoorrkkssppaaccee oowwnneerr.]",
+    "retry": "[RReettrryy]",
+    "retryAriaLabel": "[RReettrryy llooaaddiinngg]",
+    "searchEmptyTitle": "[NNoo ccoonntteenntt mmaattcchheedd yyoouurr sseeaarrcchh]",
+    "searchEmptyDescription": "[TTrryy aannootthheerr kkeeyywwoorrdd oorr cclleeaarr tthhee sseeaarrcchh qquueerryy.]",
+    "directoryEmptyTitle": "[TThhiiss ddiirreeccttoorryy iiss eemmppttyy]",
+    "directoryEmptyDescription": "[CCrreeaattee aa nneeww eennttrryy ttoo aadddd ccoonntteenntt ttoo tthhiiss ddiirreeccttoorryy.]",
+    "rootEmptyTitle": "[NNoo ccoonntteenntt eennttrriieess yyeett]",
+    "rootEmptyDescription": "[CCrreeaattee yyoouurr ffiirrsstt ccoonntteenntt eennttrryy ttoo ggeett ssttaarrtteedd.]"
+  }
+}
