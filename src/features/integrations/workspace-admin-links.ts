@@ -7,12 +7,24 @@
  * those forms live in the Workspace Admin (auth) app. Use this builder to
  * generate deep links that point users to the right Workspace Admin tab/preset.
  *
+ * **Cross-package contract (PFU-6):** the `?preset=<key>` query-parameter
+ * values are typed against the canonical
+ * `@xynes/platform-contracts` `WORKSPACE_API_KEY_PRESET_KEYS` list (mirrored
+ * locally in `./workspace-api-key-preset-keys.ts`). A canonical-list rename
+ * surfaces as a TypeScript error in the mirror file, not as a silently
+ * broken `?preset=…` URL in production.
+ *
  * Security notes:
  *  - Only `http:` and `https:` origins from `NEXT_PUBLIC_AUTH_APP_URL` are honored.
  *  - Anything malformed, empty, whitespace, or with a non-http(s) scheme falls
  *    back to a same-origin relative path so the link cannot be hijacked into a
  *    `javascript:` / `data:` / `file:` redirect.
  */
+
+import {
+  CMS_READONLY_PRESET_KEY,
+  CMS_PUBLISHER_PRESET_KEY,
+} from "./workspace-api-key-preset-keys";
 
 export type WorkspaceAdminIntegrationTarget =
   | "domains"
@@ -25,8 +37,8 @@ const RELATIVE_BASE_PATH = "/dashboard/integrations";
 const QUERY_BY_TARGET: Record<WorkspaceAdminIntegrationTarget, string> = {
   domains: "tab=domains",
   api_keys: "tab=api-keys",
-  cms_readonly_key: "tab=api-keys&preset=cms_readonly",
-  cms_publisher_key: "tab=api-keys&preset=cms_publisher",
+  cms_readonly_key: `tab=api-keys&preset=${CMS_READONLY_PRESET_KEY}`,
+  cms_publisher_key: `tab=api-keys&preset=${CMS_PUBLISHER_PRESET_KEY}`,
 };
 
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);

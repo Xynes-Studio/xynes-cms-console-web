@@ -584,7 +584,8 @@ Reference:
 - Route: `app/dashboard/[workspaceSlug]/integrations/page.tsx` — thin async RSC; awaits `params` and forwards `workspaceSlug` to the client panel. **No** data fetching, env reads, or lifecycle forms here.
 - Feature: `src/features/integrations/CmsIntegrationsPanel.tsx` — owns rendering and effect orchestration. Surfaces `workspaceSlug` in the page header for active-context disambiguation.
 - Message namespace: `cms.integrations`. All panel copy is catalog-driven; links and counts remain code-owned.
-- Pure URL/security helper: `src/features/integrations/workspace-admin-links.ts` (`buildWorkspaceAdminIntegrationUrl`) — generates Workspace Admin deep links.
+- Pure URL/security helper: `src/features/integrations/workspace-admin-links.ts` (`buildWorkspaceAdminIntegrationUrl`) — generates Workspace Admin deep links. Uses typed preset-key constants (`CMS_READONLY_PRESET_KEY`, `CMS_PUBLISHER_PRESET_KEY`) from `./workspace-api-key-preset-keys.ts` rather than embedded literals; a canonical-list rename surfaces as a TS error in the mirror file instead of a silently broken `?preset=…` URL.
+- Cross-package contract mirror: `src/features/integrations/workspace-api-key-preset-keys.ts` (PFU-6, landed 2026-05-09) exports `WORKSPACE_API_KEY_PRESET_KEYS` (mirror of `@xynes/platform-contracts` `WORKSPACE_API_KEY_PRESET_KEYS`) and the typed `CMS_READONLY_PRESET_KEY` / `CMS_PUBLISHER_PRESET_KEY` references used by the deep-link builder. Parity with the canonical contract is enforced by `workspace-api-key-preset-keys.contract.test.ts`.
 - Pure data client: `src/lib/dashboard/workspace-integrations-client.ts` — exports `fetchCmsWorkspaceIntegrationStatus`, the `CmsWorkspaceIntegrationStatus` type, and the canonical frozen sentinel `UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS`.
 
 ### Canonical "unavailable" sentinel
