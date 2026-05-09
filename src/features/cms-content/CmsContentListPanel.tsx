@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
@@ -78,9 +72,9 @@ export function CmsContentListPanel() {
   const [favoriteOverrides, setFavoriteOverrides] = useState<
     Record<string, boolean>
   >({});
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<Record<string, true>>(
-    {},
-  );
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<
+    Record<string, true>
+  >({});
   const [pendingDeleteEntryId, setPendingDeleteEntryId] = useState<
     string | null
   >(null);
@@ -498,6 +492,7 @@ export function CmsContentListPanel() {
       errorTitle: t("state.errorTitle"),
       errorDescription: t("state.errorDescription"),
       retryLabel: t("state.retry"),
+      retryAriaLabel: t("state.retryAriaLabel"),
       searchEmptyTitle: t("state.searchEmptyTitle"),
       searchEmptyDescription: t("state.searchEmptyDescription"),
       directoryEmptyTitle: t("state.directoryEmptyTitle"),
@@ -545,7 +540,10 @@ export function CmsContentListPanel() {
         destructive
         onConfirm={confirmDelete}
       />
-      <div data-testid="content-toolbar-stack" className="shrink-0 bg-background">
+      <div
+        data-testid="content-toolbar-stack"
+        className="shrink-0 bg-background"
+      >
         <CmsContentToolbar
           breadcrumbItems={breadcrumbItems}
           itemCount={visibleCount}
@@ -558,7 +556,9 @@ export function CmsContentListPanel() {
           secondaryRowRef={secondaryToolbarRowRef}
           secondaryRowContainerClassName={cx(
             "transition-[max-height,border-color] duration-200 ease-out",
-            isSecondaryToolbarVisible ? "border-b border-border" : "border-b border-transparent",
+            isSecondaryToolbarVisible
+              ? "border-b border-border"
+              : "border-b border-transparent",
           )}
           secondaryRowContainerStyle={secondaryToolbarContainerStyle}
           onCreate={() => {

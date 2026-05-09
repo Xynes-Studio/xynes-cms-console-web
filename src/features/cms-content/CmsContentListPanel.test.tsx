@@ -81,11 +81,13 @@ vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) => {
     const messages: Record<string, string> = {
       "cms.content.state.loadingTitle": "Loading content entries",
-      "cms.content.state.loadingDescription": "Fetching entries for this workspace.",
+      "cms.content.state.loadingDescription":
+        "Fetching entries for this workspace.",
       "cms.content.state.errorTitle": "Unable to load content entries",
       "cms.content.state.errorDescription":
         "Please try again. If the problem continues, contact your workspace owner.",
       "cms.content.state.retry": "Retry",
+      "cms.content.state.retryAriaLabel": "Retry loading",
       "cms.content.state.searchEmptyTitle": "No content matched your search",
       "cms.content.state.searchEmptyDescription":
         "Try another keyword or clear the search query.",
@@ -120,7 +122,8 @@ vi.mock("./CmsContentActions", () => ({
     origin: string;
     workspaceSlug: string;
     entryId: string;
-  }) => `${origin.replace(/\/+$/, "")}${mockBuildContentEntryEditRoute({ workspaceSlug, entryId })}`,
+  }) =>
+    `${origin.replace(/\/+$/, "")}${mockBuildContentEntryEditRoute({ workspaceSlug, entryId })}`,
 }));
 
 vi.mock("../../lib/dashboard/use-cms-content-query-state", () => ({
@@ -768,15 +771,18 @@ describe("CmsContentListPanel", () => {
     expect(
       screen.getByTestId("content-results-scroll-region").className,
     ).toContain("overflow-y-auto");
-    expect(
-      screen.getByTestId("content-results-scroll-region"),
-    ).toHaveAttribute("role", "region");
-    expect(
-      screen.getByTestId("content-results-scroll-region"),
-    ).toHaveAttribute("aria-label", "Content results");
-    expect(
-      screen.getByTestId("content-results-scroll-region"),
-    ).toHaveAttribute("tabindex", "0");
+    expect(screen.getByTestId("content-results-scroll-region")).toHaveAttribute(
+      "role",
+      "region",
+    );
+    expect(screen.getByTestId("content-results-scroll-region")).toHaveAttribute(
+      "aria-label",
+      "Content results",
+    );
+    expect(screen.getByTestId("content-results-scroll-region")).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
   });
 
   it("renders list cards in single-column layout when view=list", () => {
@@ -866,7 +872,9 @@ describe("CmsContentListPanel", () => {
 
     render(<CmsContentListPanel />);
 
-    const resultsScrollRegion = screen.getByTestId("content-results-scroll-region");
+    const resultsScrollRegion = screen.getByTestId(
+      "content-results-scroll-region",
+    );
     Object.defineProperty(resultsScrollRegion, "scrollHeight", {
       value: 1600,
       configurable: true,
@@ -916,7 +924,9 @@ describe("CmsContentListPanel", () => {
 
     render(<CmsContentListPanel />);
 
-    const resultsScrollRegion = screen.getByTestId("content-results-scroll-region");
+    const resultsScrollRegion = screen.getByTestId(
+      "content-results-scroll-region",
+    );
     Object.defineProperty(resultsScrollRegion, "scrollHeight", {
       value: 1600,
       configurable: true,
@@ -966,7 +976,9 @@ describe("CmsContentListPanel", () => {
 
     render(<CmsContentListPanel />);
 
-    const resultsScrollRegion = screen.getByTestId("content-results-scroll-region");
+    const resultsScrollRegion = screen.getByTestId(
+      "content-results-scroll-region",
+    );
     Object.defineProperty(resultsScrollRegion, "scrollHeight", {
       value: 320,
       configurable: true,
@@ -1119,7 +1131,9 @@ describe("CmsContentListPanel", () => {
 
     it("does not call create while directory resolution is in progress", async () => {
       // Make directory resolution hang so isDirectoryResolving stays true
-      mockListWorkspaceContentDirectories.mockReturnValue(new Promise(() => {}));
+      mockListWorkspaceContentDirectories.mockReturnValue(
+        new Promise(() => {}),
+      );
       render(<CmsContentListPanel />);
       // Wait until the directory API has been called (resolution started, not yet finished)
       await waitFor(() =>
@@ -1131,7 +1145,8 @@ describe("CmsContentListPanel", () => {
     });
 
     it("uses mockListWorkspaceContentDirectories and useCmsContentEntries to keep UNMATCHED_DIRECTORY_ID for unmatched paths", async () => {
-      mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/missing-leaf";
+      mockedPathname =
+        "/dashboard/xynes-studio-llp/content/level-1-2/missing-leaf";
       mockListWorkspaceContentDirectories.mockResolvedValue([
         {
           id: "dir-parent",
@@ -1321,9 +1336,9 @@ describe("CmsContentListPanel", () => {
           screen.getByTestId("list-favorite-entry-action-1"),
         ).toBeDisabled(),
       );
-      expect(screen.getByTestId("list-favorite-entry-action-1")).toHaveTextContent(
-        "Updating...",
-      );
+      expect(
+        screen.getByTestId("list-favorite-entry-action-1"),
+      ).toHaveTextContent("Updating...");
 
       fireEvent.click(screen.getByTestId("list-open-entry-action-2"));
       expect(push).toHaveBeenCalledWith(
@@ -1333,11 +1348,13 @@ describe("CmsContentListPanel", () => {
       resolveFavorite?.({ entryId: "entry-action-1", isFavorite: true });
 
       await waitFor(() =>
-        expect(screen.getByTestId("list-favorite-entry-action-1")).toHaveTextContent(
-          "Unfavorite",
-        ),
+        expect(
+          screen.getByTestId("list-favorite-entry-action-1"),
+        ).toHaveTextContent("Unfavorite"),
       );
-      expect(screen.getByTestId("list-favorite-entry-action-1")).not.toBeDisabled();
+      expect(
+        screen.getByTestId("list-favorite-entry-action-1"),
+      ).not.toBeDisabled();
     });
 
     it("rolls back favorite state and shows an error toast when the toggle fails", async () => {
@@ -1353,9 +1370,9 @@ describe("CmsContentListPanel", () => {
       fireEvent.click(favoriteButton);
 
       await waitFor(() =>
-        expect(screen.getByTestId("list-favorite-entry-action-1")).toHaveTextContent(
-          "Favorite",
-        ),
+        expect(
+          screen.getByTestId("list-favorite-entry-action-1"),
+        ).toHaveTextContent("Favorite"),
       );
       expect(mockToastShow).toHaveBeenCalledWith({
         variant: "error",
@@ -1390,20 +1407,28 @@ describe("CmsContentListPanel", () => {
         ).not.toBeInTheDocument(),
       );
       expect(mockDeleteWorkspaceContentEntry).not.toHaveBeenCalled();
-      expect(screen.getByTestId("list-card-entry-action-1")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("list-card-entry-action-1"),
+      ).toBeInTheDocument();
     });
 
     it("confirms in Lumia dialog and deletes a single row without blocking other rows", async () => {
       let resolveDelete:
-        | ((value: { success: boolean; entryId: string; deletedAt: string | null }) => void)
+        | ((value: {
+            success: boolean;
+            entryId: string;
+            deletedAt: string | null;
+          }) => void)
         | null = null;
       mockDeleteWorkspaceContentEntry.mockImplementationOnce(
         () =>
-          new Promise<{ success: boolean; entryId: string; deletedAt: string | null }>(
-            (resolve) => {
-              resolveDelete = resolve;
-            },
-          ),
+          new Promise<{
+            success: boolean;
+            entryId: string;
+            deletedAt: string | null;
+          }>((resolve) => {
+            resolveDelete = resolve;
+          }),
       );
 
       render(<CmsContentListPanel />);
@@ -1412,9 +1437,7 @@ describe("CmsContentListPanel", () => {
       );
 
       fireEvent.click(deleteButton);
-      fireEvent.click(
-        screen.getByRole("button", { name: "Delete content" }),
-      );
+      fireEvent.click(screen.getByRole("button", { name: "Delete content" }));
 
       expect(mockDeleteWorkspaceContentEntry).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1426,9 +1449,9 @@ describe("CmsContentListPanel", () => {
       await waitFor(() =>
         expect(screen.getByTestId("list-delete-entry-action-1")).toBeDisabled(),
       );
-      expect(screen.getByTestId("list-delete-entry-action-1")).toHaveTextContent(
-        "Deleting...",
-      );
+      expect(
+        screen.getByTestId("list-delete-entry-action-1"),
+      ).toHaveTextContent("Deleting...");
 
       fireEvent.click(screen.getByTestId("list-open-entry-action-2"));
       expect(push).toHaveBeenCalledWith(
@@ -1446,7 +1469,9 @@ describe("CmsContentListPanel", () => {
           screen.queryByTestId("list-card-entry-action-1"),
         ).not.toBeInTheDocument(),
       );
-      expect(screen.getByTestId("list-card-entry-action-2")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("list-card-entry-action-2"),
+      ).toBeInTheDocument();
       expect(mockToastShow).toHaveBeenCalledWith({
         variant: "success",
         title: "Content deleted",
@@ -1465,16 +1490,16 @@ describe("CmsContentListPanel", () => {
       );
 
       fireEvent.click(deleteButton);
-      fireEvent.click(
-        screen.getByRole("button", { name: "Delete content" }),
-      );
+      fireEvent.click(screen.getByRole("button", { name: "Delete content" }));
 
       await waitFor(() =>
-        expect(screen.getByTestId("list-delete-entry-action-1")).toHaveTextContent(
-          "Delete",
-        ),
+        expect(
+          screen.getByTestId("list-delete-entry-action-1"),
+        ).toHaveTextContent("Delete"),
       );
-      expect(screen.getByTestId("list-card-entry-action-1")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("list-card-entry-action-1"),
+      ).toBeInTheDocument();
       expect(mockToastShow).toHaveBeenCalledWith({
         variant: "error",
         title: "Could not delete content",
