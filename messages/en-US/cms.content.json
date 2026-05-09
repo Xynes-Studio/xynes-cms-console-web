@@ -1,0 +1,55 @@
+{
+  "toolbar": {
+    "ariaLabel": "Content toolbar",
+    "itemCount": "{count, plural, one {# Item} other {# Items}}",
+    "create": "Create",
+    "createAriaLabel": "Create content",
+    "searchInputLabel": "Search for contents",
+    "searchPlaceholder": "Search for Contents",
+    "searchButton": "Search",
+    "searchButtonAriaLabel": "Search contents",
+    "following": "Following",
+    "followingAriaLabel": "Toggle following filter",
+    "favorites": "Favorites",
+    "favoritesAriaLabel": "Toggle favorites filter",
+    "filter": "Filter",
+    "filterAriaLabel": "Open advanced filters",
+    "sortLabel": "Sort content",
+    "sort": {
+      "date": "Date",
+      "title": "Title",
+      "popularity": "Popularity"
+    }
+  },
+  "card": {
+    "fallbackOwner": "Unknown owner",
+    "fallbackDate": "--",
+    "draft": "Draft",
+    "openAriaLabel": "Open content {title}",
+    "avatarAlt": "{owner} avatar",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "deleteAriaLabel": "Delete content {title}",
+    "share": "Share",
+    "shareAriaLabel": "Share content {title}",
+    "favorite": "Favourite",
+    "favorited": "Favourited",
+    "updating": "Updating...",
+    "favoriteAriaLabel": "Favorite content {title}",
+    "unfavoriteAriaLabel": "Unfavorite content {title}"
+  },
+  "state": {
+    "loadingTitle": "Loading content entries",
+    "loadingDescription": "Fetching entries for this workspace.",
+    "errorTitle": "Unable to load content entries",
+    "errorDescription": "Please try again. If the problem continues, contact your workspace owner.",
+    "retry": "Retry",
+    "retryAriaLabel": "Retry loading",
+    "searchEmptyTitle": "No content matched your search",
+    "searchEmptyDescription": "Try another keyword or clear the search query.",
+    "directoryEmptyTitle": "This directory is empty",
+    "directoryEmptyDescription": "Create a new entry to add content to this directory.",
+    "rootEmptyTitle": "No content entries yet",
+    "rootEmptyDescription": "Create your first content entry to get started."
+  }
+}

@@ -197,6 +197,60 @@ Rules:
 - Do not introduce app-local re-implementations of shell internals.
 - If shell internals need adjustment (for example, workspace trigger alignment), fix in `lumia-ds` and consume the updated package in apps.
 
+## Translation Prototype Standards
+
+The CMS Console translation prototype is intentionally modular and low-cost:
+
+- Runtime library: `next-intl`.
+- Shared cross-repo primitives: `@xynes/i18n` for locale allowlisting, normalization, negotiation, pseudo-locale metadata, and future catalog tooling.
+- Catalogs live in this app under `messages/<locale>/*.json`; translator/agent context lives beside them in `messages.meta/*.json`.
+- Routes stay stable. Do not introduce locale-prefixed dashboard paths unless a later architecture plan explicitly changes the routing contract.
+
+### Locale Resolution
+
+- Cookie: `xynes_locale`.
+- Resolution order: allowlisted cookie -> allowlisted `Accept-Language` -> `en-US`.
+- Current prototype locales: `en-US` and `en-XA`.
+- `app/layout.tsx` is the single place that reads `cookies()` / `headers()` and loads messages.
+- `src/app/providers.tsx` is the single client provider composition point and wraps existing Auth/Workspace/Toast providers with `NextIntlClientProvider`.
+
+### Catalog Ownership
+
+- `cms.shell`: dashboard navigation, directory labels, directory mutation copy.
+- `cms.content`: toolbar, content card labels/aria labels, list loading/error/empty states.
+- `cms.integrations`: contextual Workspace Admin integration copy.
+
+When adding a new user-facing CMS surface:
+
+- add copy to the closest existing namespace, or create a new feature namespace if the surface has independent ownership;
+- add matching keys to all supported locales;
+- add/update `messages.meta/<namespace>.json` with translator context and variable notes;
+- add tests that prove the UI uses translated copy, not hard-coded English.
+
+### Security and Accessibility
+
+- Treat locale input as untrusted; only use the shared `@xynes/i18n` negotiation helpers.
+- Never render catalog strings through `dangerouslySetInnerHTML`.
+- Do not put URLs, HTML, JWTs, raw API keys, hashes, audit fields, request ids, or stack traces in catalog values.
+- Preserve ICU variables exactly, for example `{count}`, `{title}`, and `{owner}`.
+- Translate accessible labels and hints with the visible control labels so keyboard and screen-reader users receive equivalent context.
+- Continue using Lumia DS primitives for translated controls; do not create app-local theme or layout overrides to accommodate longer strings. Use pseudo-locale browser tests to catch overflow.
+
+### Testing
+
+- Tier 1 locale/config tests: `src/i18n/config.test.ts`.
+- Tier 2 provider/layout tests: `app/layout.test.tsx`, `src/app/providers.test.tsx`.
+- Tier 2 component tests: shell, toolbar, cards, list state, and integrations panel tests include translated-copy coverage.
+- Browser smoke: `e2e/cms-dashboard-scroll-layout.spec.ts` includes `@i18n` pseudo-locale checks across desktop and mobile viewports.
+
+Verification commands:
+
+- `pnpm test`
+- `pnpm test:coverage`
+- `pnpm lint`
+- `pnpm build`
+- `pnpm test:e2e -- --grep @i18n`
+
 ### CMS Content Grid Card Standards
 
 - Component ownership:
@@ -205,6 +259,8 @@ Rules:
   - title must stay one-line truncated.
   - description must stay max three visual lines for grid consistency.
   - draft badge only renders for draft status.
+  - fallback owner/date, draft badge, avatar alt, and open label come from `cms.content.card`.
+  - created date formatting uses the active `next-intl` locale.
 - Accessibility:
   - card root remains keyboard focusable with `role="button"` and `tabIndex={0}`.
   - Enter/Space keyboard activation must match click behavior.
@@ -225,6 +281,8 @@ Rules:
   - collaborator summary displays up to 3 names, then `+N`.
   - row 3 description remains max three visual lines.
   - row 4 action row includes delete/share/favourite controls.
+  - fallback owner/date, draft badge, avatar alt, open label, and action labels come from `cms.content.card`.
+  - created date formatting uses the active `next-intl` locale.
 - Accessibility:
   - open region supports keyboard activation with Enter/Space.
   - action controls expose explicit `aria-label` values with content context.
@@ -250,6 +308,7 @@ Rules:
   - row 2: following/favorites/filter chips (left), sort/view controls (right).
   - row 2 visibility must be driven only by the results scroller, not `window`.
   - when the results area does not overflow, row 2 must remain visible.
+  - all visible labels, placeholders, aria labels, item-count plural copy, and sort labels come from `cms.content.toolbar`.
 - Interaction rules:
   - hide requires accumulated downward scroll intent; do not depend on a single large wheel-style delta.
   - reveal uses a smaller upward threshold so MacBook trackpad scrolling reopens reliably.
@@ -524,6 +583,7 @@ Reference:
 
 - Route: `app/dashboard/[workspaceSlug]/integrations/page.tsx` — thin async RSC; awaits `params` and forwards `workspaceSlug` to the client panel. **No** data fetching, env reads, or lifecycle forms here.
 - Feature: `src/features/integrations/CmsIntegrationsPanel.tsx` — owns rendering and effect orchestration. Surfaces `workspaceSlug` in the page header for active-context disambiguation.
+- Message namespace: `cms.integrations`. All panel copy is catalog-driven; links and counts remain code-owned.
 - Pure URL/security helper: `src/features/integrations/workspace-admin-links.ts` (`buildWorkspaceAdminIntegrationUrl`) — generates Workspace Admin deep links.
 - Pure data client: `src/lib/dashboard/workspace-integrations-client.ts` — exports `fetchCmsWorkspaceIntegrationStatus`, the `CmsWorkspaceIntegrationStatus` type, and the canonical frozen sentinel `UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS`.
 

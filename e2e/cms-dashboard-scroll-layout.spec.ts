@@ -1,6 +1,49 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("CMS dashboard scroll layout fixture", () => {
+  for (const viewport of [
+    { name: "desktop", width: 1280, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+  ]) {
+    test(`@i18n renders pseudo-locale CMS toolbar copy on ${viewport.name}`, async ({
+      page,
+      context,
+    }) => {
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      });
+      await context.addCookies([
+        {
+          name: "xynes_locale",
+          value: "en-XA",
+          url: "http://127.0.0.1:3200",
+          sameSite: "Lax",
+        },
+      ]);
+
+      await page.goto("/e2e/cms-dashboard-scroll");
+
+      await expect(page.locator("html")).toHaveAttribute("lang", "en-XA");
+      await expect(
+        page.getByRole("region", { name: "[CCoonntteenntt ttoooollbbaarr]" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "[CCrreeaattee ccoonntteenntt]" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("textbox", {
+          name: "[SSeeaarrcchh ffoorr ccoonntteennttss]",
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", {
+          name: "[TTooggggllee ffaavvoorriitteess ffiilltteerr]",
+        }),
+      ).toBeVisible();
+    });
+  }
+
   test("exposes named sidebar and results regions that can receive keyboard focus", async ({
     page,
   }) => {

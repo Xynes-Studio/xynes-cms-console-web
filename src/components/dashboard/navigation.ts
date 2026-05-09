@@ -14,6 +14,8 @@ type CmsDashboardNavSpec = {
   segment: string;
 };
 
+export type CmsDashboardNavLabels = Partial<Record<CmsDashboardNavKey, string>>;
+
 export type CmsDashboardNavItem = {
   key: CmsDashboardNavKey;
   label: string;
@@ -46,12 +48,13 @@ const CMS_DASHBOARD_NAV_SPECS: CmsDashboardNavSpec[] = [
 
 export function getCmsDashboardNavItems(
   workspaceSlug: string,
+  labels: CmsDashboardNavLabels = {},
 ): CmsDashboardNavItem[] {
   const dashboardBasePath = toSafeDashboardPath(workspaceSlug) ?? "/dashboard";
 
   return CMS_DASHBOARD_NAV_SPECS.map((item) => ({
     key: item.key,
-    label: item.label,
+    label: labels[item.key] ?? item.label,
     icon: item.icon,
     href: item.segment ? `${dashboardBasePath}/${item.segment}` : dashboardBasePath,
   }));

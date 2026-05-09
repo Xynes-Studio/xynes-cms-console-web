@@ -1,0 +1,19 @@
+{
+  "namespace": "cms.content",
+  "owner": "xynes-cms-console-web",
+  "audience": "Editors and workspace members managing CMS entries",
+  "context": {
+    "toolbar": "Labels for the CMS content toolbar. Preserve concise action labels because this surface is dense and responsive.",
+    "card": "Content list and grid card copy, including action button labels, aria labels, owner/date fallback text, and draft status.",
+    "state": "Loading, error, empty, and retry copy for content lists. Keep failures actionable without exposing backend internals."
+  },
+  "formatting": {
+    "itemCount": "ICU plural message. Preserve the {count} variable and plural structure.",
+    "titleVariables": "aria labels that include {title} must preserve that variable exactly.",
+    "ownerVariables": "avatar alt text must preserve {owner} exactly."
+  },
+  "security": {
+    "secretPolicy": "Do not mention JWTs, API keys, hashes, or internal diagnostics in user-facing content states.",
+    "htmlPolicy": "Messages are rendered as text. Do not add HTML markup to catalog values."
+  }
+}

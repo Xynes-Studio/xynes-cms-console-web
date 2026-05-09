@@ -21,34 +21,64 @@ export type CmsContentListViewState =
       kind: "ready";
     };
 
+export type CmsContentListStateCopy = {
+  loadingTitle: string;
+  loadingDescription: string;
+  errorTitle: string;
+  errorDescription: string;
+  retryLabel: string;
+  searchEmptyTitle: string;
+  searchEmptyDescription: string;
+  directoryEmptyTitle: string;
+  directoryEmptyDescription: string;
+  rootEmptyTitle: string;
+  rootEmptyDescription: string;
+};
+
+const defaultCopy: CmsContentListStateCopy = {
+  loadingTitle: "Loading content entries",
+  loadingDescription: "Fetching entries for this workspace.",
+  errorTitle: "Unable to load content entries",
+  errorDescription:
+    "Please try again. If the problem continues, contact your workspace owner.",
+  retryLabel: "Retry",
+  searchEmptyTitle: "No content matched your search",
+  searchEmptyDescription: "Try another keyword or clear the search query.",
+  directoryEmptyTitle: "This directory is empty",
+  directoryEmptyDescription: "Create a new entry to add content to this directory.",
+  rootEmptyTitle: "No content entries yet",
+  rootEmptyDescription: "Create your first content entry to get started.",
+};
+
 export const resolveCmsContentListState = ({
   isLoading,
   error,
   count,
   query,
   breadcrumbParts,
+  copy = defaultCopy,
 }: {
   isLoading: boolean;
   error: Error | null;
   count: number;
   query: string;
   breadcrumbParts: string[];
+  copy?: CmsContentListStateCopy;
 }): CmsContentListViewState => {
   if (isLoading) {
     return {
       kind: "loading",
-      title: "Loading content entries",
-      description: "Fetching entries for this workspace.",
+      title: copy.loadingTitle,
+      description: copy.loadingDescription,
     };
   }
 
   if (error) {
     return {
       kind: "error",
-      title: "Unable to load content entries",
-      description:
-        "Please try again. If the problem continues, contact your workspace owner.",
-      retryLabel: "Retry",
+      title: copy.errorTitle,
+      description: copy.errorDescription,
+      retryLabel: copy.retryLabel,
     };
   }
 
@@ -60,23 +90,23 @@ export const resolveCmsContentListState = ({
   if (normalizedQuery) {
     return {
       kind: "empty",
-      title: "No content matched your search",
-      description: "Try another keyword or clear the search query.",
+      title: copy.searchEmptyTitle,
+      description: copy.searchEmptyDescription,
     };
   }
 
   if (breadcrumbParts.length > 0) {
     return {
       kind: "empty",
-      title: "This directory is empty",
-      description: "Create a new entry to add content to this directory.",
+      title: copy.directoryEmptyTitle,
+      description: copy.directoryEmptyDescription,
     };
   }
 
   return {
     kind: "empty",
-    title: "No content entries yet",
-    description: "Create your first content entry to get started.",
+    title: copy.rootEmptyTitle,
+    description: copy.rootEmptyDescription,
   };
 };
 

@@ -71,4 +71,47 @@ describe("getCmsDashboardNavItems", () => {
       },
     ]);
   });
+
+  it("allows callers to provide translated labels without changing href construction", () => {
+    expect(
+      getCmsDashboardNavItems("acme-team", {
+        contents: "[CCoonntteennttss]",
+        plugins: "[PPluuggiinnss]",
+        "access-control": "[AAcccceessss CCoonnttrrooll]",
+        integrations: "[IInntteeggrraattiioonnss]",
+        settings: "[SSeettttiinnggss]",
+      }),
+    ).toEqual([
+      {
+        key: "contents",
+        label: "[CCoonntteennttss]",
+        icon: "file-text",
+        href: "/dashboard/acme-team/content",
+      },
+      {
+        key: "plugins",
+        label: "[PPluuggiinnss]",
+        icon: "package",
+        href: "/dashboard/acme-team/plugins",
+      },
+      {
+        key: "access-control",
+        label: "[AAcccceessss CCoonnttrrooll]",
+        icon: "folder-key",
+        href: "/dashboard/acme-team/access-control",
+      },
+      {
+        key: "integrations",
+        label: "[IInntteeggrraattiioonnss]",
+        icon: "link",
+        href: "/dashboard/acme-team/integrations",
+      },
+      {
+        key: "settings",
+        label: "[SSeettttiinnggss]",
+        icon: "settings",
+        href: "/dashboard/acme-team/settings",
+      },
+    ]);
+  });
 });

@@ -34,14 +34,49 @@ vi.mock("@lumia-ui/components", () => ({
   ),
 }));
 
+vi.mock("next-intl", () => ({
+  NextIntlClientProvider: ({
+    children,
+    locale,
+    messages,
+    timeZone,
+  }: {
+    children: ReactNode;
+    locale: string;
+    messages: Record<string, unknown>;
+    timeZone: string;
+  }) => (
+    <div
+      data-testid="intl-provider"
+      data-locale={locale}
+      data-time-zone={timeZone}
+      data-has-cms-messages={String(Boolean(messages.cms))}
+    >
+      {children}
+    </div>
+  ),
+}));
+
 describe("Providers", () => {
-  it("composes AuthProvider and WorkspaceProvider at app root", () => {
+  it("composes i18n, AuthProvider, WorkspaceProvider, and ToastProvider at app root", () => {
     render(
-      <Providers>
+      <Providers locale="en-XA" messages={{ cms: { shell: {} } }}>
         <span data-testid="child">cms</span>
       </Providers>
     );
 
+    expect(screen.getByTestId("intl-provider")).toHaveAttribute(
+      "data-locale",
+      "en-XA"
+    );
+    expect(screen.getByTestId("intl-provider")).toHaveAttribute(
+      "data-has-cms-messages",
+      "true"
+    );
+    expect(screen.getByTestId("intl-provider")).toHaveAttribute(
+      "data-time-zone",
+      "UTC"
+    );
     expect(screen.getByTestId("auth-provider")).toBeInTheDocument();
     expect(screen.getByTestId("auth-provider")).toHaveAttribute(
       "data-auth-app-url",

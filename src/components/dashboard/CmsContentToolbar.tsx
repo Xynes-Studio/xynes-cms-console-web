@@ -10,6 +10,7 @@ import {
 } from "@lumia-ui/components";
 import { Star } from "lucide-react";
 import { Icon } from "@lumia-ui/icons";
+import { useTranslations } from "next-intl";
 
 export type CmsContentSortBy = "date" | "title" | "popularity";
 export type CmsContentView = "grid" | "list";
@@ -40,12 +41,6 @@ export type CmsContentToolbarProps = {
   onFilterClick?: () => void;
 };
 
-const sortOptions: Array<{ label: string; value: CmsContentSortBy }> = [
-  { label: "Date", value: "date" },
-  { label: "Title", value: "title" },
-  { label: "Popularity", value: "popularity" },
-];
-
 const cx = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
@@ -74,6 +69,13 @@ export function CmsContentToolbar({
   onFavoritesToggle,
   onFilterClick,
 }: CmsContentToolbarProps) {
+  const t = useTranslations("cms.content.toolbar");
+  const sortOptions: Array<{ label: string; value: CmsContentSortBy }> = [
+    { label: t("sort.date"), value: "date" },
+    { label: t("sort.title"), value: "title" },
+    { label: t("sort.popularity"), value: "popularity" },
+  ];
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onSearchSubmit();
@@ -81,7 +83,7 @@ export function CmsContentToolbar({
 
   return (
     <section
-      aria-label="Content toolbar"
+      aria-label={t("ariaLabel")}
       className={cx("flex flex-col bg-background", className)}
     >
       <div
@@ -97,23 +99,25 @@ export function CmsContentToolbar({
             maxItems={5}
             className="min-w-0 rounded-full border border-border px-3 py-1 [&_a]:cursor-pointer [&_button]:cursor-pointer"
           />
-          <span className="text-sm text-foreground/90">{itemCount} Items</span>
+          <span className="text-sm text-foreground/90">
+            {t("itemCount", { count: itemCount })}
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={onCreate} aria-label="Create content">
+          <Button size="sm" onClick={onCreate} aria-label={t("createAriaLabel")}>
             <Icon
               name="add"
               size="sm"
               color="currentColor"
               aria-hidden="true"
             />
-            Create
+            {t("create")}
           </Button>
           <form className="flex items-center gap-2" onSubmit={handleSubmit}>
             <Input
-              aria-label="Search for contents"
-              placeholder="Search for Contents"
+              aria-label={t("searchInputLabel")}
+              placeholder={t("searchPlaceholder")}
               value={query}
               onChange={(event) => onQueryChange(event.currentTarget.value)}
             />
@@ -121,9 +125,9 @@ export function CmsContentToolbar({
               type="submit"
               size="sm"
               variant="primary"
-              aria-label="Search contents"
+              aria-label={t("searchButtonAriaLabel")}
             >
-              Search
+              {t("searchButton")}
             </Button>
           </form>
         </div>
@@ -155,9 +159,9 @@ export function CmsContentToolbar({
               active={followingOnly}
               onClick={onFollowingToggle}
               iconName="users"
-              aria-label="Toggle following filter"
+              aria-label={t("followingAriaLabel")}
             >
-              Following
+              {t("following")}
             </Chip>
             <Chip
               size="sm"
@@ -165,9 +169,9 @@ export function CmsContentToolbar({
               active={favoritesOnly}
               onClick={onFavoritesToggle}
               icon={<Star className="h-4 w-4" aria-hidden="true" />}
-              aria-label="Toggle favorites filter"
+              aria-label={t("favoritesAriaLabel")}
             >
-              Favorites
+              {t("favorites")}
             </Chip>
             <Chip
               size="sm"
@@ -176,15 +180,15 @@ export function CmsContentToolbar({
               disabled={filterDisabled}
               onClick={onFilterClick}
               iconName="filter"
-              aria-label="Open advanced filters"
+              aria-label={t("filterAriaLabel")}
             >
-              Filter
+              {t("filter")}
             </Chip>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Select
-              aria-label="Sort content"
+              aria-label={t("sortLabel")}
               value={sortBy}
               onChange={(event) =>
                 onSortChange(event.currentTarget.value as CmsContentSortBy)

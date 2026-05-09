@@ -77,6 +77,30 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace }),
 }));
 
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace: string) => (key: string) => {
+    const messages: Record<string, string> = {
+      "cms.content.state.loadingTitle": "Loading content entries",
+      "cms.content.state.loadingDescription": "Fetching entries for this workspace.",
+      "cms.content.state.errorTitle": "Unable to load content entries",
+      "cms.content.state.errorDescription":
+        "Please try again. If the problem continues, contact your workspace owner.",
+      "cms.content.state.retry": "Retry",
+      "cms.content.state.searchEmptyTitle": "No content matched your search",
+      "cms.content.state.searchEmptyDescription":
+        "Try another keyword or clear the search query.",
+      "cms.content.state.directoryEmptyTitle": "This directory is empty",
+      "cms.content.state.directoryEmptyDescription":
+        "Create a new entry to add content to this directory.",
+      "cms.content.state.rootEmptyTitle": "No content entries yet",
+      "cms.content.state.rootEmptyDescription":
+        "Create your first content entry to get started.",
+    };
+
+    return messages[`${namespace}.${key}`] ?? `${namespace}.${key}`;
+  },
+}));
+
 vi.mock("../../lib/dashboard/content-directories-client", () => ({
   listWorkspaceContentDirectories: mockListWorkspaceContentDirectories,
 }));

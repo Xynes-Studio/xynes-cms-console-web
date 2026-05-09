@@ -3,6 +3,29 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CmsContentCardGrid } from "./CmsContentCardGrid";
 
+const i18nState = vi.hoisted(() => ({
+  locale: "en-US",
+  messages: {
+    fallbackOwner: "Unknown owner",
+    fallbackDate: "--",
+    draft: "Draft",
+    openAriaLabel: "Open content {title}",
+    avatarAlt: "{owner} avatar",
+  },
+}));
+
+vi.mock("next-intl", () => ({
+  useLocale: () => i18nState.locale,
+  useTranslations: () => (key: string, values?: Record<string, string>) => {
+    const template =
+      i18nState.messages[key as keyof typeof i18nState.messages] ?? key;
+    return Object.entries(values ?? {}).reduce(
+      (text, [name, value]) => text.replace(`{${name}}`, value),
+      template,
+    );
+  },
+}));
+
 vi.mock("@lumia-ui/components", () => ({
   Avatar: ({
     alt,
@@ -36,6 +59,15 @@ vi.mock("@lumia-ui/components", () => ({
 }));
 
 afterEach(() => {
+  vi.restoreAllMocks();
+  i18nState.locale = "en-US";
+  i18nState.messages = {
+    fallbackOwner: "Unknown owner",
+    fallbackDate: "--",
+    draft: "Draft",
+    openAriaLabel: "Open content {title}",
+    avatarAlt: "{owner} avatar",
+  };
   cleanup();
 });
 
@@ -74,6 +106,48 @@ describe("CmsContentCardGrid", () => {
 
     expect(screen.getByText("Unknown owner · --")).toBeInTheDocument();
     expect(screen.queryByText("Draft")).toBeNull();
+  });
+
+  it("uses translated labels and the active locale for grid metadata", () => {
+    i18nState.locale = "en-XA";
+    i18nState.messages = {
+      ...i18nState.messages,
+      fallbackOwner: "[UUnnkknnoowwnn oowwnneerr]",
+      draft: "[DDrraafftt]",
+      openAriaLabel: "[OOppeenn ccoonntteenntt {title}]",
+      avatarAlt: "[{owner} aavvaattaarr]",
+    };
+    const dateTimeFormatSpy = vi.spyOn(Intl, "DateTimeFormat");
+
+    render(
+      <CmsContentCardGrid
+        entryId="entry-5"
+        title="Pseudo Grid"
+        description="Localized grid metadata check."
+        ownerName={null}
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="draft"
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("[DDrraafftt]")).toBeInTheDocument();
+    expect(
+      screen.getByText("[UUnnkknnoowwnn oowwnneerr] · Feb 23, 2026"),
+    ).toBeInTheDocument();
+    expect(dateTimeFormatSpy).toHaveBeenCalledWith("en-XA", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    expect(
+      screen.getByRole("button", {
+        name: "[OOppeenn ccoonntteenntt Pseudo Grid]",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("[[UUnnkknnoowwnn oowwnneerr] aavvaattaarr]"),
+    ).toBeInTheDocument();
   });
 
   it("uses avatar initials fallback from owner name", () => {

@@ -1,0 +1,43 @@
+{
+  "heading": "[CCMMSS iinntteeggrraattiioonnss]",
+  "summary": "[VVeerriiffiieedd ddoommaaiinnss, AAPPII kkeeyyss, aanndd ffuuttuurree aauuttoommaattiioonn aarree mmaannaaggeedd ffrroomm WWoorrkkssppaaccee AAddmmiinn ssoo tthhee rreesstt ooff tthhee ppllaattffoorrmm ccaann rreeuussee tthheemm. TThhiiss ppaaggee ssuummmmaarriizzeess wwhhaatt iiss ccoonnffiigguurreedd ffoorr yyoouurr wwoorrkkssppaaccee aanndd lliinnkkss yyoouu ttoo tthhee rriigghhtt WWoorrkkssppaaccee AAddmmiinn ttaabb ttoo mmaakkee cchhaannggeess.]",
+  "slugLabel": "[AAccttiivvee wwoorrkkssppaaccee]",
+  "statusUnavailableTitle": "[WWoorrkkssppaaccee iinntteeggrraattiioonn ssttaattuuss iiss uunnaavvaaiillaabbllee]",
+  "statusUnavailableDescription": "[SSttaattuuss ccoouunnttss aarree tteemmppoorraarriillyy uunnaavvaaiillaabbllee. WWoorrkkssppaaccee AAddmmiinn lliinnkkss rreemmaaiinn aavvaaiillaabbllee.]",
+  "loadingTitle": "[LLooaaddiinngg wwoorrkkssppaaccee iinntteeggrraattiioonn ssttaattuuss]",
+  "loadingDescription": "[CChheecckkiinngg vveerriiffiieedd ddoommaaiinnss aanndd wwoorrkkssppaaccee AAPPII kkeeyyss.]",
+  "futureAutomationLabel": "[FFuuttuurree aauuttoommaattiioonn]",
+  "futureAutomationTitle": "[WWoorrkkssppaaccee wweebbhhooookkss]",
+  "futureAutomationDescription": "[WWeebbhhooookk lliiffeeccyyccllee mmaannaaggeemmeenntt wwiillll lliivvee iinn WWoorrkkssppaaccee AAddmmiinn. CCMMSS wwiillll ccoonnssuummee wwoorrkkssppaaccee-lleevveell wweebbhhooookk ssttaattuuss oonnccee tthhee ppllaattffoorrmm sseerrvviiccee iiss rreeaaddyy.]",
+  "futureAutomationBadge": "[PPllaannnneedd]",
+  "sections": {
+    "domains": {
+      "eyebrow": "[WWoorrkkssppaaccee sseettuupp]",
+      "title": "[VVeerriiffiieedd ddoommaaiinnss]",
+      "description": "[VVeerriiffyy ddoommaaiinnss iinn WWoorrkkssppaaccee AAddmmiinn oonnccee, tthheenn rreeuussee tthheemm aaccrroossss CCMMSS ppuubblliisshhiinngg, ddeelliivveerryy, aanndd aannyy ffuuttuurree wwoorrkkssppaaccee pprroodduucctt.]",
+      "linkLabel": "[MMaannaaggee vveerriiffiieedd ddoommaaiinnss]",
+      "verifiedMetric": "[VVeerriiffiieedd]",
+      "pendingMetric": "[PPeennddiinngg]"
+    },
+    "apiKeys": {
+      "eyebrow": "[WWoorrkkssppaaccee sseettuupp]",
+      "title": "[WWoorrkkssppaaccee AAPPII kkeeyyss]",
+      "description": "[AAPPII kkeeyyss aarree iissssuueedd aanndd ssccooppeedd ffrroomm WWoorrkkssppaaccee AAddmmiinn. RRaaww kkeeyy vvaalluueess aarree sshhoowwnn oonnccee aatt ccrreeaattiioonn aanndd ssttoorreedd oonnllyy aass hhaasshheess -- tthheeyy ccaannnnoott bbee rreevveeaalleedd aaggaaiinn.]",
+      "linkLabel": "[MMaannaaggee wwoorrkkssppaaccee AAPPII kkeeyyss]",
+      "activeMetric": "[AAccttiivvee]",
+      "cmsScopedMetric": "[CCMMSS-ssccooppeedd]"
+    },
+    "contentApi": {
+      "eyebrow": "[CCMMSS ddeelliivveerryy]",
+      "title": "[CCoonntteenntt AAPPII]",
+      "description": "[IIssssuuee aa rreeaadd-oonnllyy AAPPII kkeeyy ffoorr hheeaaddlleessss ccoonntteenntt ddeelliivveerryy. TThhee kkeeyy oonnllyy ggrraannttss aacccceessss ttoo ppuubblliisshheedd ccoonntteenntt aanndd ccaannnnoott mmuuttaattee eennttrriieess.]",
+      "linkLabel": "[CCrreeaattee aa rreeaadd-oonnllyy CCoonntteenntt AAPPII kkeeyy]"
+    },
+    "publisher": {
+      "eyebrow": "[PPuubblliisshheerr aauuttoommaattiioonn]",
+      "title": "[PPuubblliisshheerr aauuttoommaattiioonn]",
+      "description": "[IIssssuuee aa ppuubblliisshheerr AAPPII kkeeyy ffoorr bbuuiilldd ppiippeelliinneess oorr sscchheedduulleedd ppuubblliisshhiinngg ttoooollss tthhaatt nneeeedd ttoo aauutthhoorr aanndd ppuubblliisshh eennttrriieess oonn yyoouurr bbeehhaallff.]",
+      "linkLabel": "[CCrreeaattee aa ppuubblliisshheerr aauuttoommaattiioonn kkeeyy]"
+    }
+  }
+}
