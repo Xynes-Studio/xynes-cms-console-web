@@ -599,8 +599,13 @@ Reference:
 - `fetchCmsWorkspaceIntegrationStatus` reuses `gateway-client-utils` (`unwrapGatewayEnvelope`, `normalizeGatewayClientInputs`) and **fails closed** to `unavailable: true` on:
   - missing inputs (apiBaseUrl/workspaceId/accessToken)
   - HTTP errors (non-2xx)
-  - malformed (non-array) payloads
+  - malformed payloads (non-object after envelope unwrap, or missing the named list)
   - thrown exceptions / aborts
+- **Wire contract (canonical, single-sourced with `xynes-auth-app/src/lib/integrations/workspace-integrations-client.ts` and `xynes-accounts-service/src/actions/handlers/integrations/{domains,apiKeys}.ts`):** after `unwrapGatewayEnvelope` peels the gateway `{ok, data, meta}` wrapper(s), the resulting value is an OBJECT, not a bare array:
+  - `GET /workspaces/:wsId/domains` → `{ domains: WorkspaceDomain[] }`
+  - `GET /workspaces/:wsId/api-keys` → `{ apiKeys: WorkspaceApiKey[] }`
+  
+  The internal `fetchUnwrappedRows({ url, listKey })` helper enforces this strictly — bare-array payloads (the pre-2026-05-09 contract) and any other shape fail closed to the sentinel. There is a regression-guard test that asserts a bare `data: []` payload is rejected, so the old contract cannot silently come back.
 - The client returns an object whose keys are exactly the documented contract (`verifiedDomainCount`, `pendingDomainCount`, `activeApiKeyCount`, `cmsScopedApiKeyCount`, `unavailable`). Hostile fields like `rawKey`/`keyHash`/`internalAuditNote` cannot bleed through (asserted by an explicit "documented-keys-only" test that injects hostile fields).
 - `catch {}` blocks are intentionally empty — no upstream payload, token, or stack trace is ever logged. Errors collapse to the canonical `UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS` sentinel.
 - `workspaceSlug` is rendered as a React text child (auto-escaped); never used in any URL or via `dangerouslySetInnerHTML`.

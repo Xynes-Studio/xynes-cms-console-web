@@ -65,13 +65,15 @@ const isWorkspaceApiKeySummary = (
   return isNonEmptyString(value.status);
 };
 
-async function fetchJsonArray({
+async function fetchUnwrappedRows({
   url,
+  listKey,
   accessToken,
   fetchImpl,
   signal,
 }: {
   url: string;
+  listKey: "domains" | "apiKeys";
   accessToken: string;
   fetchImpl: FetchLike;
   signal?: AbortSignal;
@@ -101,12 +103,26 @@ async function fetchJsonArray({
     return null;
   }
 
+  // After unwrapping the gateway envelope, the canonical accounts-service
+  // contract for these list endpoints is an OBJECT with a named array:
+  //
+  //   /workspaces/:wsId/domains   → { domains: WorkspaceDomain[] }
+  //   /workspaces/:wsId/api-keys  → { apiKeys: WorkspaceApiKey[] }
+  //
+  // (See `xynes-accounts-service/src/actions/handlers/integrations/{domains,apiKeys}.ts`
+  // and the matching reader in `xynes-auth-app/src/lib/integrations/workspace-integrations-client.ts`.)
+  //
+  // We accept that shape and treat anything else as malformed → fail closed.
   const unwrapped = unwrapGatewayEnvelope(body);
-  if (!Array.isArray(unwrapped)) {
+  if (!isRecord(unwrapped)) {
+    return null;
+  }
+  const rows = (unwrapped as Record<string, unknown>)[listKey];
+  if (!Array.isArray(rows)) {
     return null;
   }
 
-  return unwrapped;
+  return rows;
 }
 
 /**
@@ -213,14 +229,16 @@ export async function fetchCmsWorkspaceIntegrationStatus({
   const workspacePath = `${normalized.apiBaseUrl}/workspaces/${encodeURIComponent(normalized.workspaceId)}`;
 
   const [domainsRows, apiKeyRows] = await Promise.all([
-    fetchJsonArray({
+    fetchUnwrappedRows({
       url: `${workspacePath}/domains`,
+      listKey: "domains",
       accessToken: normalized.accessToken,
       fetchImpl,
       signal,
     }),
-    fetchJsonArray({
+    fetchUnwrappedRows({
       url: `${workspacePath}/api-keys`,
+      listKey: "apiKeys",
       accessToken: normalized.accessToken,
       fetchImpl,
       signal,
