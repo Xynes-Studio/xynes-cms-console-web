@@ -4,9 +4,15 @@
   "audience": "CMS dashboard users working inside a selected workspace",
   "context": {
     "navigation": "Dashboard sidebar navigation labels. Keep labels short enough for the Lumia dashboard shell.",
+    "shell": "Lumia DashboardShell label bundle (UXR-6). Most strings are screen-reader-only (aria-label, aria-labelledby) — translators should keep them descriptive but short. ICU placeholders {unreadCount} and {title} are interpolated by next-intl at render time and must be preserved verbatim. Vocabulary for shared destinations (Access Control, Integrations, Settings) must match the Cross-App Navigation Vocabulary at xynes/xynes-infra/docs/research/ux-review/02-cross-app-navigation-vocabulary.md and stay aligned with the auth-app catalog (auth.dashboard.shell).",
+    "status": "Authentication redirect placeholders shown briefly while the dashboard resolves auth state. Keep concise; tone matches loading affordances elsewhere in the app.",
     "directories": "Workspace content directory actions and errors. Directory lifecycle remains CMS-owned; keep error copy generic and avoid backend stack details.",
     "a11y": "ariaLabel values are announced by assistive technology and should describe the control, not the visual icon."
   },
+  "consumes": [
+    "@lumia-ui/layout — DashboardShell.labels (DashboardShellLabels)",
+    "@lumia-ui/layout — DashboardWorkspaceSwitcher.labels via DashboardShell"
+  ],
   "security": {
     "secretPolicy": "Never include tokens, raw API keys, hashes, internal request ids, or stack traces in translated strings.",
     "htmlPolicy": "Messages are rendered as text. Do not add HTML markup to catalog values."

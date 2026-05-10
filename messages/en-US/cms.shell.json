@@ -6,6 +6,52 @@
     "integrations": "Integrations",
     "settings": "Settings"
   },
+  "shell": {
+    "navigation": {
+      "mainContent": "Dashboard main content",
+      "sidebar": "Dashboard sidebar",
+      "sidebarScrollArea": "Sidebar navigation scroll area",
+      "dashboardNavigation": "Dashboard navigation",
+      "mobileDashboardNavigation": "Mobile dashboard navigation",
+      "mobileMenu": "Menu",
+      "openMobileMenu": "Open menu"
+    },
+    "workspace": {
+      "trigger": "Switch workspace",
+      "fallbackName": "Workspace",
+      "currentSection": "Current Workspace",
+      "currentBadge": "Current",
+      "switchToSection": "Switch to",
+      "createAction": "Create new workspace",
+      "createUnavailableAction": "Workspace creation unavailable"
+    },
+    "workspaceCreationDisabledMessage": "Workspace creation is unavailable. Check settings or contact admin.",
+    "profile": {
+      "trigger": "Open profile menu",
+      "profileAction": "Profile",
+      "logoutAction": "Logout"
+    },
+    "notifications": {
+      "open": "Open notifications",
+      "tab": "Notifications",
+      "titlePattern": "Notifications ({unreadCount})",
+      "empty": "No notifications",
+      "list": "Notification list",
+      "todayGroup": "Today",
+      "yesterdayGroup": "Yesterday",
+      "unreadCountPattern": "{unreadCount} unread notifications",
+      "deletePattern": "Delete notification {title}"
+    },
+    "userMenu": {
+      "fallbackName": "User",
+      "fallbackEmail": "No email"
+    },
+    "footerNote": "Need access? Contact your workspace owner."
+  },
+  "status": {
+    "loadingDashboard": "Loading dashboard...",
+    "redirectingToLogin": "Redirecting to login..."
+  },
   "directory": {
     "ownerOnly": "Only workspace owners can manage directories right now.",
     "mutationErrorDescription": "Please try again. If the issue persists, contact your workspace owner.",

@@ -8,7 +8,6 @@ import {
   ViewToggle,
   type BreadcrumbItem,
 } from "@lumia-ui/components";
-import { Star } from "lucide-react";
 import { Icon } from "@lumia-ui/icons";
 import { useTranslations } from "next-intl";
 
@@ -168,7 +167,7 @@ export function CmsContentToolbar({
               toggle
               active={favoritesOnly}
               onClick={onFavoritesToggle}
-              icon={<Star className="h-4 w-4" aria-hidden="true" />}
+              icon={<Icon name="star" size="sm" aria-hidden="true" />}
               aria-label={t("favoritesAriaLabel")}
             >
               {t("favorites")}

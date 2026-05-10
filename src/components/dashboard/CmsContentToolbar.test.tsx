@@ -8,45 +8,49 @@ const translationState = vi.hoisted(() => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace: string) => (key: string, values?: { count?: number }) => {
-    const english: Record<string, string> = {
-      "cms.content.toolbar.ariaLabel": "Content toolbar",
-      "cms.content.toolbar.create": "Create",
-      "cms.content.toolbar.createAriaLabel": "Create content",
-      "cms.content.toolbar.searchInputLabel": "Search for contents",
-      "cms.content.toolbar.searchPlaceholder": "Search for Contents",
-      "cms.content.toolbar.searchButton": "Search",
-      "cms.content.toolbar.searchButtonAriaLabel": "Search contents",
-      "cms.content.toolbar.following": "Following",
-      "cms.content.toolbar.followingAriaLabel": "Toggle following filter",
-      "cms.content.toolbar.favorites": "Favorites",
-      "cms.content.toolbar.favoritesAriaLabel": "Toggle favorites filter",
-      "cms.content.toolbar.filter": "Filter",
-      "cms.content.toolbar.filterAriaLabel": "Open advanced filters",
-      "cms.content.toolbar.sortLabel": "Sort content",
-      "cms.content.toolbar.sort.date": "Date",
-      "cms.content.toolbar.sort.title": "Title",
-      "cms.content.toolbar.sort.popularity": "Popularity",
-    };
-    const pseudo: Record<string, string> = {
-      ...english,
-      "cms.content.toolbar.ariaLabel": "[CCoonntteenntt ttoooollbbaarr]",
-      "cms.content.toolbar.create": "[CCrreeaattee]",
-      "cms.content.toolbar.createAriaLabel": "[CCrreeaattee ccoonntteenntt]",
-      "cms.content.toolbar.searchInputLabel": "[SSeeaarrcchh ffoorr ccoonntteennttss]",
-      "cms.content.toolbar.searchPlaceholder": "[SSeeaarrcchh ffoorr CCoonntteennttss]",
-      "cms.content.toolbar.searchButton": "[SSeeaarrcchh]",
-      "cms.content.toolbar.searchButtonAriaLabel": "[SSeeaarrcchh ccoonntteennttss]",
-    };
+  useTranslations:
+    (namespace: string) => (key: string, values?: { count?: number }) => {
+      const english: Record<string, string> = {
+        "cms.content.toolbar.ariaLabel": "Content toolbar",
+        "cms.content.toolbar.create": "Create",
+        "cms.content.toolbar.createAriaLabel": "Create content",
+        "cms.content.toolbar.searchInputLabel": "Search for contents",
+        "cms.content.toolbar.searchPlaceholder": "Search for Contents",
+        "cms.content.toolbar.searchButton": "Search",
+        "cms.content.toolbar.searchButtonAriaLabel": "Search contents",
+        "cms.content.toolbar.following": "Following",
+        "cms.content.toolbar.followingAriaLabel": "Toggle following filter",
+        "cms.content.toolbar.favorites": "Favorites",
+        "cms.content.toolbar.favoritesAriaLabel": "Toggle favorites filter",
+        "cms.content.toolbar.filter": "Filter",
+        "cms.content.toolbar.filterAriaLabel": "Open advanced filters",
+        "cms.content.toolbar.sortLabel": "Sort content",
+        "cms.content.toolbar.sort.date": "Date",
+        "cms.content.toolbar.sort.title": "Title",
+        "cms.content.toolbar.sort.popularity": "Popularity",
+      };
+      const pseudo: Record<string, string> = {
+        ...english,
+        "cms.content.toolbar.ariaLabel": "[CCoonntteenntt ttoooollbbaarr]",
+        "cms.content.toolbar.create": "[CCrreeaattee]",
+        "cms.content.toolbar.createAriaLabel": "[CCrreeaattee ccoonntteenntt]",
+        "cms.content.toolbar.searchInputLabel":
+          "[SSeeaarrcchh ffoorr ccoonntteennttss]",
+        "cms.content.toolbar.searchPlaceholder":
+          "[SSeeaarrcchh ffoorr CCoonntteennttss]",
+        "cms.content.toolbar.searchButton": "[SSeeaarrcchh]",
+        "cms.content.toolbar.searchButtonAriaLabel":
+          "[SSeeaarrcchh ccoonntteennttss]",
+      };
 
-    if (key === "itemCount") {
-      return `${values?.count ?? 0} Items`;
-    }
+      if (key === "itemCount") {
+        return `${values?.count ?? 0} Items`;
+      }
 
-    return (translationState.variant === "pseudo" ? pseudo : english)[
-      `${namespace}.${key}`
-    ];
-  },
+      return (translationState.variant === "pseudo" ? pseudo : english)[
+        `${namespace}.${key}`
+      ];
+    },
 }));
 
 vi.mock("@lumia-ui/components", () => ({
@@ -75,6 +79,10 @@ vi.mock("@lumia-ui/components", () => ({
   ),
   Chip: ({
     children,
+    icon,
+    iconName,
+    leadingIcon,
+    trailingContent,
     ...props
   }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
     children?: React.ReactNode;
@@ -88,14 +96,18 @@ vi.mock("@lumia-ui/components", () => ({
     const domProps = { ...props };
     delete (domProps as Record<string, unknown>).toggle;
     delete (domProps as Record<string, unknown>).active;
-    delete (domProps as Record<string, unknown>).icon;
-    delete (domProps as Record<string, unknown>).iconName;
-    delete (domProps as Record<string, unknown>).leadingIcon;
-    delete (domProps as Record<string, unknown>).trailingContent;
 
     return (
       <button type="button" {...domProps}>
+        {leadingIcon}
+        {icon}
+        {iconName ? (
+          <span data-icon-name={iconName} aria-hidden="true">
+            {iconName}
+          </span>
+        ) : null}
         {children}
+        {trailingContent}
       </button>
     );
   },
@@ -197,6 +209,20 @@ describe("CmsContentToolbar", () => {
     expect(
       screen.getByRole("combobox", { name: "Sort content" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders the favorites chip with the Lumia canonical 'star' icon (UXR-3 follow-through)", () => {
+    render(<CmsContentToolbar {...buildProps()} />);
+
+    const favoritesButton = screen.getByRole("button", {
+      name: "Toggle favorites filter",
+    });
+    // The chip's leading glyph is the Lumia "star" icon registered via
+    // packages/icons/src/default-icons.ts (UXR-3). Our @lumia-ui/icons mock
+    // renders the resolved icon name into the DOM, so this assertion
+    // protects against a future regression that re-introduces a direct
+    // lucide-react import for the favorites glyph.
+    expect(favoritesButton).toHaveTextContent(/star/i);
   });
 
   it("emits create, query, and search events", () => {
