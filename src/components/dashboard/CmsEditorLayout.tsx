@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type SVGProps } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -19,7 +19,7 @@ import {
   Textarea,
   TimePicker,
 } from "@lumia-ui/components";
-import { Icon, registerIcon, type IconComponent } from "@lumia-ui/icons";
+import { Icon } from "@lumia-ui/icons";
 
 export type CmsEditorSaveState = "idle" | "saving" | "saved" | "error";
 export type CmsEditorEntryStatus =
@@ -57,57 +57,6 @@ export type CmsEditorLayoutProps = {
   onRetrySave?: () => void;
   children: React.ReactNode;
 };
-
-const RepublishIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-    <path
-      d="M20 6v5h-5"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M20 11a8 8 0 1 1-2.34-5.66L20 6"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const ArchiveEntryIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-    <path
-      d="M4 7.5h16"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-    <path
-      d="M6 7.5h12v10.75a1.75 1.75 0 0 1-1.75 1.75h-8.5A1.75 1.75 0 0 1 6 18.25z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M9.5 11.5h5"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-    <path
-      d="M8 4h8l1 3.5H7z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-registerIcon("republish", RepublishIcon as unknown as IconComponent);
-registerIcon("archive-entry", ArchiveEntryIcon as unknown as IconComponent);
 
 const toLocalTimeValue = (value?: string | null) => {
   if (!value) return undefined;

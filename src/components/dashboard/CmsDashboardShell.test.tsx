@@ -26,7 +26,7 @@ vi.mock("@xynes/auth-sdk", () => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace: string) => (key: string) => {
+  useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) => {
     const messages: Record<string, string> = {
       "cms.shell.nav.contents": "Contents",
       "cms.shell.nav.plugins": "Plugins",
@@ -40,9 +40,54 @@ vi.mock("next-intl", () => ({
       "cms.shell.directory.createFailedTitle": "Could not create directory",
       "cms.shell.directory.renameFailedTitle": "Could not rename directory",
       "cms.shell.directory.deleteFailedTitle": "Could not delete directory",
+      "cms.shell.status.loadingDashboard": "Loading dashboard...",
+      "cms.shell.status.redirectingToLogin": "Redirecting to login...",
+      "cms.shell.shell.workspaceCreationDisabledMessage":
+        "Workspace creation is unavailable. Check settings or contact admin.",
+      "cms.shell.shell.footerNote":
+        "Need access? Contact your workspace owner.",
+      "cms.shell.shell.navigation.mainContent": "Dashboard main content",
+      "cms.shell.shell.navigation.sidebar": "Dashboard sidebar",
+      "cms.shell.shell.navigation.sidebarScrollArea":
+        "Sidebar navigation scroll area",
+      "cms.shell.shell.navigation.dashboardNavigation":
+        "Dashboard navigation",
+      "cms.shell.shell.navigation.mobileDashboardNavigation":
+        "Mobile dashboard navigation",
+      "cms.shell.shell.navigation.mobileMenu": "Menu",
+      "cms.shell.shell.navigation.openMobileMenu": "Open menu",
+      "cms.shell.shell.workspace.trigger": "Switch workspace",
+      "cms.shell.shell.workspace.fallbackName": "Workspace",
+      "cms.shell.shell.workspace.currentSection": "Current Workspace",
+      "cms.shell.shell.workspace.currentBadge": "Current",
+      "cms.shell.shell.workspace.switchToSection": "Switch to",
+      "cms.shell.shell.workspace.createAction": "Create new workspace",
+      "cms.shell.shell.workspace.createUnavailableAction":
+        "Workspace creation unavailable",
+      "cms.shell.shell.profile.trigger": "Open profile menu",
+      "cms.shell.shell.profile.profileAction": "Profile",
+      "cms.shell.shell.profile.logoutAction": "Logout",
+      "cms.shell.shell.notifications.open": "Open notifications",
+      "cms.shell.shell.notifications.tab": "Notifications",
+      "cms.shell.shell.notifications.empty": "No notifications",
+      "cms.shell.shell.notifications.list": "Notification list",
+      "cms.shell.shell.notifications.todayGroup": "Today",
+      "cms.shell.shell.notifications.yesterdayGroup": "Yesterday",
+      "cms.shell.shell.userMenu.fallbackName": "User",
+      "cms.shell.shell.userMenu.fallbackEmail": "No email",
     };
 
-    return messages[`${namespace}.${key}`] ?? `${namespace}.${key}`;
+    const fullKey = `${namespace}.${key}`;
+    if (key === "titlePattern") {
+      return `Notifications (${(values?.unreadCount as number | undefined) ?? 0})`;
+    }
+    if (key === "unreadCountPattern") {
+      return `${(values?.unreadCount as number | undefined) ?? 0} unread notifications`;
+    }
+    if (key === "deletePattern") {
+      return `Delete notification ${(values?.title as string | undefined) ?? ""}`;
+    }
+    return messages[fullKey] ?? fullKey;
   },
 }));
 
@@ -1270,5 +1315,81 @@ describe("CmsDashboardShell", () => {
     expect(mockDashboardShell).not.toHaveBeenCalled();
     expect(mockRedirectToLogin).not.toHaveBeenCalled();
     expect(getByRole("status")).toHaveTextContent("Loading dashboard...");
+  });
+
+  it("forwards a fully populated DashboardShell label bundle and translated workspace + footer copy (UXR-6)", () => {
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+
+    // sidebarFooterNote and workspaceCreationDisabledMessage now come from
+    // the cms.shell catalog instead of being hard-coded English strings.
+    expect(props.sidebarFooterNote).toBe(
+      "Need access? Contact your workspace owner.",
+    );
+    expect(props.workspaceCreationDisabledMessage).toBe(
+      "Workspace creation is unavailable. Check settings or contact admin.",
+    );
+
+    // userMenu fallbacks come from the catalog (User / No email).
+    expect(props.userMenu.name).toBe("Archie");
+    expect(props.userMenu.email).toBe("archie@xynes.com");
+
+    // The Lumia DashboardShell label bundle is fully populated.
+    const labels = props.labels;
+    expect(labels?.navigation?.mainContent).toBe("Dashboard main content");
+    expect(labels?.navigation?.sidebar).toBe("Dashboard sidebar");
+    expect(labels?.navigation?.openMobileMenu).toBe("Open menu");
+    expect(labels?.workspace?.trigger).toBe("Switch workspace");
+    expect(labels?.workspace?.currentSection).toBe("Current Workspace");
+    expect(labels?.workspace?.createAction).toBe("Create new workspace");
+    expect(labels?.profile?.trigger).toBe("Open profile menu");
+    expect(labels?.profile?.logoutAction).toBe("Logout");
+    expect(labels?.notifications?.empty).toBe("No notifications");
+
+    // ICU placeholders flow through the t-functions correctly.
+    expect(labels?.notifications?.title?.(3)).toBe("Notifications (3)");
+    expect(labels?.notifications?.unreadCount?.(3)).toBe(
+      "3 unread notifications",
+    );
+    expect(
+      labels?.notifications?.delete?.({
+        id: "n-1",
+        title: "Welcome",
+        createdAt: "2026-05-10T00:00:00.000Z",
+      }),
+    ).toBe("Delete notification Welcome");
+  });
+
+  it("falls back to translated user menu copy when user has no display name or email (UXR-6)", () => {
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      redirectToLogin: mockRedirectToLogin,
+      getAccessToken: mockGetAccessToken,
+      user: { displayName: null, email: null, avatarUrl: null },
+      workspaces: [
+        {
+          id: "ws-1",
+          name: "Xynes",
+          slug: "acme",
+          role: "workspace_owner",
+        },
+      ],
+    });
+
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    expect(props.userMenu.name).toBe("User");
+    expect(props.userMenu.email).toBe("No email");
   });
 });

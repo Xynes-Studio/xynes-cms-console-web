@@ -197,6 +197,49 @@ Rules:
 - Do not introduce app-local re-implementations of shell internals.
 - If shell internals need adjustment (for example, workspace trigger alignment), fix in `lumia-ds` and consume the updated package in apps.
 
+### UXR-6 Dashboard Alignment (landed 2026-05-10)
+
+Background: UXR-6 in `xynes/xynes-infra/docs/research/ux-review/01-user-stories.md` aligns the CMS Console dashboard with the shared Lumia design language without breaking directory-first authoring or Workspace Admin contextual ownership.
+
+What landed:
+
+- `CmsDashboardShell` builds a typed `DashboardShellLabels` bundle from the `cms.shell` catalog and forwards it via the Lumia `labels` prop (`navigation`, `workspace`, `profile`, `notifications`). Lumia stays product-copy-neutral; this seam is where CMS Console owns translated product copy.
+- `workspaceCreationDisabledMessage`, `sidebarFooterNote`, the user-menu fallbacks (`User` / `No email`), and the loading + redirect status copy all flow through `next-intl` instead of being hard-coded English. ICU placeholders (`{unreadCount}`, `{title}`) are preserved verbatim and interpolate at render time.
+- Shared destinations (`Access Control`, `Integrations`, `Settings`) keep the labels documented in `xynes/xynes-infra/docs/research/ux-review/02-cross-app-navigation-vocabulary.md` (UXR-4).
+- UXR-3 follow-through: `CmsContentToolbar` no longer imports `Star` from `lucide-react` — the favorites chip now uses Lumia's canonical `<Icon name="star" />`. `CmsEditorLayout` no longer registers app-local `republish` / `archive-entry` SVG icons; those IDs are seeded in `@lumia-ui/icons`'s default registry.
+- Workspace Admin contextual ownership is preserved unchanged: the integrations page still summarises status + counts and deep-links into Workspace Admin without hosting domain or API-key lifecycle forms.
+
+What is intentionally NOT in scope for UXR-6:
+
+- No app-local `WorkspaceSwitcher` exists in CMS Console — the Lumia shell already owns workspace switching via `DashboardWorkspaceSwitcher` from UXR-2. Route-aware workspace switching (`buildDashboardSectionPath` preserves the active section + tail segments) is unchanged.
+- No CMS API behaviour, no directory-first contract changes, no integrations panel form additions.
+
+Catalog surfaces added to `messages/en-US/cms.shell.json` and `messages/en-XA/cms.shell.json`:
+
+- `shell.navigation.*` — landmark + nav aria labels
+- `shell.workspace.*` — switcher trigger, sections, create action
+- `shell.workspaceCreationDisabledMessage`
+- `shell.profile.*` — profile menu trigger + actions
+- `shell.notifications.*` — drawer trigger, list, ICU patterns (`titlePattern`, `unreadCountPattern`, `deletePattern`)
+- `shell.userMenu.fallbackName` / `shell.userMenu.fallbackEmail`
+- `shell.footerNote`
+- `status.loadingDashboard` / `status.redirectingToLogin`
+
+Translator metadata is documented in `messages.meta/cms.shell.json`. Vocabulary alignment with `auth.dashboard.shell.*` (Auth Admin) is mandatory for shared destinations — keep wording identical unless a product owner documents an exception.
+
+Tests:
+
+- `src/components/dashboard/CmsDashboardShell.test.tsx` — full mock-translator coverage of every new key; new label-bundle propagation test asserts the Lumia `DashboardShellLabels` bundle is forwarded with all branches populated; new fallback test verifies the user-menu fallbacks come from the catalog when `displayName` and `email` are both null.
+- `src/components/dashboard/CmsDashboardShell.i18n.test.tsx` — new file driving the **real** `next-intl` provider with the en-US and en-XA `cms.shell` catalogs; verifies (a) every nav label and shell label flows through the catalog, (b) ICU patterns interpolate correctly, (c) the en-XA pseudo-locale renders bracketed/doubled characters without breaking the shell shape, and (d) raw catalog key paths never leak into a forwarded label.
+- `src/components/dashboard/CmsContentToolbar.test.tsx` — Chip mock now renders the `icon` ReactNode and `iconName` so the new UXR-3 follow-through assertion can confirm the favorites chip renders Lumia's canonical "star" icon (not a hard-coded lucide-react `Star`).
+
+Quality gates from the 2026-05-10 implementation pass:
+
+- `pnpm test` — 445/445 pass across 54 test files
+- `pnpm test:coverage` — `CmsContentToolbar.tsx` 100% / 100% / 100% / 100%; `CmsDashboardShell.tsx` 85.21% lines / 78.01% branches / 100% functions; `CmsEditorLayout.tsx` 91.86% lines (improved by removing dead inline icon code). All above the ADR-001 80% lines floor.
+- `pnpm lint` — clean
+- `pnpm build` — clean (16 routes built, no type errors)
+
 ## Translation Prototype Standards
 
 The CMS Console translation prototype is intentionally modular and low-cost:

@@ -6,6 +6,52 @@
     "integrations": "[IInntteeggrraattiioonnss]",
     "settings": "[SSeettttiinnggss]"
   },
+  "shell": {
+    "navigation": {
+      "mainContent": "[DDaasshhbbooaarrdd mmaaiinn ccoonntteenntt]",
+      "sidebar": "[DDaasshhbbooaarrdd ssiiddeebbaarr]",
+      "sidebarScrollArea": "[SSiiddeebbaarr nnaavviiggaattiioonn ssccrroollll aarreeaa]",
+      "dashboardNavigation": "[DDaasshhbbooaarrdd nnaavviiggaattiioonn]",
+      "mobileDashboardNavigation": "[MMoobbiillee ddaasshhbbooaarrdd nnaavviiggaattiioonn]",
+      "mobileMenu": "[MMeennuu]",
+      "openMobileMenu": "[OOppeenn mmeennuu]"
+    },
+    "workspace": {
+      "trigger": "[SSwwiittcchh wwoorrkkssppaaccee]",
+      "fallbackName": "[WWoorrkkssppaaccee]",
+      "currentSection": "[CCuurrrreenntt WWoorrkkssppaaccee]",
+      "currentBadge": "[CCuurrrreenntt]",
+      "switchToSection": "[SSwwiittcchh ttoo]",
+      "createAction": "[CCrreeaattee nneeww wwoorrkkssppaaccee]",
+      "createUnavailableAction": "[WWoorrkkssppaaccee ccrreeaattiioonn uunnaavvaaiillaabbllee]"
+    },
+    "workspaceCreationDisabledMessage": "[WWoorrkkssppaaccee ccrreeaattiioonn iiss uunnaavvaaiillaabbllee. CChheecckk sseettttiinnggss oorr ccoonnttaacctt aaddmmiinn.]",
+    "profile": {
+      "trigger": "[OOppeenn pprrooffiillee mmeennuu]",
+      "profileAction": "[PPrrooffiillee]",
+      "logoutAction": "[LLooggoouutt]"
+    },
+    "notifications": {
+      "open": "[OOppeenn nnoottiiffiiccaattiioonnss]",
+      "tab": "[NNoottiiffiiccaattiioonnss]",
+      "titlePattern": "[NNoottiiffiiccaattiioonnss ({unreadCount})]",
+      "empty": "[NNoo nnoottiiffiiccaattiioonnss]",
+      "list": "[NNoottiiffiiccaattiioonn lliisstt]",
+      "todayGroup": "[TTooddaayy]",
+      "yesterdayGroup": "[YYeesstteerrddaayy]",
+      "unreadCountPattern": "[{unreadCount} uunnrreeaadd nnoottiiffiiccaattiioonnss]",
+      "deletePattern": "[DDeelleettee nnoottiiffiiccaattiioonn {title}]"
+    },
+    "userMenu": {
+      "fallbackName": "[UUsseerr]",
+      "fallbackEmail": "[NNoo eemmaaiill]"
+    },
+    "footerNote": "[NNeeeedd aacccceessss? CCoonnttaacctt yyoouurr wwoorrkkssppaaccee oowwnneerr.]"
+  },
+  "status": {
+    "loadingDashboard": "[LLooaaddiinngg ddaasshhbbooaarrdd...]",
+    "redirectingToLogin": "[RReeddiirreeccttiinngg ttoo llooggiinn...]"
+  },
   "directory": {
     "ownerOnly": "[OOnnllyy wwoorrkkssppaaccee oowwnneerrss ccaann mmaannaaggee ddiirreeccttoorriieess rriigghhtt nnooww.]",
     "mutationErrorDescription": "[PPlleeaassee ttrryy aaggaaiinn. IIff tthhee iissssuuee ppeerrssiissttss, ccoonnttaacctt yyoouurr wwoorrkkssppaaccee oowwnneerr.]",

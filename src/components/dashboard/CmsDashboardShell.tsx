@@ -7,6 +7,7 @@ import { useToast } from "@lumia-ui/components";
 import {
   DashboardShell,
   type DashboardNavItem as LumiaDashboardNavItem,
+  type DashboardShellLabels,
 } from "@lumia-ui/layout";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import { useTranslations } from "next-intl";
@@ -163,6 +164,13 @@ export function CmsDashboardShell({
 }: CmsDashboardShellProps) {
   const { show: showToast } = useToast();
   const t = useTranslations("cms.shell");
+  const tShellNav = useTranslations("cms.shell.shell.navigation");
+  const tShellWorkspace = useTranslations("cms.shell.shell.workspace");
+  const tShellProfile = useTranslations("cms.shell.shell.profile");
+  const tShellNotifications = useTranslations("cms.shell.shell.notifications");
+  const tShellUserMenu = useTranslations("cms.shell.shell.userMenu");
+  const tShell = useTranslations("cms.shell.shell");
+  const tStatus = useTranslations("cms.shell.status");
   const router = useRouter();
   const activePath = usePathname();
   const {
@@ -571,11 +579,62 @@ export function CmsDashboardShell({
     router.push(nextPath);
   };
 
+  // Build the Lumia DashboardShell label bundle from the cms.shell catalog
+  // (UXR-6). Each branch is a thin map: this is the single seam where CMS
+  // Console owns translated product copy and the design-system stays
+  // copy-neutral. Lumia's defaults remain English for backwards-compatible
+  // callers that don't pass `labels`. ICU placeholders ({unreadCount},
+  // {title}) are interpolated by next-intl at render time.
+  const shellLabels: DashboardShellLabels = useMemo(
+    () => ({
+      navigation: {
+        mainContent: tShellNav("mainContent"),
+        sidebar: tShellNav("sidebar"),
+        sidebarScrollArea: tShellNav("sidebarScrollArea"),
+        dashboardNavigation: tShellNav("dashboardNavigation"),
+        mobileDashboardNavigation: tShellNav("mobileDashboardNavigation"),
+        mobileMenu: tShellNav("mobileMenu"),
+        openMobileMenu: tShellNav("openMobileMenu"),
+      },
+      workspace: {
+        trigger: tShellWorkspace("trigger"),
+        fallbackName: tShellWorkspace("fallbackName"),
+        currentSection: tShellWorkspace("currentSection"),
+        currentBadge: tShellWorkspace("currentBadge"),
+        switchToSection: tShellWorkspace("switchToSection"),
+        createAction: tShellWorkspace("createAction"),
+        createUnavailableAction: tShellWorkspace("createUnavailableAction"),
+      },
+      profile: {
+        trigger: tShellProfile("trigger"),
+        profileAction: tShellProfile("profileAction"),
+        logoutAction: tShellProfile("logoutAction"),
+      },
+      notifications: {
+        open: tShellNotifications("open"),
+        tab: tShellNotifications("tab"),
+        title: (unreadCount: number) =>
+          tShellNotifications("titlePattern", { unreadCount }),
+        empty: tShellNotifications("empty"),
+        list: tShellNotifications("list"),
+        todayGroup: tShellNotifications("todayGroup"),
+        yesterdayGroup: tShellNotifications("yesterdayGroup"),
+        unreadCount: (unreadCount: number) =>
+          tShellNotifications("unreadCountPattern", { unreadCount }),
+        delete: (notification) =>
+          tShellNotifications("deletePattern", {
+            title: notification.title,
+          }),
+      },
+    }),
+    [tShellNav, tShellWorkspace, tShellProfile, tShellNotifications],
+  );
+
   if (isAuthLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
         <p role="status" aria-live="polite" className="text-sm text-zinc-600 dark:text-zinc-300">
-          Loading dashboard...
+          {tStatus("loadingDashboard")}
         </p>
       </main>
     );
@@ -585,7 +644,7 @@ export function CmsDashboardShell({
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
         <p role="status" aria-live="polite" className="text-sm text-zinc-600 dark:text-zinc-300">
-          Redirecting to login...
+          {tStatus("redirectingToLogin")}
         </p>
       </main>
     );
@@ -628,14 +687,18 @@ export function CmsDashboardShell({
         router.push(target);
       }}
       enableWorkspaceCreation={true}
+      workspaceCreationDisabledMessage={tShell(
+        "workspaceCreationDisabledMessage",
+      )}
       userMenu={{
-        name: user?.displayName || user?.email || "User",
-        email: user?.email || "No email",
+        name: user?.displayName || user?.email || tShellUserMenu("fallbackName"),
+        email: user?.email || tShellUserMenu("fallbackEmail"),
         avatarSrc: user?.avatarUrl || undefined,
       }}
       onLogout={() => router.push(`/logout?redirect=${encodeURIComponent(currentDashboardPath)}`)}
       notifications={[]}
-      sidebarFooterNote="Need access? Contact your workspace owner."
+      sidebarFooterNote={tShell("footerNote")}
+      labels={shellLabels}
       directorySection={{
         navItemId: "contents",
         rootHref: contentsHref,
