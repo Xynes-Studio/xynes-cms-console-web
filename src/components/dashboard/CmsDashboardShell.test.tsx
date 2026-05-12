@@ -26,69 +26,70 @@ vi.mock("@xynes/auth-sdk", () => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) => {
-    const messages: Record<string, string> = {
-      "cms.shell.nav.contents": "Contents",
-      "cms.shell.nav.plugins": "Plugins",
-      "cms.shell.nav.accessControl": "Access Control",
-      "cms.shell.nav.integrations": "Integrations",
-      "cms.shell.nav.settings": "Settings",
-      "cms.shell.directory.ownerOnly":
-        "Only workspace owners can manage directories right now.",
-      "cms.shell.directory.mutationErrorDescription":
-        "Please try again. If the issue persists, contact your workspace owner.",
-      "cms.shell.directory.createFailedTitle": "Could not create directory",
-      "cms.shell.directory.renameFailedTitle": "Could not rename directory",
-      "cms.shell.directory.deleteFailedTitle": "Could not delete directory",
-      "cms.shell.status.loadingDashboard": "Loading dashboard...",
-      "cms.shell.status.redirectingToLogin": "Redirecting to login...",
-      "cms.shell.shell.workspaceCreationDisabledMessage":
-        "Workspace creation is unavailable. Check settings or contact admin.",
-      "cms.shell.shell.footerNote":
-        "Need access? Contact your workspace owner.",
-      "cms.shell.shell.navigation.mainContent": "Dashboard main content",
-      "cms.shell.shell.navigation.sidebar": "Dashboard sidebar",
-      "cms.shell.shell.navigation.sidebarScrollArea":
-        "Sidebar navigation scroll area",
-      "cms.shell.shell.navigation.dashboardNavigation":
-        "Dashboard navigation",
-      "cms.shell.shell.navigation.mobileDashboardNavigation":
-        "Mobile dashboard navigation",
-      "cms.shell.shell.navigation.mobileMenu": "Menu",
-      "cms.shell.shell.navigation.openMobileMenu": "Open menu",
-      "cms.shell.shell.workspace.trigger": "Switch workspace",
-      "cms.shell.shell.workspace.fallbackName": "Workspace",
-      "cms.shell.shell.workspace.currentSection": "Current Workspace",
-      "cms.shell.shell.workspace.currentBadge": "Current",
-      "cms.shell.shell.workspace.switchToSection": "Switch to",
-      "cms.shell.shell.workspace.createAction": "Create new workspace",
-      "cms.shell.shell.workspace.createUnavailableAction":
-        "Workspace creation unavailable",
-      "cms.shell.shell.profile.trigger": "Open profile menu",
-      "cms.shell.shell.profile.profileAction": "Profile",
-      "cms.shell.shell.profile.logoutAction": "Logout",
-      "cms.shell.shell.notifications.open": "Open notifications",
-      "cms.shell.shell.notifications.tab": "Notifications",
-      "cms.shell.shell.notifications.empty": "No notifications",
-      "cms.shell.shell.notifications.list": "Notification list",
-      "cms.shell.shell.notifications.todayGroup": "Today",
-      "cms.shell.shell.notifications.yesterdayGroup": "Yesterday",
-      "cms.shell.shell.userMenu.fallbackName": "User",
-      "cms.shell.shell.userMenu.fallbackEmail": "No email",
-    };
+  useTranslations:
+    (namespace: string) => (key: string, values?: Record<string, unknown>) => {
+      const messages: Record<string, string> = {
+        "cms.shell.nav.contents": "Contents",
+        "cms.shell.nav.plugins": "Plugins",
+        "cms.shell.nav.accessControl": "Access Control",
+        "cms.shell.nav.integrations": "Integrations",
+        "cms.shell.nav.settings": "Settings",
+        "cms.shell.directory.ownerOnly":
+          "Only workspace owners can manage directories right now.",
+        "cms.shell.directory.mutationErrorDescription":
+          "Please try again. If the issue persists, contact your workspace owner.",
+        "cms.shell.directory.createFailedTitle": "Could not create directory",
+        "cms.shell.directory.renameFailedTitle": "Could not rename directory",
+        "cms.shell.directory.deleteFailedTitle": "Could not delete directory",
+        "cms.shell.status.loadingDashboard": "Loading dashboard...",
+        "cms.shell.status.redirectingToLogin": "Redirecting to login...",
+        "cms.shell.shell.workspaceCreationDisabledMessage":
+          "Workspace creation is unavailable. Check settings or contact admin.",
+        "cms.shell.shell.footerNote":
+          "Need access? Contact your workspace owner.",
+        "cms.shell.shell.navigation.mainContent": "Dashboard main content",
+        "cms.shell.shell.navigation.sidebar": "Dashboard sidebar",
+        "cms.shell.shell.navigation.sidebarScrollArea":
+          "Sidebar navigation scroll area",
+        "cms.shell.shell.navigation.dashboardNavigation":
+          "Dashboard navigation",
+        "cms.shell.shell.navigation.mobileDashboardNavigation":
+          "Mobile dashboard navigation",
+        "cms.shell.shell.navigation.mobileMenu": "Menu",
+        "cms.shell.shell.navigation.openMobileMenu": "Open menu",
+        "cms.shell.shell.workspace.trigger": "Switch workspace",
+        "cms.shell.shell.workspace.fallbackName": "Workspace",
+        "cms.shell.shell.workspace.currentSection": "Current Workspace",
+        "cms.shell.shell.workspace.currentBadge": "Current",
+        "cms.shell.shell.workspace.switchToSection": "Switch to",
+        "cms.shell.shell.workspace.createAction": "Create new workspace",
+        "cms.shell.shell.workspace.createUnavailableAction":
+          "Workspace creation unavailable",
+        "cms.shell.shell.profile.trigger": "Open profile menu",
+        "cms.shell.shell.profile.profileAction": "Profile",
+        "cms.shell.shell.profile.logoutAction": "Logout",
+        "cms.shell.shell.notifications.open": "Open notifications",
+        "cms.shell.shell.notifications.tab": "Notifications",
+        "cms.shell.shell.notifications.empty": "No notifications",
+        "cms.shell.shell.notifications.list": "Notification list",
+        "cms.shell.shell.notifications.todayGroup": "Today",
+        "cms.shell.shell.notifications.yesterdayGroup": "Yesterday",
+        "cms.shell.shell.userMenu.fallbackName": "User",
+        "cms.shell.shell.userMenu.fallbackEmail": "No email",
+      };
 
-    const fullKey = `${namespace}.${key}`;
-    if (key === "titlePattern") {
-      return `Notifications (${(values?.unreadCount as number | undefined) ?? 0})`;
-    }
-    if (key === "unreadCountPattern") {
-      return `${(values?.unreadCount as number | undefined) ?? 0} unread notifications`;
-    }
-    if (key === "deletePattern") {
-      return `Delete notification ${(values?.title as string | undefined) ?? ""}`;
-    }
-    return messages[fullKey] ?? fullKey;
-  },
+      const fullKey = `${namespace}.${key}`;
+      if (key === "titlePattern") {
+        return `Notifications (${(values?.unreadCount as number | undefined) ?? 0})`;
+      }
+      if (key === "unreadCountPattern") {
+        return `${(values?.unreadCount as number | undefined) ?? 0} unread notifications`;
+      }
+      if (key === "deletePattern") {
+        return `Delete notification ${(values?.title as string | undefined) ?? ""}`;
+      }
+      return messages[fullKey] ?? fullKey;
+    },
 }));
 
 vi.mock("@lumia-ui/layout", () => ({
@@ -141,7 +142,9 @@ describe("CmsDashboardShell", () => {
         }
 
         if (url.includes("/content-directories/") && init?.method === "PATCH") {
-          const body = init.body ? JSON.parse(String(init.body)) : { name: "Docs" };
+          const body = init.body
+            ? JSON.parse(String(init.body))
+            : { name: "Docs" };
           const normalizedName =
             typeof body?.name === "string" && body.name.trim().length > 0
               ? body.name.trim()
@@ -162,11 +165,17 @@ describe("CmsDashboardShell", () => {
           );
         }
 
-        if (url.includes("/content-directories/") && init?.method === "DELETE") {
+        if (
+          url.includes("/content-directories/") &&
+          init?.method === "DELETE"
+        ) {
           return Promise.resolve(
-            new Response(JSON.stringify({ ok: true, data: { deleted: true } }), {
-              status: 200,
-            }),
+            new Response(
+              JSON.stringify({ ok: true, data: { deleted: true } }),
+              {
+                status: 200,
+              },
+            ),
           );
         }
 
@@ -236,7 +245,10 @@ describe("CmsDashboardShell", () => {
             label: "Contents",
             href: "/dashboard/acme/content",
           }),
-          expect.objectContaining({ label: "Plugins", href: "/dashboard/acme/plugins" }),
+          expect.objectContaining({
+            label: "Plugins",
+            href: "/dashboard/acme/plugins",
+          }),
           expect.objectContaining({
             label: "Access Control",
             href: "/dashboard/acme/access-control",
@@ -298,7 +310,9 @@ describe("CmsDashboardShell", () => {
       </CmsDashboardShell>,
     );
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     expect(props.directorySection?.canManageDirectories).toBe(false);
     expect(props.directorySection?.directoryActionDisabledReason).toContain(
       "Only workspace owners",
@@ -312,7 +326,9 @@ describe("CmsDashboardShell", () => {
       </CmsDashboardShell>,
     );
 
-    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    let props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     expect(props.directorySection?.nodes).toEqual([]);
     expect(props.directorySection?.expandedIds).toEqual([]);
 
@@ -404,7 +420,16 @@ describe("CmsDashboardShell", () => {
       .mockImplementation(() => undefined);
 
     props.onCreateWorkspace?.();
-    expect(assignSpy).toHaveBeenCalledWith("http://localhost:3100/onboarding");
+    // WSA-FIX-2 (2026-05-12): CMS Console appends `?redirect=<encoded CMS
+    // dashboard URL>` so the auth app's post-create flow returns the user
+    // to CMS Console. `NEXT_PUBLIC_APP_URL` is injected as
+    // `http://localhost:3000` by `infra/scripts/with-env.mjs` in the test
+    // environment. The dedicated WSA-FIX-2 describe block below covers the
+    // unset / malformed branches.
+    expect(assignSpy).toHaveBeenCalledWith(
+      "http://localhost:3100/onboarding?redirect=" +
+        encodeURIComponent("http://localhost:3000/dashboard"),
+    );
     expect(mockPush).not.toHaveBeenCalledWith("/onboarding");
 
     assignSpy.mockRestore();
@@ -419,7 +444,9 @@ describe("CmsDashboardShell", () => {
       </CmsDashboardShell>,
     );
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     props.onWorkspaceSelect("ws-2");
 
     expect(mockPush).toHaveBeenCalledWith(
@@ -437,7 +464,14 @@ describe("CmsDashboardShell", () => {
             new Response(
               JSON.stringify({
                 ok: true,
-                data: [{ id: "dir-1", parentId: null, name: "Docs", pathSegment: "docs" }],
+                data: [
+                  {
+                    id: "dir-1",
+                    parentId: null,
+                    name: "Docs",
+                    pathSegment: "docs",
+                  },
+                ],
               }),
               { status: 200 },
             ),
@@ -471,7 +505,9 @@ describe("CmsDashboardShell", () => {
       }),
     );
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     expect(props.directorySection?.nodes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -512,7 +548,9 @@ describe("CmsDashboardShell", () => {
             ),
           );
         }
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }),
     );
 
@@ -537,7 +575,9 @@ describe("CmsDashboardShell", () => {
       }),
     );
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     expect(props.directorySection?.nodes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -556,7 +596,11 @@ describe("CmsDashboardShell", () => {
       vi.fn((input, init) => {
         const url = String(input);
         if (url.endsWith("/content-types")) {
-          return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: true, data: [] }), {
+              status: 200,
+            }),
+          );
         }
         if (url.endsWith("/content-directories") && init?.method === "GET") {
           return Promise.resolve(
@@ -595,7 +639,9 @@ describe("CmsDashboardShell", () => {
             ),
           );
         }
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }),
     );
 
@@ -605,7 +651,9 @@ describe("CmsDashboardShell", () => {
       </CmsDashboardShell>,
     );
 
-    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    let props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     act(() => {
       props.directorySection?.onCreateDirectory({
         parentId: null,
@@ -650,7 +698,11 @@ describe("CmsDashboardShell", () => {
       vi.fn((input, init) => {
         const url = String(input);
         if (url.endsWith("/content-types")) {
-          return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: true, data: [] }), {
+              status: 200,
+            }),
+          );
         }
         if (url.endsWith("/content-directories") && init?.method === "GET") {
           return Promise.resolve(
@@ -670,7 +722,10 @@ describe("CmsDashboardShell", () => {
             ),
           );
         }
-        if (url.endsWith("/content-directories/dir-1") && init?.method === "PATCH") {
+        if (
+          url.endsWith("/content-directories/dir-1") &&
+          init?.method === "PATCH"
+        ) {
           directoryName = "Articles";
           return Promise.resolve(
             new Response(
@@ -687,7 +742,9 @@ describe("CmsDashboardShell", () => {
             ),
           );
         }
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }),
     );
 
@@ -702,7 +759,9 @@ describe("CmsDashboardShell", () => {
       await Promise.resolve();
     });
 
-    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    let props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     act(() => {
       props.directorySection?.onRenameDirectory?.({
         nodeId: "dir-1",
@@ -729,7 +788,9 @@ describe("CmsDashboardShell", () => {
 
     props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
     expect(props.directorySection?.nodes).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: "dir-1", label: "Articles" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ id: "dir-1", label: "Articles" }),
+      ]),
     );
   });
 
@@ -740,7 +801,11 @@ describe("CmsDashboardShell", () => {
       vi.fn((input, init) => {
         const url = String(input);
         if (url.endsWith("/content-types")) {
-          return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: true, data: [] }), {
+              status: 200,
+            }),
+          );
         }
         if (url.endsWith("/content-directories") && init?.method === "GET") {
           return Promise.resolve(
@@ -762,13 +827,21 @@ describe("CmsDashboardShell", () => {
             ),
           );
         }
-        if (url.endsWith("/content-directories/dir-1") && init?.method === "DELETE") {
+        if (
+          url.endsWith("/content-directories/dir-1") &&
+          init?.method === "DELETE"
+        ) {
           isDeleted = true;
           return Promise.resolve(
-            new Response(JSON.stringify({ ok: true, data: { deleted: true } }), { status: 200 }),
+            new Response(
+              JSON.stringify({ ok: true, data: { deleted: true } }),
+              { status: 200 },
+            ),
           );
         }
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }),
     );
 
@@ -783,7 +856,9 @@ describe("CmsDashboardShell", () => {
       await Promise.resolve();
     });
 
-    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    let props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     act(() => {
       props.directorySection?.onDeleteDirectory?.({
         nodeId: "dir-1",
@@ -813,7 +888,9 @@ describe("CmsDashboardShell", () => {
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
       if (url.endsWith("/content-types")) {
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }
       if (url.endsWith("/content-directories") && init?.method === "GET") {
         return Promise.resolve(
@@ -833,7 +910,9 @@ describe("CmsDashboardShell", () => {
           ),
         );
       }
-      return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -849,7 +928,9 @@ describe("CmsDashboardShell", () => {
     });
     fetchMock.mockClear();
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     act(() => {
       props.directorySection?.onRenameDirectory?.({
         nodeId: "dir-1",
@@ -869,7 +950,9 @@ describe("CmsDashboardShell", () => {
     const fetchMock = vi.fn((input, init) => {
       const url = String(input);
       if (url.endsWith("/content-types")) {
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }
       if (url.endsWith("/content-directories") && init?.method === "GET") {
         return Promise.resolve(
@@ -889,7 +972,9 @@ describe("CmsDashboardShell", () => {
           ),
         );
       }
-      return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -905,7 +990,9 @@ describe("CmsDashboardShell", () => {
     });
     fetchMock.mockClear();
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     act(() => {
       props.directorySection?.onDeleteDirectory?.({
         nodeId: "missing-dir",
@@ -926,17 +1013,27 @@ describe("CmsDashboardShell", () => {
       vi.fn((input, init) => {
         const url = String(input);
         if (url.endsWith("/content-types")) {
-          return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: true, data: [] }), {
+              status: 200,
+            }),
+          );
         }
         if (url.endsWith("/content-directories") && init?.method === "GET") {
           return Promise.resolve(
-            new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+            new Response(JSON.stringify({ ok: true, data: [] }), {
+              status: 200,
+            }),
           );
         }
         if (url.endsWith("/content-directories") && init?.method === "POST") {
-          return Promise.resolve(new Response(JSON.stringify({ ok: false }), { status: 500 }));
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: false }), { status: 500 }),
+          );
         }
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }),
     );
 
@@ -946,7 +1043,9 @@ describe("CmsDashboardShell", () => {
       </CmsDashboardShell>,
     );
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     act(() => {
       props.directorySection?.onCreateDirectory({
         parentId: null,
@@ -973,23 +1072,41 @@ describe("CmsDashboardShell", () => {
       vi.fn((input, init) => {
         const url = String(input);
         if (url.endsWith("/content-types")) {
-          return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: true, data: [] }), {
+              status: 200,
+            }),
+          );
         }
         if (url.endsWith("/content-directories") && init?.method === "GET") {
           return Promise.resolve(
             new Response(
               JSON.stringify({
                 ok: true,
-                data: [{ id: "dir-1", parentId: null, name: "Docs", pathSegment: "docs" }],
+                data: [
+                  {
+                    id: "dir-1",
+                    parentId: null,
+                    name: "Docs",
+                    pathSegment: "docs",
+                  },
+                ],
               }),
               { status: 200 },
             ),
           );
         }
-        if (url.endsWith("/content-directories/dir-1") && init?.method === "PATCH") {
-          return Promise.resolve(new Response(JSON.stringify({ ok: false }), { status: 500 }));
+        if (
+          url.endsWith("/content-directories/dir-1") &&
+          init?.method === "PATCH"
+        ) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: false }), { status: 500 }),
+          );
         }
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }),
     );
 
@@ -1004,7 +1121,9 @@ describe("CmsDashboardShell", () => {
       await Promise.resolve();
     });
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     act(() => {
       props.directorySection?.onRenameDirectory?.({
         nodeId: "dir-1",
@@ -1031,23 +1150,41 @@ describe("CmsDashboardShell", () => {
       vi.fn((input, init) => {
         const url = String(input);
         if (url.endsWith("/content-types")) {
-          return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: true, data: [] }), {
+              status: 200,
+            }),
+          );
         }
         if (url.endsWith("/content-directories") && init?.method === "GET") {
           return Promise.resolve(
             new Response(
               JSON.stringify({
                 ok: true,
-                data: [{ id: "dir-1", parentId: null, name: "Docs", pathSegment: "docs" }],
+                data: [
+                  {
+                    id: "dir-1",
+                    parentId: null,
+                    name: "Docs",
+                    pathSegment: "docs",
+                  },
+                ],
               }),
               { status: 200 },
             ),
           );
         }
-        if (url.endsWith("/content-directories/dir-1") && init?.method === "DELETE") {
-          return Promise.resolve(new Response(JSON.stringify({ ok: false }), { status: 500 }));
+        if (
+          url.endsWith("/content-directories/dir-1") &&
+          init?.method === "DELETE"
+        ) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: false }), { status: 500 }),
+          );
         }
-        return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 }),
+        );
       }),
     );
 
@@ -1062,7 +1199,9 @@ describe("CmsDashboardShell", () => {
       await Promise.resolve();
     });
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     act(() => {
       props.directorySection?.onDeleteDirectory?.({
         nodeId: "dir-1",
@@ -1167,7 +1306,9 @@ describe("CmsDashboardShell", () => {
       await Promise.resolve();
     });
 
-    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    let props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     expect(props.directorySection?.nodes).toEqual(
       expect.arrayContaining([expect.objectContaining({ label: "Docs" })]),
     );
@@ -1211,11 +1352,14 @@ describe("CmsDashboardShell", () => {
       await Promise.resolve();
     });
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
 
-    expect((props.directorySection as { activeHref?: string } | undefined)?.activeHref).toBe(
-      "/dashboard/acme/content/tests/guides",
-    );
+    expect(
+      (props.directorySection as { activeHref?: string } | undefined)
+        ?.activeHref,
+    ).toBe("/dashboard/acme/content/tests/guides");
     expect(props.directorySection?.nodes).toEqual([]);
     expect(props.directorySection?.expandedIds).toEqual([]);
   });
@@ -1227,7 +1371,9 @@ describe("CmsDashboardShell", () => {
       </CmsDashboardShell>,
     );
 
-    let props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    let props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
 
     act(() => {
       props.directorySection?.onCreateDirectory({
@@ -1324,7 +1470,9 @@ describe("CmsDashboardShell", () => {
       </CmsDashboardShell>,
     );
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
 
     // sidebarFooterNote and workspaceCreationDisabledMessage now come from
     // the cms.shell catalog instead of being hard-coded English strings.
@@ -1388,8 +1536,151 @@ describe("CmsDashboardShell", () => {
       </CmsDashboardShell>,
     );
 
-    const props = mockDashboardShell.mock.calls.at(-1)?.[0] as DashboardShellProps;
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
     expect(props.userMenu.name).toBe("User");
     expect(props.userMenu.email).toBe("No email");
+  });
+
+  describe("WSA-FIX-2: create-workspace link forwards origin via ?redirect=", () => {
+    /**
+     * Plan: xynes/xynes-infra/docs/plans/2026-05-10-auth-app-workspace-admin-and-onboarding-fixes.md §4
+     *
+     * Contract: when CMS Console links to the auth app's /onboarding flow,
+     * it must include `?redirect=<encoded CMS landing URL>` so the
+     * post-create redirect honours the origin app. The redirect target is
+     * `${NEXT_PUBLIC_APP_URL}/dashboard`, which the CMS dashboard resolver
+     * page redirects to the user's current/first workspace once it exists.
+     *
+     * `infra/scripts/with-env.mjs` injects
+     * `NEXT_PUBLIC_APP_URL=http://localhost:3000` by default for CMS console
+     * tests, but each test below sets the env explicitly so the assertion
+     * remains stable if the harness defaults ever shift.
+     */
+
+    let previousAppUrl: string | undefined;
+
+    beforeEach(() => {
+      previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    });
+
+    afterEach(() => {
+      if (previousAppUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_APP_URL;
+      } else {
+        process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
+      }
+    });
+
+    function captureCreateWorkspaceTarget(): string | undefined {
+      const assignSpy = vi
+        .spyOn(window.location, "assign")
+        .mockImplementation(() => undefined);
+      try {
+        render(
+          <CmsDashboardShell workspaceSlug="acme">
+            <div>CMS content</div>
+          </CmsDashboardShell>,
+        );
+
+        const props = mockDashboardShell.mock
+          .calls[0][0] as DashboardShellProps;
+        props.onCreateWorkspace?.();
+
+        const absoluteCall = assignSpy.mock.calls.find(
+          ([target]) =>
+            typeof target === "string" && /^https?:\/\//i.test(target),
+        );
+        if (absoluteCall) {
+          return absoluteCall[0] as string;
+        }
+
+        const routerCall = mockPush.mock.calls
+          .map((call) => call[0])
+          .find(
+            (target): target is string =>
+              typeof target === "string" && target.startsWith("/onboarding"),
+          );
+        return routerCall;
+      } finally {
+        assignSpy.mockRestore();
+      }
+    }
+
+    it("appends ?redirect=<encoded CMS dashboard URL> when NEXT_PUBLIC_APP_URL is set", () => {
+      process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+
+      const target = captureCreateWorkspaceTarget();
+
+      expect(target).toBe(
+        "http://localhost:3100/onboarding?redirect=" +
+          encodeURIComponent("http://localhost:3000/dashboard"),
+      );
+    });
+
+    it("strips a trailing slash on NEXT_PUBLIC_APP_URL before building the redirect target", () => {
+      process.env.NEXT_PUBLIC_APP_URL = "https://cms.xynes.com/";
+
+      const target = captureCreateWorkspaceTarget();
+
+      expect(target).toBe(
+        "http://localhost:3100/onboarding?redirect=" +
+          encodeURIComponent("https://cms.xynes.com/dashboard"),
+      );
+    });
+
+    it("omits ?redirect= entirely when NEXT_PUBLIC_APP_URL is not a valid http(s) URL", () => {
+      // Malformed → fail closed: send the bare /onboarding URL and let the
+      // auth app's Auth-Admin fallback take over instead of forwarding an
+      // unsafe target.
+      process.env.NEXT_PUBLIC_APP_URL = "not a url";
+
+      const target = captureCreateWorkspaceTarget();
+
+      expect(target).toBe("http://localhost:3100/onboarding");
+    });
+
+    it("omits ?redirect= when NEXT_PUBLIC_APP_URL uses a non-http(s) scheme", () => {
+      // Defense-in-depth: javascript:/data: URLs would never pass the auth
+      // app's allowlist either, but we strip them at the source.
+      process.env.NEXT_PUBLIC_APP_URL = "javascript:alert(1)";
+
+      const target = captureCreateWorkspaceTarget();
+
+      expect(target).toBe("http://localhost:3100/onboarding");
+    });
+
+    it("URI-encodes the redirect target so reserved characters in the host/path are safe", () => {
+      process.env.NEXT_PUBLIC_APP_URL = "https://cms.xynes.com:8443";
+
+      const target = captureCreateWorkspaceTarget();
+
+      // `:` must be percent-encoded inside the query value so query parsers
+      // don't mistake the port for a separator.
+      expect(target).toContain(
+        "?redirect=" +
+          encodeURIComponent("https://cms.xynes.com:8443/dashboard"),
+      );
+      expect(target).toContain("%3A8443");
+    });
+
+    it("falls back to the bare relative /onboarding URL when NEXT_PUBLIC_AUTH_APP_URL is unset (regression guard)", () => {
+      const previousAuthAppUrl = process.env.NEXT_PUBLIC_AUTH_APP_URL;
+      delete process.env.NEXT_PUBLIC_AUTH_APP_URL;
+      process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+
+      try {
+        const target = captureCreateWorkspaceTarget();
+        expect(target).toBe(
+          "/onboarding?redirect=" +
+            encodeURIComponent("http://localhost:3000/dashboard"),
+        );
+      } finally {
+        if (previousAuthAppUrl !== undefined) {
+          process.env.NEXT_PUBLIC_AUTH_APP_URL = previousAuthAppUrl;
+        }
+      }
+    });
   });
 });
