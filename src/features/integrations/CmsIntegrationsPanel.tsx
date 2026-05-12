@@ -52,6 +52,7 @@ type IntegrationCardProps = {
   description: string;
   linkLabel: string;
   linkTarget: WorkspaceAdminIntegrationTarget;
+  workspaceSlug: string;
   metrics?: IntegrationMetric[];
 };
 
@@ -113,9 +114,10 @@ function IntegrationCard({
   description,
   linkLabel,
   linkTarget,
+  workspaceSlug,
   metrics,
 }: IntegrationCardProps) {
-  const href = buildWorkspaceAdminIntegrationUrl(linkTarget);
+  const href = buildWorkspaceAdminIntegrationUrl(linkTarget, workspaceSlug);
 
   return (
     <Card className={cardWrapperClasses}>
@@ -165,9 +167,11 @@ function IntegrationCard({
 function buildIntegrationCards({
   status,
   t,
+  workspaceSlug,
 }: {
   status: CmsWorkspaceIntegrationStatus | null;
   t: IntegrationTranslator;
+  workspaceSlug: string;
 }): IntegrationCardProps[] {
   const live = isStatusLive(status);
   const fmt = (count: number): number | string => (live ? count : "—");
@@ -179,6 +183,7 @@ function buildIntegrationCards({
       description: t("sections.domains.description"),
       linkLabel: t("sections.domains.linkLabel"),
       linkTarget: "domains",
+      workspaceSlug,
       metrics: [
         {
           label: t("sections.domains.verifiedMetric"),
@@ -198,6 +203,7 @@ function buildIntegrationCards({
       description: t("sections.apiKeys.description"),
       linkLabel: t("sections.apiKeys.linkLabel"),
       linkTarget: "api_keys",
+      workspaceSlug,
       metrics: [
         {
           label: t("sections.apiKeys.activeMetric"),
@@ -217,6 +223,7 @@ function buildIntegrationCards({
       description: t("sections.contentApi.description"),
       linkLabel: t("sections.contentApi.linkLabel"),
       linkTarget: "cms_readonly_key",
+      workspaceSlug,
     },
     {
       eyebrow: t("sections.publisher.eyebrow"),
@@ -224,6 +231,7 @@ function buildIntegrationCards({
       description: t("sections.publisher.description"),
       linkLabel: t("sections.publisher.linkLabel"),
       linkTarget: "cms_publisher_key",
+      workspaceSlug,
     },
   ];
 }
@@ -306,7 +314,7 @@ export function CmsIntegrationsPanel({
     };
   }, [isAuthenticated, isLoading, currentWorkspace?.id, getAccessToken]);
 
-  const cards = buildIntegrationCards({ status, t });
+  const cards = buildIntegrationCards({ status, t, workspaceSlug });
 
   return (
     <section className="flex h-full min-h-[420px] flex-col gap-6 p-6">
