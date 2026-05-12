@@ -77,7 +77,11 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
   - renders an accessible 404-style state when workspace resolution fails
 - Legacy flat route `/:workspaceSlug` is retired and must not be reintroduced.
 - Logout redirects from dashboard pages must preserve the namespaced target (for example, `/logout?redirect=/dashboard/acme-team/content`).
-- Workspace creation is owned by `xynes-auth-app`. When the user triggers "Create Workspace" from `DashboardShell`, CMS redirects to `${NEXT_PUBLIC_AUTH_APP_URL}/onboarding` using `window.location.assign()`. If `NEXT_PUBLIC_AUTH_APP_URL` is unset, it falls back to a local `router.push("/onboarding")`.
+- Workspace creation is owned by `xynes-auth-app`. When the user triggers "Create Workspace" from `DashboardShell`, CMS redirects to `${NEXT_PUBLIC_AUTH_APP_URL}/onboarding?redirect=<encoded CMS dashboard URL>` using `window.location.assign()` so the auth-app's post-create flow returns the user to CMS Console (WSA-FIX-2, 2026-05-12). The redirect target is `${NEXT_PUBLIC_APP_URL}/dashboard`, which the CMS dashboard resolver page redirects to the user's current/first workspace once it exists.
+  - If `NEXT_PUBLIC_APP_URL` is unset or not a valid `http(s)` URL, the `?redirect=` query is **omitted entirely** — the request fails closed to the auth-app's Auth-Admin fallback rather than sending a malformed redirect target.
+  - If `NEXT_PUBLIC_AUTH_APP_URL` is unset, CMS falls back to a local `router.push("/onboarding")` (with the `?redirect=` query still appended when `NEXT_PUBLIC_APP_URL` is set).
+  - The auth-app revalidates the `redirect` value against `getAllowedRedirectDomains()` before honouring it. A tampered or unknown host falls back to Auth Admin (`/dashboard/apps`). CMS Console therefore does **not** need to URL-encode or hash the value beyond standard `encodeURIComponent`.
+- Only the Playwright harness may enable fixture access via `NEXT_PUBLIC_ENABLE_E2E_FIXTURES=1`.
 
 ### Dashboard Implementation Standards (Next.js + React)
 

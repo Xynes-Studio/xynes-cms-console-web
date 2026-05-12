@@ -43,13 +43,49 @@ type CmsDashboardShellProps = {
 type LumiaDashboardChildren = ComponentProps<typeof DashboardShell>["children"];
 const authWorkspaceCreationPath = "/onboarding";
 
-function buildAuthWorkspaceCreationUrl(): string {
-  const authAppUrl = process.env.NEXT_PUBLIC_AUTH_APP_URL?.trim();
-  if (!authAppUrl) {
-    return authWorkspaceCreationPath;
+/**
+ * WSA-FIX-2 (2026-05-12): When CMS Console links to the auth app's
+ * onboarding flow, append `?redirect=<encoded CMS landing URL>` so the
+ * post-create redirect honours the origin app. The auth app validates the
+ * redirect against its `getAllowedRedirectDomains()` allowlist; we hand it
+ * the canonical CMS dashboard resolver (`${NEXT_PUBLIC_APP_URL}/dashboard`),
+ * which redirects to the user's current/first workspace once it exists.
+ *
+ * If `NEXT_PUBLIC_APP_URL` (the CMS console's own absolute base URL) is
+ * missing or malformed we omit the `redirect` param entirely — better to
+ * fall through to the auth app's Auth-Admin fallback than to send a
+ * relative URL that resolves against the *auth app* origin.
+ */
+function buildCmsPostCreateRedirectTarget(): string | null {
+  const cmsBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!cmsBaseUrl) {
+    return null;
   }
 
-  return `${authAppUrl.replace(/\/+$/, "")}${authWorkspaceCreationPath}`;
+  try {
+    const parsed = new URL(cmsBaseUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    const normalizedBase = cmsBaseUrl.replace(/\/+$/, "");
+    return `${normalizedBase}/dashboard`;
+  } catch {
+    return null;
+  }
+}
+
+function buildAuthWorkspaceCreationUrl(): string {
+  const authAppUrl = process.env.NEXT_PUBLIC_AUTH_APP_URL?.trim();
+  const redirectTarget = buildCmsPostCreateRedirectTarget();
+  const searchSuffix = redirectTarget
+    ? `?redirect=${encodeURIComponent(redirectTarget)}`
+    : "";
+
+  if (!authAppUrl) {
+    return `${authWorkspaceCreationPath}${searchSuffix}`;
+  }
+
+  return `${authAppUrl.replace(/\/+$/, "")}${authWorkspaceCreationPath}${searchSuffix}`;
 }
 
 type ContentTreeNavNode = ContentDirectoryNode & {
