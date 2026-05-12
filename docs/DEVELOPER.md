@@ -689,3 +689,34 @@ The CMS integrations page MUST NOT host:
 - Tier 1 — pure data client: `src/lib/dashboard/workspace-integrations-client.test.ts` (includes a "frozen sentinel + documented-keys-only" test and a "no leak from hostile upstream" test).
 - Tier 2 — panel composition: `src/features/integrations/CmsIntegrationsPanel.test.tsx` (covers slug-as-context, native-anchor deep links, safe `rel`, sr-only hint, `role="alert"` mapping, and absence of every disallowed lifecycle form).
 - Tier 2 — route orchestration: `app/dashboard/[workspaceSlug]/integrations/page.test.tsx`.
+
+### Cross-app workspace handoff (FE-XAPP-BUG-001, landed 2026-05-12)
+
+CMS Console and the Auth App run on different origins (`:3000` vs `:3100` in dev; different subdomains in production), so their `xynes_workspace_id` localStorage entries are scoped independently. Without an explicit handoff, a "Manage in Workspace Admin" deep link would land the user on whatever workspace the Auth App had selected last — silently disconnecting from the CMS-side workspace selection.
+
+**Builder signature.** `buildWorkspaceAdminIntegrationUrl(target, workspaceSlug)` now takes the **originating workspace slug** as a required argument and appends `&workspace=<encodeURIComponent(slug)>` to the URL alongside the existing `tab=…&preset=…`. Empty / whitespace-only slugs are deliberately omitted (the recipient falls through to its existing localStorage-based selection) — never sent as `&workspace=` (empty string) which would be ambiguous on the receiving side.
+
+```ts
+// Domains link, originating from the "acme demo" workspace
+buildWorkspaceAdminIntegrationUrl("domains", "acme-demo");
+// → https://auth.xynes.example/dashboard/integrations?tab=domains&workspace=acme-demo
+
+// CMS publisher key preset, no originating workspace context
+buildWorkspaceAdminIntegrationUrl("cms_publisher_key", "");
+// → https://auth.xynes.example/dashboard/integrations?tab=api-keys&preset=cms_publisher
+```
+
+**Caller.** `CmsIntegrationsPanel.tsx` is the only caller. It already receives the active workspace slug as a prop (`workspaceSlug`) from `app/dashboard/[workspaceSlug]/integrations/page.tsx` and threads it into every card via the `buildIntegrationCards({ status, t, workspaceSlug })` helper.
+
+**Security invariants (preserved).**
+
+- The slug is `encodeURIComponent`-ed before embedding, so reserved characters never produce a broken query string (regression test asserts `"acme demo & co"` → `"acme%20demo%20%26%20co"`).
+- The slug is NOT a permission grant. The Auth App side (`xynes-auth-app/src/components/dashboard/WorkspaceHandoffSync.tsx`) re-resolves it against `useAuth().workspaces` — server-authoritative via `/me` — before honouring the override. A malicious or stale slug fails closed.
+- The slug NEVER appears in a `dangerouslySetInnerHTML`, route concatenation, or fetch target. It is only embedded into the query string of the Workspace Admin deep link.
+
+**Tests touched.**
+
+- `workspace-admin-links.test.ts` — every existing assertion updated to expect the new `&workspace=acme-demo` suffix; 3 new tests cover URL-encoding of reserved characters, empty-slug omission, and whitespace-only-slug omission. 17 tests total.
+- `CmsIntegrationsPanel.test.tsx` — 6 URL assertions updated to the new shape; 21 tests, no behaviour change beyond URL expectations.
+
+**Recipient app.** The Auth App's `WorkspaceHandoffSync` client component mounts inside `AuthDashboardShell` and honours the contract for every dashboard route, not just `/dashboard/integrations`. See `xynes-front-end/xynes-auth-app/docs/DEVELOPER.md` § "Cross-app workspace handoff (FE-XAPP-BUG-001)" for the consumer-side details.

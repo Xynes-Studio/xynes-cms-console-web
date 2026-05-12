@@ -190,15 +190,21 @@ describe("CmsIntegrationsPanel", () => {
       slugLabel: "[AAccttiivvee wwoorrkkssppaaccee]",
       futureAutomationTitle: "[WWoorrkkssppaaccee wweebbhhooookkss]",
       futureAutomationBadge: "[PPllaannnneedd]",
-      "sections.domains.linkLabel": "[MMaannaaggee vveerriiffiieedd ddoommaaiinnss]",
+      "sections.domains.linkLabel":
+        "[MMaannaaggee vveerriiffiieedd ddoommaaiinnss]",
     };
 
     render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "[CCMMSS iinntteeggrraattiioonnss]" }),
+      screen.getByRole("heading", {
+        level: 1,
+        name: "[CCMMSS iinntteeggrraattiioonnss]",
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByText("[WWoorrkkssppaaccee AAddmmiinn ssuummmmaarryy]")).toBeInTheDocument();
+    expect(
+      screen.getByText("[WWoorrkkssppaaccee AAddmmiinn ssuummmmaarryy]"),
+    ).toBeInTheDocument();
     expect(
       screen.getByTestId("cms-integrations-workspace-slug").parentElement,
     ).toHaveTextContent("[AAccttiivvee wwoorrkkssppaaccee]");
@@ -208,10 +214,12 @@ describe("CmsIntegrationsPanel", () => {
       }),
     ).toHaveAttribute(
       "href",
-      "http://localhost:3100/dashboard/integrations?tab=domains",
+      "http://localhost:3100/dashboard/integrations?tab=domains&workspace=acme-demo",
     );
     expect(
-      screen.getByRole("heading", { name: "[WWoorrkkssppaaccee wweebbhhooookkss]" }),
+      screen.getByRole("heading", {
+        name: "[WWoorrkkssppaaccee wweebbhhooookkss]",
+      }),
     ).toBeInTheDocument();
     expect(screen.getByText("[PPllaannnneedd]")).toBeInTheDocument();
   });
@@ -231,7 +239,7 @@ describe("CmsIntegrationsPanel", () => {
     const link = screen.getByRole("link", { name: /manage verified domains/i });
     expect(link).toHaveAttribute(
       "href",
-      "http://localhost:3100/dashboard/integrations?tab=domains",
+      "http://localhost:3100/dashboard/integrations?tab=domains&workspace=acme-demo",
     );
   });
 
@@ -243,7 +251,7 @@ describe("CmsIntegrationsPanel", () => {
     });
     expect(link).toHaveAttribute(
       "href",
-      "http://localhost:3100/dashboard/integrations?tab=api-keys",
+      "http://localhost:3100/dashboard/integrations?tab=api-keys&workspace=acme-demo",
     );
   });
 
@@ -255,7 +263,7 @@ describe("CmsIntegrationsPanel", () => {
     });
     expect(link).toHaveAttribute(
       "href",
-      "http://localhost:3100/dashboard/integrations?tab=api-keys&preset=cms_readonly",
+      "http://localhost:3100/dashboard/integrations?tab=api-keys&preset=cms_readonly&workspace=acme-demo",
     );
   });
 
@@ -267,7 +275,7 @@ describe("CmsIntegrationsPanel", () => {
     });
     expect(link).toHaveAttribute(
       "href",
-      "http://localhost:3100/dashboard/integrations?tab=api-keys&preset=cms_publisher",
+      "http://localhost:3100/dashboard/integrations?tab=api-keys&preset=cms_publisher&workspace=acme-demo",
     );
   });
 
@@ -382,7 +390,10 @@ describe("CmsIntegrationsPanel", () => {
     render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
 
     const link = screen.getByRole("link", { name: /manage verified domains/i });
-    expect(link).toHaveAttribute("href", "/dashboard/integrations?tab=domains");
+    expect(link).toHaveAttribute(
+      "href",
+      "/dashboard/integrations?tab=domains&workspace=acme-demo",
+    );
   });
 
   it("displays the active workspace slug as page context", () => {

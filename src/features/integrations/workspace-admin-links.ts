@@ -14,11 +14,27 @@
  * surfaces as a TypeScript error in the mirror file, not as a silently
  * broken `?preset=…` URL in production.
  *
+ * **Cross-app workspace handoff (FE-XAPP-BUG-001):** the builder appends an
+ * additional `&workspace=<slug>` query parameter so the Auth App can resolve
+ * the originating workspace and call `selectWorkspace(matchedId)` on landing.
+ * Without this, the two apps maintain independent `currentWorkspace` state
+ * (separate localStorage origins) and the user silently lands on a different
+ * workspace than the one they were administering in CMS Console.
+ *
+ * The slug is NOT a permission grant. The Auth App must verify the recipient
+ * is actually a member of the slug-resolved workspace (via the server-
+ * authoritative `useAuth().workspaces`) before honoring the override. A
+ * malicious or stale slug fails closed — the Auth App keeps its prior
+ * selection.
+ *
  * Security notes:
  *  - Only `http:` and `https:` origins from `NEXT_PUBLIC_AUTH_APP_URL` are honored.
  *  - Anything malformed, empty, whitespace, or with a non-http(s) scheme falls
  *    back to a same-origin relative path so the link cannot be hijacked into a
  *    `javascript:` / `data:` / `file:` redirect.
+ *  - The `workspaceSlug` is URL-encoded before being embedded.
+ *  - An empty / whitespace-only slug is omitted from the URL — the recipient
+ *    falls through to its existing localStorage-based selection.
  */
 
 import {
@@ -84,10 +100,29 @@ function resolveAuthAppOrigin(): string | null {
   return origin;
 }
 
+/**
+ * Build a Workspace Admin deep link for the given target tab/preset, carrying
+ * the originating workspace identity via `?workspace=<slug>`.
+ *
+ * @param target          Which Workspace Admin surface to deep-link into.
+ * @param workspaceSlug   Slug of the workspace currently selected in CMS
+ *                        Console. When non-empty (after trimming), it is
+ *                        URL-encoded and appended as `&workspace=<slug>`.
+ *                        Empty / whitespace-only slugs are omitted so the
+ *                        recipient falls through to its existing selection.
+ *                        Slug is NOT a permission grant — the Auth App
+ *                        re-verifies membership before honoring it.
+ */
 export function buildWorkspaceAdminIntegrationUrl(
   target: WorkspaceAdminIntegrationTarget,
+  workspaceSlug: string,
 ): string {
-  const query = QUERY_BY_TARGET[target];
+  const baseQuery = QUERY_BY_TARGET[target];
+  const trimmedSlug = workspaceSlug.trim();
+  const query =
+    trimmedSlug === ""
+      ? baseQuery
+      : `${baseQuery}&workspace=${encodeURIComponent(trimmedSlug)}`;
   const origin = resolveAuthAppOrigin();
 
   if (origin) {
