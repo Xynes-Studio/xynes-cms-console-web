@@ -720,3 +720,79 @@ buildWorkspaceAdminIntegrationUrl("cms_publisher_key", "");
 - `CmsIntegrationsPanel.test.tsx` — 6 URL assertions updated to the new shape; 21 tests, no behaviour change beyond URL expectations.
 
 **Recipient app.** The Auth App's `WorkspaceHandoffSync` client component mounts inside `AuthDashboardShell` and honours the contract for every dashboard route, not just `/dashboard/integrations`. See `xynes-front-end/xynes-auth-app/docs/DEVELOPER.md` § "Cross-app workspace handoff (FE-XAPP-BUG-001)" for the consumer-side details.
+
+## Storage Client (STORAGE-10)
+
+Reference:
+- Plan: `xynes/xynes-infra/docs/plans/2026-05-10-universal-object-storage-file-upload-api.md` § STORAGE-10
+- Service: `xynes/xynes-storage-service`
+- Gateway routes: `xynes/xynes-infra/supabase/migrations/20251229100001_seed_platform_routes.sql` (storage rows)
+
+### Module
+
+- `src/lib/dashboard/storage-client.ts` — universal storage client, reused by the CMS editor upload UX (STORAGE-11) and any future CMS Console feature that needs to mint upload sessions, complete uploads, fetch object metadata, or mint signed download URLs.
+- Companion tests: `src/lib/dashboard/storage-client.test.ts`.
+
+### Exports
+
+| Function | Purpose | Gateway route |
+|---|---|---|
+| `createStorageUploadSession` | Create an upload session | `POST /workspaces/:wsId/storage/uploads` |
+| `directProviderUpload` | PUT the file body to the signed provider URL(s) | (provider host — NOT the gateway) |
+| `completeStorageUploadSession` | Mark upload complete + queue processing | `POST /workspaces/:wsId/storage/uploads/:uploadId/complete` |
+| `abortStorageUploadSession` | Abort a pending session | `POST /workspaces/:wsId/storage/uploads/:uploadId/abort` |
+| `getStorageObject` | Read object metadata + variants + processing jobs | `GET /workspaces/:wsId/storage/objects/:objectId?operation=get` |
+| `createStorageDownloadUrl` | Mint a short-lived signed read URL | `POST /workspaces/:wsId/storage/objects/:objectId/download-url` |
+
+Public type surface is single-sourced in the same module: `StorageObject`, `UploadSession`, `CreateUploadSessionResult`, `CompletedPart`, `ProcessingJob`, `StorageObjectVariant`, `StorageObjectDetail`, `DownloadUrlResult`, `DirectUploadResult`, plus the closed-set status / method / visibility unions.
+
+### Canonical "drop the leak" list
+
+`UNAVAILABLE_STORAGE_CLIENT_RESPONSE_FIELDS` is the single, frozen source of truth for the documented-keys-only contract. Every parser builds its result through explicit field assignment — upstream rows are NEVER spread — and the test sweep `assertNoLeakedFields` checks that none of the following appear as a standalone JSON field in any response, for any of the five MVP-ready providers (R2 / B2 / iDrive e2 / AWS S3 / MinIO):
+
+```
+provider_kind, providerKind, providerId, endpoint, region, bucket,
+provider_object_key, providerObjectKey, credential_ref, credentialRef,
+accessKeyId, secretAccessKey, r2Token, signedUrl, presignedUrl
+```
+
+This is the same posture `UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS` enforces for the CMS integrations panel: contract is single-sourced from one frozen export, panel-local mirrors are forbidden.
+
+The signed `uploadUrl` / `parts[].url` / download `url` strings themselves embed signature parameters opaquely. That is by design — callers treat them as bearer-token URLs.
+
+### CMS defaults
+
+`createStorageUploadSession` enforces the STORAGE-10 acceptance criterion by defaulting:
+
+- `purpose = "cms_media"`
+- `visibility = "private"`
+- `compression = true`
+
+Callers can override any of these per-file when needed (`purpose = "platform_generic"` for non-CMS uploads, `visibility = "public"` if a future feature opts in to public delivery, `compression = false` for assets that must not be transformed).
+
+### Security invariants
+
+1. **Gateway requests carry the Xynes bearer.** Every gateway call goes out with `Authorization: Bearer <jwt>` plus `Accept: application/json` (and `Content-Type: application/json` for POSTs). No `X-XS-*` actor headers are ever set by this module — the gateway is the only thing that mints actor headers (PFU-1 / CMS-API-KEY-ACTOR-1).
+2. **Provider requests carry nothing else.** `directProviderUpload` issues a credential-less `fetch` (`credentials: "omit"`) against the signed provider URL, with ONLY the provider-supplied headers (or, for multipart parts, an empty header set — the part URL itself carries the signature). The Xynes session cookie, the Xynes `Authorization` bearer, and any `X-XS-*` header are forbidden — there is a dedicated test that asserts this on every direct-upload call.
+3. **Multipart ETag is required.** Multipart provider responses MUST carry an `ETag` header. If a provider omits it, the client refuses to manufacture a fake one — the upload fails with a generic message, not a silent success.
+4. **Error messages never echo provider material.** `safeGatewayError` builds the surfaced `Error.message` from `HTTP <status> <statusText>` + the closed-set storage-service error code (e.g. `(NOT_FOUND)`). Provider error bodies, signed URLs, `X-Amz-Signature`-style parameters, raw access keys, and provider endpoint hostnames are never reflected back to the UI. `directProviderUpload` collapses every fetch exception to a generic `"Provider upload failed: network error"` for the same reason.
+5. **Soft-deleted / missing objects are indistinguishable.** `getStorageObject` returns `null` for HTTP 404 without exposing the error body. This matches the storage-service "soft-deleted objects look like never-existed" invariant from STORAGE-6.
+6. **Strict-by-construction TypeScript types.** Every exported DTO carries `readonly` fields and the provider-config field names listed above DO NOT appear anywhere in the type. Any future drift surfaces as a compile error.
+
+### Operation discriminator
+
+The storage-service registers ONE handler per action key and branches on a payload-level `operation` field (`'create' | 'complete' | 'abort' | 'list' | 'get' | 'download_url' | 'delete' | 'usage'`). This module is responsible for injecting `operation` on every call:
+
+- POST routes carry `operation` in the JSON body.
+- GET routes (currently only `getStorageObject`) carry `operation` as a URL query parameter — the gateway merges URL query into the action payload before forwarding to storage-service.
+
+### Pagination / list / usage
+
+`getStorageObject(...)` covers single-object reads. **List, usage, and delete** are deliberately out of STORAGE-10 scope and live in storage-service today as `platform.storage.objects.read` (op `list`), `platform.storage.usage.read`, and `platform.storage.objects.delete`. STORAGE-11 (CMS editor upload UX) does not need them; if a future feature does, add a thin wrapper that follows the same parser / redaction / error-shape conventions documented above.
+
+### Quality gates (STORAGE-10)
+
+- 59 tests in `storage-client.test.ts` (full happy paths + every parser hardening branch + redaction sweep + header-isolation guard + provider-network-error path).
+- `bun run lint` / `pnpm run lint` clean.
+- `tsc --noEmit` introduces zero new errors against the pre-existing baseline.
+- `pnpm run test:coverage` reports `storage-client.ts` at **98.98% lines / 94.85% branches / 100% funcs** (well above the ADR-001 80% floor).
