@@ -79,9 +79,7 @@ const SIGNED_PROVIDER_URL =
   "https://account.r2.cloudflarestorage.com/xynes-prod/workspaces/w/objects/o/file.png" +
   "?X-Amz-Signature=DEADBEEFCAFEDOLLAR&X-Amz-Credential=AKIA-LEAK&X-Amz-Expires=900";
 
-const buildCreateSessionEnvelope = (
-  partial: Record<string, unknown> = {},
-) =>
+const buildCreateSessionEnvelope = (partial: Record<string, unknown> = {}) =>
   JSON.stringify({
     ok: true,
     data: {
@@ -207,9 +205,11 @@ describe("createStorageUploadSession", () => {
   });
 
   it("POSTs to the gateway storage uploads route with bearer auth + JSON body", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildCreateSessionEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildCreateSessionEnvelope(), { status: 200 }),
+      );
 
     await createStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
@@ -247,9 +247,11 @@ describe("createStorageUploadSession", () => {
   });
 
   it("allows overriding purpose / visibility / compression / sha256", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildCreateSessionEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildCreateSessionEnvelope(), { status: 200 }),
+      );
 
     await createStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
@@ -276,9 +278,11 @@ describe("createStorageUploadSession", () => {
   });
 
   it("returns documented fields only and drops hostile upstream fields", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildCreateSessionEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildCreateSessionEnvelope(), { status: 200 }),
+      );
 
     const result = await createStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
@@ -395,9 +399,9 @@ describe("createStorageUploadSession", () => {
   });
 
   it("rejects non-JSON gateway responses safely", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response("totally-not-json", { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response("totally-not-json", { status: 200 }));
 
     await expect(
       createStorageUploadSession({
@@ -447,8 +451,12 @@ describe("directProviderUpload", () => {
   it("PUTs the blob to the signed provider URL using only provider-supplied headers", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(new Response("", { status: 200, headers: { ETag: '"abc"' } }));
-    const blob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "image/png" });
+      .mockResolvedValue(
+        new Response("", { status: 200, headers: { ETag: '"abc"' } }),
+      );
+    const blob = new Blob([new Uint8Array([1, 2, 3, 4])], {
+      type: "image/png",
+    });
 
     const result = await directProviderUpload({
       session: singleSession,
@@ -468,7 +476,9 @@ describe("directProviderUpload", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response("", { status: 200 }));
-    const blob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "image/png" });
+    const blob = new Blob([new Uint8Array([1, 2, 3, 4])], {
+      type: "image/png",
+    });
 
     await directProviderUpload({
       session: singleSession,
@@ -494,8 +504,10 @@ describe("directProviderUpload", () => {
   });
 
   it("PUTs each multipart part in order using the corresponding signed URL and collects part ETags", async () => {
-    const part1Url = "https://account.r2.cloudflarestorage.com/x/part?X-Amz-Signature=PART1";
-    const part2Url = "https://account.r2.cloudflarestorage.com/x/part?X-Amz-Signature=PART2";
+    const part1Url =
+      "https://account.r2.cloudflarestorage.com/x/part?X-Amz-Signature=PART1";
+    const part2Url =
+      "https://account.r2.cloudflarestorage.com/x/part?X-Amz-Signature=PART2";
     const multipartSession: CreateUploadSessionResult = {
       ...singleSession,
       uploadMethod: "multipart",
@@ -607,7 +619,10 @@ describe("directProviderUpload", () => {
       parts: [],
     };
     await expect(
-      directProviderUpload({ session: broken, blob: new Blob([new Uint8Array([1])]) }),
+      directProviderUpload({
+        session: broken,
+        blob: new Blob([new Uint8Array([1])]),
+      }),
     ).rejects.toThrow(/no parts/i);
   });
 });
@@ -620,9 +635,11 @@ describe("completeStorageUploadSession", () => {
   });
 
   it("POSTs to the complete route with operation=complete and uploadId in the body", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildCompleteEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildCompleteEnvelope(), { status: 200 }),
+      );
 
     await completeStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
@@ -648,9 +665,11 @@ describe("completeStorageUploadSession", () => {
   });
 
   it("returns documented fields only and drops hostile upstream fields", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildCompleteEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildCompleteEnvelope(), { status: 200 }),
+      );
 
     const result = await completeStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
@@ -667,9 +686,11 @@ describe("completeStorageUploadSession", () => {
   });
 
   it("omits parts from the body when none are supplied", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildCompleteEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildCompleteEnvelope(), { status: 200 }),
+      );
 
     await completeStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
@@ -736,9 +757,9 @@ describe("abortStorageUploadSession", () => {
   });
 
   it("POSTs to the abort route with operation=abort and uploadId", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildAbortEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(buildAbortEnvelope(), { status: 200 }));
 
     await abortStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
@@ -758,9 +779,9 @@ describe("abortStorageUploadSession", () => {
   });
 
   it("returns documented fields only and drops hostile upstream fields", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildAbortEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(buildAbortEnvelope(), { status: 200 }));
 
     const result = await abortStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
@@ -783,9 +804,9 @@ describe("getStorageObject", () => {
   });
 
   it("GETs the object metadata route with bearer auth", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildGetEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(buildGetEnvelope(), { status: 200 }));
 
     await getStorageObject({
       apiBaseUrl: "http://localhost:4100",
@@ -806,9 +827,9 @@ describe("getStorageObject", () => {
   });
 
   it("returns documented fields only and drops hostile upstream fields on every nested record", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildGetEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(buildGetEnvelope(), { status: 200 }));
 
     const result = await getStorageObject({
       apiBaseUrl: "http://localhost:4100",
@@ -904,9 +925,11 @@ describe("createStorageDownloadUrl", () => {
   });
 
   it("POSTs to the download-url route with operation=download_url + objectId", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildDownloadEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildDownloadEnvelope(), { status: 200 }),
+      );
 
     await createStorageDownloadUrl({
       apiBaseUrl: "http://localhost:4100",
@@ -931,9 +954,11 @@ describe("createStorageDownloadUrl", () => {
   });
 
   it("returns EXACTLY { objectId, url, expiresAt }", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildDownloadEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildDownloadEnvelope(), { status: 200 }),
+      );
 
     const result = await createStorageDownloadUrl({
       apiBaseUrl: "http://localhost:4100",
@@ -953,9 +978,11 @@ describe("createStorageDownloadUrl", () => {
   });
 
   it("omits optional fields from the body when not supplied", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(buildDownloadEnvelope(), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(buildDownloadEnvelope(), { status: 200 }),
+      );
 
     await createStorageDownloadUrl({
       apiBaseUrl: "http://localhost:4100",
@@ -1044,13 +1071,11 @@ describe("create session parser — hostile / partial upstream rows", () => {
   });
 
   const makeFetchMock = (payload: unknown) =>
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ ok: true, data: payload }), {
-          status: 200,
-        }),
-      );
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: payload }), {
+        status: 200,
+      }),
+    );
 
   it("rejects when uploadMethod is invalid", async () => {
     await expect(
@@ -1172,7 +1197,9 @@ describe("create session parser — hostile / partial upstream rows", () => {
           uploadHeaders: {},
           parts: [],
           expiresAt: "2026-05-14T01:00:00.000Z",
-          object: buildObjectPayload({ compressionRequested: "yes" as unknown as boolean }),
+          object: buildObjectPayload({
+            compressionRequested: "yes" as unknown as boolean,
+          }),
         }),
       }),
     ).rejects.toThrow(/Invalid compressionRequested/);
@@ -1207,10 +1234,18 @@ describe("create session parser — hostile / partial upstream rows", () => {
       uploadUrl: null,
       uploadHeaders: {},
       parts: [
-        { partNumber: 1, url: "https://p1", expiresAt: "2026-05-14T01:00:00.000Z" },
+        {
+          partNumber: 1,
+          url: "https://p1",
+          expiresAt: "2026-05-14T01:00:00.000Z",
+        },
         "not-a-record",
         { partNumber: 2, url: "https://p2" }, // missing expiresAt
-        { partNumber: "two" as unknown as number, url: "https://p3", expiresAt: "x" },
+        {
+          partNumber: "two" as unknown as number,
+          url: "https://p3",
+          expiresAt: "x",
+        },
         null,
       ],
       expiresAt: "2026-05-14T01:00:00.000Z",
@@ -1470,12 +1505,17 @@ describe("get object — parser hardening", () => {
   });
 
   it("rejects when object record is missing", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({ ok: true, data: { variants: [], processingJobs: [] } }),
-        { status: 200 },
-      ),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { variants: [], processingJobs: [] },
+          }),
+          { status: 200 },
+        ),
+      );
     await expect(
       getStorageObject({
         apiBaseUrl: "http://localhost:4100",
@@ -1596,9 +1636,9 @@ describe("get object — parser hardening", () => {
   });
 
   it("rejects when error response body is not JSON-parseable on non-404", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response("error: not-json", { status: 500 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response("error: not-json", { status: 500 }));
 
     await expect(
       getStorageObject({
@@ -1618,9 +1658,11 @@ describe("abort handler — parser hardening", () => {
   });
 
   it("rejects when session is missing on abort response", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data: {} }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true, data: {} }), { status: 200 }),
+      );
     await expect(
       abortStorageUploadSession({
         apiBaseUrl: "http://localhost:4100",
@@ -1654,7 +1696,10 @@ describe("download URL — parser hardening", () => {
       new Response(
         JSON.stringify({
           ok: true,
-          data: { objectId: VALID_OBJECT_ID, expiresAt: "2026-05-14T00:30:00.000Z" },
+          data: {
+            objectId: VALID_OBJECT_ID,
+            expiresAt: "2026-05-14T00:30:00.000Z",
+          },
         }),
         { status: 200 },
       ),
@@ -1717,7 +1762,9 @@ describe("direct upload — network error path", () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValue(
-        new Error(`Connection failed to ${SIGNED_PROVIDER_URL} with token AKIA-LEAK-1234`),
+        new Error(
+          `Connection failed to ${SIGNED_PROVIDER_URL} with token AKIA-LEAK-1234`,
+        ),
       );
 
     let caught: unknown;
@@ -1741,7 +1788,9 @@ describe("direct upload — network error path", () => {
 
 describe("UNAVAILABLE_STORAGE_CLIENT_RESPONSE_FIELDS is frozen and complete", () => {
   it("is a frozen list (defensive)", () => {
-    expect(Object.isFrozen(UNAVAILABLE_STORAGE_CLIENT_RESPONSE_FIELDS)).toBe(true);
+    expect(Object.isFrozen(UNAVAILABLE_STORAGE_CLIENT_RESPONSE_FIELDS)).toBe(
+      true,
+    );
   });
 
   it("includes every documented banned field", () => {

@@ -701,9 +701,7 @@ export async function directProviderUpload({
 
     const etag = response.headers.get("ETag");
     if (!isNonEmptyString(etag)) {
-      throw new Error(
-        "Provider response missing ETag for multipart part",
-      );
+      throw new Error("Provider response missing ETag for multipart part");
     }
     completed.push({ partNumber: partSpec.partNumber, etag });
   }
@@ -891,7 +889,10 @@ export async function getStorageObject({
     return null;
   }
 
-  const unwrapped = await unwrapEnvelopeOrThrow(response, "load storage object");
+  const unwrapped = await unwrapEnvelopeOrThrow(
+    response,
+    "load storage object",
+  );
 
   if (!isRecord(unwrapped.object)) {
     throw new Error("Invalid load storage object response");
