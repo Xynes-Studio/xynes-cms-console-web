@@ -15,10 +15,12 @@ import {
   type WorkspaceContentEntryStatus,
 } from "../../lib/dashboard/content-entries-client";
 import { useCmsEntryAutosave } from "../../lib/dashboard/use-cms-entry-autosave";
+import { useStorageUploadAdapter } from "../../lib/dashboard/use-storage-upload-adapter";
 import {
   hasEditorDraftChanged,
   normalizeEditorBody,
 } from "./cms-editor-body";
+import { stripTransientImageUrls } from "./cms-editor-image-refs";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_GATEWAY_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -267,7 +269,7 @@ export function CmsEditorScreen({
           title: value.title,
           description: value.description,
           tags: trimmedTags,
-          body: normalizeEditorBody(value.body),
+          body: stripTransientImageUrls(normalizeEditorBody(value.body)),
         },
       });
       lastSavedDraftRef.current = buildDraftFromEntry(updated);
@@ -282,6 +284,16 @@ export function CmsEditorScreen({
     value: draft,
     delayMs: 2000,
     saveDraft: saveDraftFn,
+  });
+
+  // STORAGE-11: wire the workspace storage service into the Lumia editor.
+  // The bridge returns `undefined` for both fields when the workspace /
+  // access token are not yet available so the editor falls back to its
+  // read-only UX rather than throwing inside the upload click handler.
+  const storageMedia = useStorageUploadAdapter({
+    apiBaseUrl: API_BASE_URL,
+    workspaceId: currentWorkspace?.id ?? null,
+    accessToken,
   });
 
   const updateDraft = useCallback(
@@ -549,6 +561,10 @@ export function CmsEditorScreen({
           }
           variant="full"
           className="min-h-75"
+          media={{
+            uploadAdapter: storageMedia.uploadAdapter,
+            resolveDownloadUrl: storageMedia.resolveDownloadUrl,
+          }}
         />
       </CmsEditorLayout>
     </>

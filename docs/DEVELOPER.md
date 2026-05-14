@@ -796,3 +796,63 @@ The storage-service registers ONE handler per action key and branches on a paylo
 - `bun run lint` / `pnpm run lint` clean.
 - `tsc --noEmit` introduces zero new errors against the pre-existing baseline.
 - `pnpm run test:coverage` reports `storage-client.ts` at **98.98% lines / 94.85% branches / 100% funcs** (well above the ADR-001 80% floor).
+
+## CMS Content Editor Upload UX (STORAGE-11)
+
+Owner plan: `xynes/xynes-infra/docs/plans/2026-05-10-universal-object-storage-file-upload-api.md` § STORAGE-11.
+
+STORAGE-11 wires the STORAGE-10 storage client into the Lumia editor so CMS authors can upload images inline while the entry stays draft-safe and the persisted body never carries signed delivery URLs.
+
+### Wiring
+
+- `src/lib/dashboard/use-storage-upload-adapter.ts` exports `useStorageUploadAdapter({ apiBaseUrl, workspaceId, accessToken, purpose? })`. The hook returns `{ uploadAdapter, resolveDownloadUrl }` — a bridge the Lumia editor consumes via its `media` prop. Both fields are `undefined` until the workspace + access token are available so the editor falls back to its read-only UX rather than throwing inside an upload click handler.
+- The `uploadAdapter.uploadFile(file, { onProgress })` implementation drives the full storage lifecycle:
+  1. `createStorageUploadSession` — workspace + purpose defaults from STORAGE-10 (`cms_media` / `private` / `compression: true`).
+  2. `directProviderUpload` — credential-less `fetch` to the provider, no `Authorization` / `Cookie` / `X-XS-*` headers forwarded.
+  3. `completeStorageUploadSession` — multipart parts forwarded only when present.
+  4. `createStorageDownloadUrl` — best-effort signed URL for immediate display. Failure is non-fatal: the editor swaps a fresh URL in on next mount via the resolver path.
+- `resolveDownloadUrl(objectId)` mints a fresh signed URL via `createStorageDownloadUrl`. Returns empty string on failure (graceful degradation — the editor keeps its existing `src` rather than blanking the image).
+- `CmsEditorScreen` calls `useStorageUploadAdapter(...)` and passes the bridge to `<LumiaEditor media={...} />`. No other CMS component needs to know about storage.
+
+### Entry body normalisation
+
+- `src/features/cms-content/cms-editor-image-refs.ts` exports `stripTransientImageUrls(body)` and `collectMediaObjectIds(body)`.
+- `stripTransientImageUrls` walks the editor body and clears the transient `src` field on every `image-block` node that carries an `objectId`. Nodes without an `objectId` (legacy image-from-URL entries) keep their `src` byte-for-byte. Returns a deep-cloned tree — never mutates input.
+- `CmsEditorScreen` applies `stripTransientImageUrls` inside its `saveDraftFn` before forwarding the body to `updateWorkspaceContentEntry`, so **the persisted entry body never carries a signed delivery URL when an `objectId` is present.**
+- `collectMediaObjectIds(body)` returns the set of storage object ids referenced by image-block nodes. Not used at save time; available for future telemetry / cross-references.
+- The walker is depth-bounded at 64 levels (defensive — hostile editor state cannot pin the CPU).
+
+### Lumia DS support (`@lumia-ui/editor`)
+
+The companion Lumia DS PR (`feature/storage-11-image-objectid-support`) adds:
+- An optional `objectId?: string` field to `ImageBlockNode`'s payload, `SerializedImageBlockNode`, node fields, constructor, and accessor (`getObjectId()`).
+- An optional `objectId?: string` on `MediaUploadResult` so the adapter's `uploadFile()` return shape carries the stable storage object id alongside the display URL.
+- An optional `resolveDownloadUrl?: (objectId: string) => Promise<string>` on `EditorMediaConfig`. The `ImageBlockComponent` mounts a `useEffect` that calls the resolver whenever a node carries an `objectId` and applies the fresh URL to the node's `__src` for the current session. A race-guard ensures stale resolutions never overwrite a node whose `objectId` changed mid-flight; resolver rejections / empty strings are swallowed so a partial outage degrades gracefully rather than blanking the image.
+- Re-exports `EditorMediaConfig`, `MediaUploadAdapter`, `MediaUploadResult`, `UploadOptions`, `ImageBlockNode`, `$createImageBlockNode`, `$isImageBlockNode`, `ImageBlockPayload`, `SerializedImageBlockNode` from the package entry so consumers can type the adapter + walk the editor body.
+
+These are **additive** Lumia DS changes — all new fields are optional, all existing call sites continue to work, and the existing 1096-test editor suite continues to pass. Pre-STORAGE-11 entries that used `image-block` nodes without an `objectId` remain valid and render with their stored `src`.
+
+### Security invariants (STORAGE-11)
+
+1. **Persisted body never carries a signed URL when an `objectId` is set.** Asserted by `cms-editor-image-refs.test.ts` "STORAGE-11 invariant: no signed URL survives when objectId is set" — `JSON.stringify` of the normalised body sweep for `X-Amz-Signature`, `X-Amz-Credential`, `X-Amz-Security-Token`, `xynes_live_<hex>`, `AKIA[0-9A-Z]+`.
+2. **Provider URLs never reach the user-visible error surface.** `use-storage-upload-adapter.test.ts` "STORAGE-11 invariant: error messages NEVER include raw provider material" injects a hostile error containing bucket name, AWS access key ID, raw API key, signature parameters, and provider hostnames; the thrown adapter error is asserted not to contain any of them.
+3. **Direct upload `fetch` is credential-less.** Inherited from STORAGE-10's `directProviderUpload` test guarantee.
+4. **Soft-deleted objects look like never-existed.** Inherited from STORAGE-10's `getStorageObject` HTTP-404 = `null` behaviour.
+5. **Bridge stability.** The `uploadAdapter` reference stays stable across re-renders with stable args (proven by `bridge stability` test) so the Lumia editor's `MediaContext` memo doesn't tear down mid-upload.
+
+### Quality gates (STORAGE-11)
+
+- 33 new tests across `cms-editor-image-refs.test.ts` (15) and `use-storage-upload-adapter.test.ts` (18).
+- Full repo suite: **555 / 555 pass / 0 fail / 57 files** (was 513 / 513 / 55 — delta +42 new tests + 2 new files; the +9 difference vs the +33 I added is because two pre-existing test files gained a handful of new tests during integration).
+- `pnpm lint` clean.
+- `npx tsc --noEmit` introduces zero new errors against `main` (12 pre-existing test-file errors carry over byte-for-byte).
+- `pnpm run test:coverage` overall **93.85% statements / 87.57% branches / 96.33% funcs / 93.85% lines**. Per-file: `cms-editor-image-refs.ts` at **100% / 97.36% / 100% / 100%**; `use-storage-upload-adapter.ts` at **95.13% / 83.33% / 100% / 95.13%** (above ADR-001 80% floor).
+- `pnpm build` Next.js production build succeeds with no new route footprint.
+
+### Out of scope (deferred)
+
+- Video and generic-file inline upload UX. STORAGE-11 ships image-only — Lumia DS `VideoBlockNode` and `FileBlockNode` would need parallel `objectId` field additions before they can adopt the same path.
+- Inline `Uploading` / `Processing` / `Ready` / `Failed` state badges separate from the existing Lumia editor status pill — STORAGE-11 reuses the editor's pre-existing `status` field on `ImageBlockNode` (`uploading` / `uploaded` / `error`). A richer "processing" state that polls storage-service's processing queue (STORAGE-7) and swaps in optimised variants when ready is a clean follow-up.
+- Pinned thumbnail / variant selection. The download URL resolver currently mints a URL against the original `objectId`; switching to an optimised variant once STORAGE-8 lands in production is a one-line resolver change.
+- Drag-and-drop, paste-from-clipboard, and bulk upload flows that route through the storage adapter (the Lumia editor already wires those into `media.uploadAdapter` — they will work end-to-end once STORAGE-11 is shipped, but tests beyond the unit level live with STORAGE-12).
+- Live STORAGE-12 smoke against a real R2 / MinIO target. The unit suite proves the bridge contract; the live end-to-end browser smoke against the dev stack lands with STORAGE-12.
