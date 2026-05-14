@@ -389,18 +389,34 @@ const parseUploadParts = (
   if (!Array.isArray(value)) {
     return [];
   }
+  // Codex P2 (PR #33): part numbers must be positive integers per the AWS S3
+  // multipart contract (`partNumber ∈ [1, 10_000]`). Accepting `0`, negatives,
+  // or floats lets bad uploads start and fail late at the provider — reject
+  // them at parse time instead.
+  //
+  // Defensive extension (not flagged by Codex but a sibling invariant): drop
+  // duplicate part numbers as well. Two parts with the same `partNumber` would
+  // also be a provider-side rejection on `CompleteMultipartUpload`, and would
+  // mask the multipart-byte-range bug Codex P1 fixes by appearing "sorted".
+  const seen = new Set<number>();
   const out: CreateUploadSessionPart[] = [];
   for (const entry of value) {
     if (!isRecord(entry)) continue;
     if (
       typeof entry.partNumber !== "number" ||
-      !Number.isFinite(entry.partNumber)
+      !Number.isInteger(entry.partNumber) ||
+      entry.partNumber < 1 ||
+      entry.partNumber > 10_000
     ) {
+      continue;
+    }
+    if (seen.has(entry.partNumber)) {
       continue;
     }
     if (!isNonEmptyString(entry.url) || !isNonEmptyString(entry.expiresAt)) {
       continue;
     }
+    seen.add(entry.partNumber);
     out.push({
       partNumber: entry.partNumber,
       url: entry.url,
@@ -679,11 +695,29 @@ export async function directProviderUpload({
     throw new Error("Cannot upload: multipart session has no parts");
   }
 
-  const partSize = Math.ceil(blob.size / session.parts.length);
+  // Codex P1 (PR #33): map byte ranges to parts by `partNumber`, NOT by the
+  // incoming array's iteration order. If the gateway / storage-service ever
+  // returns `session.parts` out of order (or callers ever reorder it), slicing
+  // by array index would upload part 1's bytes against part 2's URL and the
+  // provider would reassemble the object in the wrong byte order — silent
+  // corruption with no failure signal until a reader notices.
+  //
+  // The fix: sort a local copy ascending by `partNumber` (1-based), then slice
+  // the blob by each part's *ordinal position in the sorted sequence*. The
+  // result is identical to the old behaviour when `parts` already arrived
+  // sorted (covers every today's case), and correct when it doesn't.
+  //
+  // `parseUploadParts` already rejects non-integer / out-of-range / duplicate
+  // `partNumber` values, so the sort key is guaranteed unique here.
+  const sortedParts = [...session.parts].sort(
+    (a, b) => a.partNumber - b.partNumber,
+  );
+
+  const partSize = Math.ceil(blob.size / sortedParts.length);
   const completed: CompletedPart[] = [];
 
-  for (let i = 0; i < session.parts.length; i++) {
-    const partSpec = session.parts[i];
+  for (let i = 0; i < sortedParts.length; i++) {
+    const partSpec = sortedParts[i];
     const start = i * partSize;
     const end = Math.min(start + partSize, blob.size);
     const chunk = blob.slice(start, end);

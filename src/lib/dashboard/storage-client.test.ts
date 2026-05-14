@@ -1813,3 +1813,281 @@ describe("UNAVAILABLE_STORAGE_CLIENT_RESPONSE_FIELDS is frozen and complete", ()
     }
   });
 });
+
+// ── Codex PR #33 follow-up: multipart parts hardening ──────────────────────
+//
+// Two findings from chatgpt-codex-connector[bot] on PR #33:
+//   P1 (storage-client.ts:689) — directProviderUpload sliced the blob by loop
+//     index but uploaded against session.parts[i]; if parts arrived unsorted,
+//     part 1's bytes could go to part 2's URL → silent file corruption.
+//   P2 (storage-client.ts:398) — parseUploadParts only required a finite
+//     number for partNumber; values 0 / -1 / 1.5 were accepted and then
+//     rejected late by the provider.
+//
+// The fixes also add a defensive sibling guard: parseUploadParts now drops
+// duplicate partNumber entries (AWS S3 multipart contract — duplicate part
+// numbers are a provider-side rejection, and would mask P1 by appearing
+// "sorted").
+
+describe("parseUploadParts strict partNumber validation (Codex PR #33 P2)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const buildSessionEnvelope = (partsValue: unknown) =>
+    new Response(
+      JSON.stringify({
+        ok: true,
+        data: {
+          uploadId: VALID_UPLOAD_ID,
+          objectId: VALID_OBJECT_ID,
+          uploadMethod: "multipart",
+          uploadUrl: null,
+          uploadHeaders: {},
+          parts: partsValue,
+          expiresAt: "2026-05-14T01:00:00.000Z",
+          object: buildObjectPayload(),
+        },
+      }),
+      { status: 200 },
+    );
+
+  const callCreate = async (partsValue: unknown) => {
+    const fetchMock = vi.fn().mockResolvedValue(buildSessionEnvelope(partsValue));
+    return createStorageUploadSession({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: VALID_WORKSPACE_ID,
+      accessToken: "jwt-token",
+      file: { filename: "x", contentType: "image/png", byteSize: 1 },
+      fetchImpl: fetchMock,
+    });
+  };
+
+  it("drops partNumber = 0 (out of the [1, 10000] AWS S3 range)", async () => {
+    const result = await callCreate([
+      { partNumber: 0, url: "https://p0", expiresAt: "2026-05-14T01:00:00.000Z" },
+      { partNumber: 1, url: "https://p1", expiresAt: "2026-05-14T01:00:00.000Z" },
+    ]);
+    expect(result.parts.map((p) => p.partNumber)).toEqual([1]);
+  });
+
+  it("drops negative partNumber", async () => {
+    const result = await callCreate([
+      { partNumber: -1, url: "https://pn", expiresAt: "2026-05-14T01:00:00.000Z" },
+      { partNumber: 2, url: "https://p2", expiresAt: "2026-05-14T01:00:00.000Z" },
+    ]);
+    expect(result.parts.map((p) => p.partNumber)).toEqual([2]);
+  });
+
+  it("drops floating-point partNumber (e.g. 1.5)", async () => {
+    const result = await callCreate([
+      { partNumber: 1.5, url: "https://pfloat", expiresAt: "2026-05-14T01:00:00.000Z" },
+      { partNumber: 3, url: "https://p3", expiresAt: "2026-05-14T01:00:00.000Z" },
+    ]);
+    expect(result.parts.map((p) => p.partNumber)).toEqual([3]);
+  });
+
+  it("drops partNumber > 10000 (out of the AWS S3 range)", async () => {
+    const result = await callCreate([
+      { partNumber: 10_001, url: "https://phi", expiresAt: "2026-05-14T01:00:00.000Z" },
+      { partNumber: 1, url: "https://p1", expiresAt: "2026-05-14T01:00:00.000Z" },
+    ]);
+    expect(result.parts.map((p) => p.partNumber)).toEqual([1]);
+  });
+
+  it("accepts the boundary values partNumber = 1 and partNumber = 10000", async () => {
+    const result = await callCreate([
+      { partNumber: 1, url: "https://p1", expiresAt: "2026-05-14T01:00:00.000Z" },
+      { partNumber: 10_000, url: "https://pmax", expiresAt: "2026-05-14T01:00:00.000Z" },
+    ]);
+    expect(result.parts.map((p) => p.partNumber)).toEqual([1, 10_000]);
+  });
+
+  it("drops duplicate partNumber entries (keeps the first)", async () => {
+    const result = await callCreate([
+      { partNumber: 1, url: "https://p1-first", expiresAt: "2026-05-14T01:00:00.000Z" },
+      { partNumber: 1, url: "https://p1-dup", expiresAt: "2026-05-14T01:00:00.000Z" },
+      { partNumber: 2, url: "https://p2", expiresAt: "2026-05-14T01:00:00.000Z" },
+    ]);
+    expect(result.parts).toEqual([
+      {
+        partNumber: 1,
+        url: "https://p1-first",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+      {
+        partNumber: 2,
+        url: "https://p2",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+    ]);
+  });
+});
+
+describe("directProviderUpload sorts parts by partNumber before slicing (Codex PR #33 P1)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Minimal session scaffold sharable across cases.
+  const baseObject: StorageObject = {
+    id: VALID_OBJECT_ID,
+    workspaceId: VALID_WORKSPACE_ID,
+    filename: "blob.bin",
+    contentType: "application/octet-stream",
+    byteSize: 8,
+    sha256: null,
+    purpose: "cms_media",
+    visibility: "private",
+    status: "pending_upload",
+    compressionRequested: true,
+    createdBy: null,
+    createdAt: "2026-05-14T00:00:00.000Z",
+    updatedAt: "2026-05-14T00:00:00.000Z",
+    uploadedAt: null,
+  };
+
+  const PART_URL_1 = "https://provider.example/part?n=1&X-Amz-Signature=PART1";
+  const PART_URL_2 = "https://provider.example/part?n=2&X-Amz-Signature=PART2";
+  const PART_URL_3 = "https://provider.example/part?n=3&X-Amz-Signature=PART3";
+
+  it("uploads each byte range to the URL of the matching partNumber even when parts arrive unsorted", async () => {
+    // Unsorted: [3, 1, 2]. After sort: [1, 2, 3]. Blob = 9 bytes, partSize = 3.
+    // Byte range [0..3) (chunk 0,1,2) → part 1 URL, NOT part 3 URL.
+    // Byte range [3..6) (chunk 3,4,5) → part 2 URL.
+    // Byte range [6..9) (chunk 6,7,8) → part 3 URL.
+    const session: CreateUploadSessionResult = {
+      uploadId: VALID_UPLOAD_ID,
+      objectId: VALID_OBJECT_ID,
+      uploadMethod: "multipart",
+      uploadUrl: null,
+      uploadHeaders: {},
+      parts: [
+        { partNumber: 3, url: PART_URL_3, expiresAt: "2026-05-14T01:00:00.000Z" },
+        { partNumber: 1, url: PART_URL_1, expiresAt: "2026-05-14T01:00:00.000Z" },
+        { partNumber: 2, url: PART_URL_2, expiresAt: "2026-05-14T01:00:00.000Z" },
+      ],
+      expiresAt: "2026-05-14T01:00:00.000Z",
+      object: baseObject,
+    };
+
+    const calls: Array<{ url: string; chunkBytes: number[] }> = [];
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async (url: string, init: RequestInit) => {
+        // Capture the actual bytes uploaded with each request.
+        const body = init.body as Blob;
+        const buf = await body.arrayBuffer();
+        const chunkBytes = Array.from(new Uint8Array(buf));
+        calls.push({ url, chunkBytes });
+        // Mint an ETag derived from the URL so the test can prove which URL
+        // received which chunk.
+        const tag = url.includes("n=1")
+          ? '"etag-part-1"'
+          : url.includes("n=2")
+            ? '"etag-part-2"'
+            : '"etag-part-3"';
+        return new Response("", {
+          status: 200,
+          headers: { ETag: tag },
+        });
+      });
+
+    const blob = new Blob([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9])]);
+    const result = await directProviderUpload({
+      session,
+      blob,
+      fetchImpl: fetchMock,
+    });
+
+    // 1) Bytes [1,2,3] (the first slice) MUST be uploaded to part 1's URL.
+    const firstSliceCall = calls.find(
+      (c) => JSON.stringify(c.chunkBytes) === JSON.stringify([1, 2, 3]),
+    );
+    expect(firstSliceCall?.url).toBe(PART_URL_1);
+
+    // 2) Bytes [4,5,6] MUST be uploaded to part 2's URL.
+    const middleSliceCall = calls.find(
+      (c) => JSON.stringify(c.chunkBytes) === JSON.stringify([4, 5, 6]),
+    );
+    expect(middleSliceCall?.url).toBe(PART_URL_2);
+
+    // 3) Bytes [7,8,9] MUST be uploaded to part 3's URL.
+    const lastSliceCall = calls.find(
+      (c) => JSON.stringify(c.chunkBytes) === JSON.stringify([7, 8, 9]),
+    );
+    expect(lastSliceCall?.url).toBe(PART_URL_3);
+
+    // 4) Returned completed parts carry the correct (partNumber, etag)
+    //    pairing — proves the multipart Complete envelope storage-service
+    //    builds against this output will reassemble the object in the right
+    //    byte order.
+    const sortedResult = [...result.parts].sort(
+      (a, b) => a.partNumber - b.partNumber,
+    );
+    expect(sortedResult).toEqual([
+      { partNumber: 1, etag: '"etag-part-1"' },
+      { partNumber: 2, etag: '"etag-part-2"' },
+      { partNumber: 3, etag: '"etag-part-3"' },
+    ]);
+  });
+
+  it("preserves already-sorted parts ordering (regression guard)", async () => {
+    const session: CreateUploadSessionResult = {
+      uploadId: VALID_UPLOAD_ID,
+      objectId: VALID_OBJECT_ID,
+      uploadMethod: "multipart",
+      uploadUrl: null,
+      uploadHeaders: {},
+      parts: [
+        { partNumber: 1, url: PART_URL_1, expiresAt: "2026-05-14T01:00:00.000Z" },
+        { partNumber: 2, url: PART_URL_2, expiresAt: "2026-05-14T01:00:00.000Z" },
+      ],
+      expiresAt: "2026-05-14T01:00:00.000Z",
+      object: baseObject,
+    };
+
+    const urlsSeen: string[] = [];
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      urlsSeen.push(url);
+      return Promise.resolve(
+        new Response("", {
+          status: 200,
+          headers: { ETag: `"etag-${urlsSeen.length}"` },
+        }),
+      );
+    });
+
+    const blob = new Blob([new Uint8Array([10, 20, 30, 40])]);
+    await directProviderUpload({ session, blob, fetchImpl: fetchMock });
+
+    expect(urlsSeen).toEqual([PART_URL_1, PART_URL_2]);
+  });
+
+  it("does NOT mutate session.parts when sorting (defensive — caller may still inspect the original session)", async () => {
+    const originalParts = [
+      { partNumber: 2, url: PART_URL_2, expiresAt: "2026-05-14T01:00:00.000Z" },
+      { partNumber: 1, url: PART_URL_1, expiresAt: "2026-05-14T01:00:00.000Z" },
+    ];
+    const session: CreateUploadSessionResult = {
+      uploadId: VALID_UPLOAD_ID,
+      objectId: VALID_OBJECT_ID,
+      uploadMethod: "multipart",
+      uploadUrl: null,
+      uploadHeaders: {},
+      parts: originalParts,
+      expiresAt: "2026-05-14T01:00:00.000Z",
+      object: baseObject,
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("", { status: 200, headers: { ETag: '"etag"' } }),
+    );
+    const blob = new Blob([new Uint8Array([1, 2])]);
+    await directProviderUpload({ session, blob, fetchImpl: fetchMock });
+
+    // Original session.parts ordering is untouched.
+    expect(session.parts[0].partNumber).toBe(2);
+    expect(session.parts[1].partNumber).toBe(1);
+  });
+});
