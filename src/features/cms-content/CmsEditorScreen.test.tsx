@@ -28,6 +28,7 @@ const {
   mockAutosaveClearSnapshot,
   mockCaptureSaveDraftFn,
   mockLumiaEditor,
+  mockUseFeatureFlag,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -41,6 +42,10 @@ const {
   // Captures the saveDraft fn passed to useCmsEntryAutosave so tests can invoke it directly
   mockCaptureSaveDraftFn: vi.fn(),
   mockLumiaEditor: vi.fn(),
+  // STORAGE-LIVE-5: feature-flag spy. Defaults to `false` (matches the
+  // DEFAULT_FEATURE_FLAGS contract from @xynes/auth-sdk); individual tests
+  // flip it via `mockUseFeatureFlag.mockReturnValue(true)`.
+  mockUseFeatureFlag: vi.fn<(flag: string) => boolean>(() => false),
 }));
 
 type MockLumiaEditorMode = "passthrough" | "sticky-on-mount";
@@ -77,6 +82,10 @@ vi.mock("@xynes/auth-sdk", () => ({
     isLoading: mockIsAuthLoading,
   }),
   useWorkspace: () => ({ currentWorkspace: mockCurrentWorkspace }),
+  // STORAGE-LIVE-5: route the SDK's useFeatureFlag through the hoisted
+  // spy so individual tests can flip the cms_editor_storage_uploads flag
+  // without re-mocking the whole sdk surface.
+  useFeatureFlag: (flag: string) => mockUseFeatureFlag(flag),
 }));
 
 vi.mock("../../lib/dashboard/content-entries-client", () => ({
@@ -385,6 +394,10 @@ afterEach(() => {
   mockIsAuthenticated = true;
   mockLumiaEditorMode = "passthrough";
   mockCurrentWorkspace = { id: "ws-1", slug: "acme-team", name: "Acme Team" };
+  // STORAGE-LIVE-5: vi.clearAllMocks() wipes the default implementation of
+  // mockUseFeatureFlag (set at vi.hoisted() time). Re-establish the default
+  // so each test starts with the SDK's documented default (off).
+  mockUseFeatureFlag.mockReturnValue(false);
   mockAutosaveState = {
     saveState: "idle",
     lastSavedAt: null,
@@ -1666,6 +1679,114 @@ describe("CmsEditorScreen", () => {
 
       // There is no entry to display; loading spinner is shown instead.
       expect(screen.queryByTestId("cms-editor-layout")).not.toBeInTheDocument();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // STORAGE-LIVE-5 — feature-flag gate on the editor upload affordance.
+  //
+  // The flag value comes from `@xynes/auth-sdk` `useFeatureFlag(flag)`,
+  // which reads from the SDK's `FeatureFlagsContext`. The context is
+  // populated by `<FeatureFlagsProvider>` from a fetch to the gateway's
+  // `/flags` route, which is PostHog-backed server-side. Tests here mock
+  // the SDK hook directly so we don't have to drive the full context.
+  // ─────────────────────────────────────────────────────────────────────
+
+  describe("STORAGE-LIVE-5 — cms_editor_storage_uploads feature flag", () => {
+    beforeEach(() => {
+      mockGetAccessToken.mockResolvedValue("token");
+      mockGetWorkspaceContentEntryById.mockResolvedValue(makeEntry());
+    });
+
+    it("flag OFF (SDK default): media.uploadAdapter is undefined, resolveDownloadUrl stays wired", async () => {
+      mockUseFeatureFlag.mockReturnValue(false);
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(mockLumiaEditor).toHaveBeenCalled();
+      });
+
+      const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
+        | { media?: { uploadAdapter?: unknown; resolveDownloadUrl?: unknown } }
+        | undefined;
+      expect(editorProps?.media?.uploadAdapter).toBeUndefined();
+      // resolveDownloadUrl stays wired so existing image-block nodes with
+      // objectId can mint fresh signed URLs and render (read-path
+      // graceful degradation per the rollout plan §8).
+      expect(editorProps?.media?.resolveDownloadUrl).toBeDefined();
+      expect(typeof editorProps?.media?.resolveDownloadUrl).toBe("function");
+    });
+
+    it("flag ON: media.uploadAdapter is defined AND resolveDownloadUrl stays wired", async () => {
+      mockUseFeatureFlag.mockReturnValue(true);
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(mockLumiaEditor).toHaveBeenCalled();
+      });
+
+      const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
+        | { media?: { uploadAdapter?: unknown; resolveDownloadUrl?: unknown } }
+        | undefined;
+      expect(editorProps?.media?.uploadAdapter).toBeDefined();
+      expect(editorProps?.media?.resolveDownloadUrl).toBeDefined();
+    });
+
+    it("queries the SDK for the exact `cms_editor_storage_uploads` flag key", async () => {
+      mockUseFeatureFlag.mockReturnValue(false);
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(mockLumiaEditor).toHaveBeenCalled();
+      });
+
+      expect(mockUseFeatureFlag).toHaveBeenCalledWith(
+        "cms_editor_storage_uploads",
+      );
+    });
+
+    it("render-loop guard: stable flag value → mockLumiaEditor call count stays bounded", async () => {
+      mockUseFeatureFlag.mockReturnValue(true);
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(mockLumiaEditor).toHaveBeenCalled();
+      });
+
+      const callsBefore = mockLumiaEditor.mock.calls.length;
+      // Give the autosave + state machine a tick to settle without any
+      // external state change. mockLumiaEditor should NOT be called many
+      // times in a row — that would indicate a STORAGE-LIVE-4-style render
+      // loop has crept back in.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const callsAfter = mockLumiaEditor.mock.calls.length;
+      const delta = callsAfter - callsBefore;
+      expect(delta).toBeLessThan(10);
+    });
+
+    it("flag-off path does NOT wire a callbacks surface (no STORAGE-9 telemetry leak vector)", async () => {
+      mockUseFeatureFlag.mockReturnValue(false);
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        expect(mockLumiaEditor).toHaveBeenCalled();
+      });
+
+      const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
+        | { media?: { callbacks?: unknown } }
+        | undefined;
+      // STORAGE-LIVE-5 gateway architecture: telemetry events are emitted
+      // server-side by the gateway, NOT from the browser. So the gated
+      // bridge does NOT carry a `callbacks` surface — defense in depth
+      // against accidental client-side telemetry that could bypass the
+      // STORAGE-9 redaction pipeline.
+      expect(editorProps?.media?.callbacks).toBeUndefined();
     });
   });
 });

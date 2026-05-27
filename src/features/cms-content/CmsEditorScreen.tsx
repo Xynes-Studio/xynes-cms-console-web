@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, useWorkspace } from "@xynes/auth-sdk";
+import { useAuth, useFeatureFlag, useWorkspace } from "@xynes/auth-sdk";
 import { Alert, ConfirmDialog } from "@lumia-ui/components";
 import { LumiaEditor, type LumiaEditorStateJSON } from "@lumia-ui/editor";
 import { CmsEditorLayout } from "../../components/dashboard/CmsEditorLayout";
@@ -290,11 +290,42 @@ export function CmsEditorScreen({
   // The bridge returns `undefined` for both fields when the workspace /
   // access token are not yet available so the editor falls back to its
   // read-only UX rather than throwing inside the upload click handler.
-  const storageMedia = useStorageUploadAdapter({
+  const rawStorageMedia = useStorageUploadAdapter({
     apiBaseUrl: API_BASE_URL,
     workspaceId: currentWorkspace?.id ?? null,
     accessToken,
   });
+
+  // STORAGE-LIVE-5: read the workspace-scoped feature flag from the
+  // gateway-backed @xynes/auth-sdk FeatureFlagsContext. Default lives in
+  // DEFAULT_FEATURE_FLAGS (off). PostHog evaluates per-workspace overrides
+  // server-side via the gateway FeatureFlagService (INFRA-BE-1). No
+  // `posthog-js` in the browser; no `phc_*` key in the JS bundle.
+  const isStorageUploadsEnabled = useFeatureFlag(
+    "cms_editor_storage_uploads",
+  );
+
+  // STORAGE-LIVE-5: gate the upload affordance behind the feature flag.
+  // When OFF, zero out `uploadAdapter` so slash-menu / drag-drop / paste
+  // upload paths in Lumia DS short-circuit (they check
+  // `mediaConfig?.uploadAdapter` truthy before invoking). `resolveDownloadUrl`
+  // stays wired regardless so existing image-block nodes with `objectId`
+  // can still mint fresh signed URLs and render (read-path graceful
+  // degradation). Memo identity stays stable across re-renders when neither
+  // the flag nor the underlying bridge changed — preserves the
+  // STORAGE-LIVE-4 render-loop fix.
+  const storageMedia = useMemo(() => {
+    if (isStorageUploadsEnabled) {
+      return rawStorageMedia;
+    }
+    return {
+      uploadAdapter: undefined,
+      resolveDownloadUrl: rawStorageMedia.resolveDownloadUrl,
+    };
+  }, [
+    isStorageUploadsEnabled,
+    rawStorageMedia,
+  ]);
 
   const updateDraft = useCallback(
     (updater: (previous: EditorDraftValue) => EditorDraftValue) => {
