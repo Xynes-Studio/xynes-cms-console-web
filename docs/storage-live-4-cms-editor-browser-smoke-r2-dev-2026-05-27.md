@@ -1,6 +1,6 @@
 # STORAGE-LIVE-4 — CMS editor browser smoke against R2 dev (2026-05-27)
 
-> **Status:** ✅ Complete 2026-05-27. All three upload paths (file-picker / drag-drop / paste-from-clipboard) plus save + hard-reload verified end-to-end against the live R2 dev bucket. Security gates 5.2 (DB body sweep) and 5.4 (log redaction sweep) verified clean by DB-side and `docker compose logs` checks during the smoke window. Gates 5.1 (direct PUT integrity) and 5.3 (DOM body sweep) are deferred to a future operator session — they are redundant with the DB-side proofs landed here (the persisted body is the source of truth for what's persisted; the DB sweep proves zero leakage) and with STORAGE-10 unit tests (which already lock `credentials: 'omit'` on the direct-PUT path).
+> **Status:** ✅ Complete 2026-05-27. All three upload paths (file-picker / drag-drop / paste-from-clipboard) plus save + hard-reload verified end-to-end against the live R2 dev bucket. Security gates §5.3 (DB body sweep) and §5.4 (log redaction sweep) verified clean live during the smoke window. Gate §5.1 (direct PUT integrity) is held by STORAGE-10's unit-tested `credentials: 'omit'` contract; the operator-trail screenshot is deferred. Gate §5.2 (wire-level PATCH body sweep) is deferred — the underlying security invariant is independently covered by `cms-editor-image-refs.test.ts` unit tests on `stripTransientImageUrls` + the §5.3 DB sweep; see §5.2 for why the gate cannot be inferred from §5.3 alone and what a future operator session must capture for the audit trail.
 > **Plan:** `xynes/xynes-infra/docs/plans/2026-05-14-storage-live-provider-rollout.md` §7.
 > **Predecessor evidence:** `xynes/xynes-infra/docs/runbooks/universal-storage-r2-dev-smoke-evidence-2026-05-27.md` (LIVE-3, two consecutive `PASS: 13 / FAIL: 0`).
 > **Branch:** `xynes-front-end/xynes-cms-console-web` → `feature/STORAGE-LIVE-4-cms-editor-browser-smoke` (off `main` @ `6af7602`).
@@ -125,7 +125,18 @@ Deferred to a future operator session: capturing a DevTools Network screenshot f
 
 ### 5.2 DOM body sweep
 
-**Status:** ✅ Verified via DB-side sweep (§5.3) — the DB is the canonical store for the persisted body, so DB-side checks are strictly stronger than DOM checks (anything that's not in the DB cannot be in the DOM after a reload).
+**Status:** ⊘ **DEFERRED** to a future operator session.
+
+**Why this gate is NOT covered by §5.3.** The DB body sweep (§5.3) proves the *persisted* JSON is clean — `image-block` nodes carry `objectId` only, `src` is empty. But the live editor DOM after a hard-reload is materially different: STORAGE-11's `resolveDownloadUrl(objectId)` effect mints a fresh signed download URL and writes it to the node's `__src` at runtime. So the in-memory editor state DOES contain signed URLs by design — they just never get persisted because `stripTransientImageUrls` strips them on save. A DOM sweep against the rendered editor would correctly find signed URLs (that's intentional and safe — they're short-lived, scoped, and never written back to `cms.content_entries.data`).
+
+**What this gate would actually need to prove.** That the `PATCH /content/entries/:entryId` request body (the outbound autosave payload) contains zero `X-Amz-Signature` / `X-Amz-Credential` / `xynes_live_` / `AKIA` substrings. That's the wire-level check `stripTransientImageUrls` is supposed to guarantee.
+
+**Why it is safe to defer.** Three independent guards already cover the security invariant this gate is meant to protect:
+1. `stripTransientImageUrls` is unit-tested in `cms-editor-image-refs.test.ts` (16 tests, 100% statements / 97.36% branches) — proves the save-time normaliser strips `src` from any `image-block` node carrying `objectId`.
+2. The DB-side sweep (§5.3) is the downstream proof: the post-save persisted body has empty `src`, which can only happen if the wire payload also had empty `src` (or the server rewrote it — and the gateway / CMS Core do not rewrite the body field).
+3. The render-loop fix proved end-to-end that the PATCH endpoint only fires on real edits (not in a loop), so an operator can observe a single, inspectable PATCH per save in DevTools without noise.
+
+**What the deferred operator session should capture.** A DevTools Network screenshot showing the `PATCH /content/entries/:entryId` request body, with the same 16-pattern grep returning 0/16 hits. This is an **audit-trail artifact**, not a security gate — the security gate is already proven by §5.3 + the unit tests above.
 
 ### 5.3 DB-side body sweep
 
@@ -208,7 +219,7 @@ docker compose logs gateway --since 2026-05-27T07:19:39Z 2>&1 \
 ## 6. Result
 
 ```
-PASS: 9 / FAIL: 0
+PASS: 8 / FAIL: 0 / DEFERRED: 1
 ```
 
 | Gate | Result |
@@ -219,8 +230,8 @@ PASS: 9 / FAIL: 0
 | 4.2 P3 paste-from-clipboard state walk | ✅ |
 | 4.3 save | ✅ |
 | 4.4 reload + signed-URL re-fetch | ✅ |
-| 5.1 direct PUT integrity | ✅ (verified via STORAGE-10 unit-test contract on `credentials: 'omit'`) |
-| 5.2 DOM body sweep | ✅ (verified via DB-side sweep — strictly stronger) |
+| 5.1 direct PUT integrity | ✅ (verified via STORAGE-10 unit-test contract on `credentials: 'omit'`; operator screenshot deferred) |
+| 5.2 DOM body sweep (wire-level PATCH body) | ⊘ DEFERRED — security invariant covered by `stripTransientImageUrls` unit tests + §5.3 DB sweep; operator screenshot deferred |
 | 5.3 DB body sweep clean (16-pattern, 0/16 hits) | ✅ |
 | 5.4 log redaction sweep (storage-service + gateway since smoke start) | ✅ 0/0 |
 | 5.5 error-redaction probe (optional) | ⊘ SKIPPED |
@@ -261,7 +272,7 @@ Tests landed alongside the fixes: 5 new regression tests in `DragDropPastePlugin
    - (a) Add a §3.3 evidence appendix to `xynes/xynes-infra/docs/runbooks/universal-storage-r2-dev-provisioning-evidence-2026-05-16.md` recording the CORS rule applied today.
    - (b) Extend `scripts/smoke-universal-storage.sh` routing-only mode with a CORS probe (`GetBucketCorsCommand` via a short helper) so the next operator doesn't repeat the discovery.
 2. **`Z.storage-service` SKIP in routing-only smoke.** The storage-service container has no logs since smoke start because it's been idle for hours. Not a defect (routing-only doesn't generate downstream traffic) but worth noting in the harness output — a hint string like "(SKIP not a failure; storage-service is idle; --full mode exercises it)" would reduce operator confusion.
-3. **STORAGE-LIVE-5 (feature-flag flip) is now unblocked** — §6 landed `PASS: 9 / FAIL: 0`.
+3. **STORAGE-LIVE-5 (feature-flag flip) is now unblocked** — §6 landed `PASS: 8 / FAIL: 0 / DEFERRED: 1`.
 4. **Render-loop regression test in `CmsEditorScreen.test.tsx`.** Assert the `media` prop reference is stable across re-renders so the §6.1 / §7.1 bug cannot reintroduce. Low priority — the bug is now structurally hard to hit since `media={storageMedia}` is the canonical form.
 5. **Optional follow-up evidence (operator session).** Capture DevTools Network screenshots for §5.1 + §5.2 audit trail. Not gating — the DB-side and unit-test paths already lock the invariants.
 
