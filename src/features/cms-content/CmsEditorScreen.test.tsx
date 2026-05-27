@@ -160,7 +160,11 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
         </button>
       )}
       {onPublish && (
-        <button data-testid="publish-btn" onClick={onPublish} disabled={isPublishing}>
+        <button
+          data-testid="publish-btn"
+          onClick={onPublish}
+          disabled={isPublishing}
+        >
           Publish
         </button>
       )}
@@ -183,25 +187,24 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
         </>
       )}
       {onSchedule &&
-        (publicationState === "draft" ||
-          publicationState === "scheduled") && (
-        <>
-          <button
-            data-testid="schedule-btn"
-            onClick={() => onSchedule("2026-04-24T14:30:00.000Z")}
-            disabled={isPublishing}
-          >
-            Schedule
-          </button>
-          <button
-            data-testid="schedule-invalid-btn"
-            onClick={() => onSchedule("2026-04-22T10:00:00.000Z")}
-            disabled={isPublishing}
-          >
-            Schedule invalid
-          </button>
-        </>
-      )}
+        (publicationState === "draft" || publicationState === "scheduled") && (
+          <>
+            <button
+              data-testid="schedule-btn"
+              onClick={() => onSchedule("2026-04-24T14:30:00.000Z")}
+              disabled={isPublishing}
+            >
+              Schedule
+            </button>
+            <button
+              data-testid="schedule-invalid-btn"
+              onClick={() => onSchedule("2026-04-22T10:00:00.000Z")}
+              disabled={isPublishing}
+            >
+              Schedule invalid
+            </button>
+          </>
+        )}
       {onSaveDraft && (
         <button
           data-testid="save-draft-btn"
@@ -712,7 +715,9 @@ describe("CmsEditorScreen", () => {
 
     it("falls back safely when the entry body is malformed", async () => {
       mockGetWorkspaceContentEntryById.mockResolvedValue(
-        makeEntry({ body: "{not valid json" as unknown as WorkspaceContentEntry["body"] }),
+        makeEntry({
+          body: "{not valid json" as unknown as WorkspaceContentEntry["body"],
+        }),
       );
 
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);

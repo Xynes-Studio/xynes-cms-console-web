@@ -16,10 +16,7 @@ import {
 } from "../../lib/dashboard/content-entries-client";
 import { useCmsEntryAutosave } from "../../lib/dashboard/use-cms-entry-autosave";
 import { useStorageUploadAdapter } from "../../lib/dashboard/use-storage-upload-adapter";
-import {
-  hasEditorDraftChanged,
-  normalizeEditorBody,
-} from "./cms-editor-body";
+import { hasEditorDraftChanged, normalizeEditorBody } from "./cms-editor-body";
 import { stripTransientImageUrls } from "./cms-editor-image-refs";
 
 const API_BASE_URL =
@@ -301,9 +298,7 @@ export function CmsEditorScreen({
   // DEFAULT_FEATURE_FLAGS (off). PostHog evaluates per-workspace overrides
   // server-side via the gateway FeatureFlagService (INFRA-BE-1). No
   // `posthog-js` in the browser; no `phc_*` key in the JS bundle.
-  const isStorageUploadsEnabled = useFeatureFlag(
-    "cms_editor_storage_uploads",
-  );
+  const isStorageUploadsEnabled = useFeatureFlag("cms_editor_storage_uploads");
 
   // STORAGE-LIVE-5: gate the upload affordance behind the feature flag.
   // When OFF, zero out `uploadAdapter` so slash-menu / drag-drop / paste
@@ -322,10 +317,7 @@ export function CmsEditorScreen({
       uploadAdapter: undefined,
       resolveDownloadUrl: rawStorageMedia.resolveDownloadUrl,
     };
-  }, [
-    isStorageUploadsEnabled,
-    rawStorageMedia,
-  ]);
+  }, [isStorageUploadsEnabled, rawStorageMedia]);
 
   const updateDraft = useCallback(
     (updater: (previous: EditorDraftValue) => EditorDraftValue) => {
@@ -403,10 +395,19 @@ export function CmsEditorScreen({
     } finally {
       setIsPublishing(false);
     }
-  }, [entry, currentWorkspace?.id, accessToken, entryId, isPublishing, autosave]);
+  }, [
+    entry,
+    currentWorkspace?.id,
+    accessToken,
+    entryId,
+    isPublishing,
+    autosave,
+  ]);
 
   const handleChangeStatus = useCallback(
-    async (nextStatus: Extract<WorkspaceContentEntryStatus, "draft" | "archived">) => {
+    async (
+      nextStatus: Extract<WorkspaceContentEntryStatus, "draft" | "archived">,
+    ) => {
       if (!entry || !currentWorkspace?.id || !accessToken || isPublishing) {
         return;
       }

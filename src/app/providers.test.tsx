@@ -112,9 +112,10 @@ describe("Providers", () => {
     expect(
       screen.getByTestId("cms-feature-flags-provider"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByTestId("cms-feature-flags-provider"),
-    ).toHaveAttribute("data-api-base-url", "http://localhost:4100");
+    expect(screen.getByTestId("cms-feature-flags-provider")).toHaveAttribute(
+      "data-api-base-url",
+      "http://localhost:4100",
+    );
     expect(screen.getByTestId("workspace-provider")).toBeInTheDocument();
     expect(screen.getByTestId("toast-provider")).toBeInTheDocument();
     expect(screen.getByTestId("child")).toBeInTheDocument();

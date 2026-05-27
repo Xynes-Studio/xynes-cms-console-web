@@ -12,15 +12,12 @@ import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockUseAuth,
-  mockGetAccessToken,
-  mockFeatureFlagsProvider,
-} = vi.hoisted(() => ({
-  mockUseAuth: vi.fn(),
-  mockGetAccessToken: vi.fn(),
-  mockFeatureFlagsProvider: vi.fn(),
-}));
+const { mockUseAuth, mockGetAccessToken, mockFeatureFlagsProvider } =
+  vi.hoisted(() => ({
+    mockUseAuth: vi.fn(),
+    mockGetAccessToken: vi.fn(),
+    mockFeatureFlagsProvider: vi.fn(),
+  }));
 
 vi.mock("@xynes/auth-sdk", () => ({
   useAuth: mockUseAuth,
