@@ -39,12 +39,23 @@ const getObjectFromJson = (
 /**
  * Parse the JSON-shaped override env var. Returns an empty object when
  * unset, empty, or malformed — never throws into the React render path.
+ *
+ * Important: when no `env` source is provided (production browser path),
+ * we read `process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE` via a **direct
+ * literal** access so Next.js's `NEXT_PUBLIC_*` static replacement inlines
+ * the value into the client bundle at build time. Reading it via an alias
+ * (e.g. `env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE` where `env = process.env`)
+ * defeats the static replacement and the override is silently empty in the
+ * browser. The optional `env` parameter is kept solely for unit-test
+ * injection.
  */
 export function getCmsFeatureFlagOverrides(
-  env: EnvSource = process.env,
+  env?: EnvSource,
 ): Partial<FeatureFlags> {
-  const jsonOverrides = getObjectFromJson(
-    env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE,
-  );
+  const rawOverride =
+    env === undefined
+      ? process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE
+      : env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE;
+  const jsonOverrides = getObjectFromJson(rawOverride);
   return normalizeFeatureFlags(jsonOverrides ?? {});
 }

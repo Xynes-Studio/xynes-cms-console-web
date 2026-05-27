@@ -5,7 +5,7 @@
  * (JSON env var). Mirrors the auth-app's pattern; only difference is the
  * CMS Console scope.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@xynes/auth-sdk", () => ({
   // STORAGE-LIVE-5: stub the SDK normalizer for unit tests. Pass-through
@@ -88,5 +88,36 @@ describe("getCmsFeatureFlagOverrides", () => {
         NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE: JSON.stringify(true),
       }),
     ).toEqual({});
+  });
+
+  describe("default env source (Next.js static replacement)", () => {
+    // Regression guard for the Codex P2 finding: when no `env` arg is
+    // provided, the helper MUST read `process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE`
+    // via a direct literal so Next.js inlines the value into the client
+    // bundle at build time. Reading it via an aliased default parameter
+    // (e.g. `env = process.env`) defeats the static replacement and the
+    // override is silently empty in the browser.
+    const ORIGINAL = process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE;
+    afterEach(() => {
+      if (ORIGINAL === undefined) {
+        delete process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE;
+      } else {
+        process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE = ORIGINAL;
+      }
+    });
+
+    it("reads from process.env when called with no arguments", () => {
+      process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE = JSON.stringify({
+        cms_editor_storage_uploads: true,
+      });
+      expect(getCmsFeatureFlagOverrides()).toEqual({
+        cms_editor_storage_uploads: true,
+      });
+    });
+
+    it("returns an empty object when process.env is unset and no arg is provided", () => {
+      delete process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE;
+      expect(getCmsFeatureFlagOverrides()).toEqual({});
+    });
   });
 });
