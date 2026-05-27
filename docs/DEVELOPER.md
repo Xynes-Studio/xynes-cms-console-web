@@ -856,3 +856,93 @@ These are **additive** Lumia DS changes — all new fields are optional, all exi
 - Pinned thumbnail / variant selection. The download URL resolver currently mints a URL against the original `objectId`; switching to an optimised variant once STORAGE-8 lands in production is a one-line resolver change.
 - Drag-and-drop, paste-from-clipboard, and bulk upload flows that route through the storage adapter (the Lumia editor already wires those into `media.uploadAdapter` — they will work end-to-end once STORAGE-11 is shipped, but tests beyond the unit level live with STORAGE-12).
 - Live STORAGE-12 smoke against a real R2 / MinIO target. The unit suite proves the bridge contract; the live end-to-end browser smoke against the dev stack lands with STORAGE-12.
+
+## Feature Flags (STORAGE-LIVE-5)
+
+Owner plan: `xynes/xynes-infra/docs/plans/2026-05-14-storage-live-provider-rollout.md` §8.
+
+STORAGE-LIVE-5 introduces the **first feature-flag consumption** in the CMS Console, routing through the **canonical gateway architecture** that already exists for the auth-app:
+
+```
+PostHog Cloud (EU)
+  ↑ posthog-node (server-only)
+xynes-gateway FeatureFlagService (INFRA-BE-1)
+  → GET /flags  (JWT-authenticated, workspace-scoped)
+@xynes/auth-sdk <FeatureFlagsProvider> + useFeatureFlag(flag)
+  → React context
+CmsEditorScreen.tsx
+```
+
+**There is NO `posthog-js` in the CMS Console bundle. There is NO `phc_*` key in the browser.** PostHog runs server-side only via `xynes-gateway`'s `FeatureFlagService`. The browser fetches a single `GET /flags` response that carries every workspace-resolved boolean.
+
+### What lives here
+
+- `src/lib/feature-flags/CmsFeatureFlagsProvider.tsx` — thin bridge mounted inside `<AuthProvider>` (so it can read `useAuth().getAccessToken` for the authenticated `/flags` fetch). Wraps the SDK's `<FeatureFlagsProvider>`.
+- `src/lib/feature-flags/overrides.ts` — `getCmsFeatureFlagOverrides()` parses `NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE` (JSON-shaped env var) for local-dev / CI flag forcing. Mirrors the auth-app pattern.
+
+### Reading a flag
+
+```tsx
+import { useFeatureFlag } from "@xynes/auth-sdk";
+
+const isEnabled = useFeatureFlag("cms_editor_storage_uploads");
+```
+
+The SDK's `useFeatureFlag(flag: FeatureFlagKey): boolean` is the canonical hook. **`FeatureFlagKey` is a closed TypeScript union** — every flag the CMS Console reads MUST be added to:
+1. `xynes-front-end/xynes-auth-sdk/src/types/feature-flags.ts` — `FeatureFlags` interface + `DEFAULT_FEATURE_FLAGS` constant.
+2. `xynes/xynes-gateway/src/featureFlags/types.ts` — `DEFAULT_FLAGS` (same default value).
+
+`cms_editor_storage_uploads` lives in both (default `false`).
+
+### How the CMS editor gates the upload affordance
+
+`CmsEditorScreen.tsx` reads the flag once, then derives the `<LumiaEditor media={...}>` prop:
+
+| Flag | `media.uploadAdapter` | `media.resolveDownloadUrl` |
+|---|---|---|
+| OFF | `undefined` (upload paths in Lumia DS short-circuit silently) | wired (existing image-block `objectId`s still render — graceful degradation) |
+| ON | wired via `useStorageUploadAdapter` | wired |
+
+Lumia DS plugins (`InsertFilePlugin`, `DragDropPastePlugin`, every `*ToolbarButton` / `*BlockComponent`) all check `mediaConfig?.uploadAdapter` truthy before invoking. **No Lumia DS code change is needed to silently hide the upload affordance when the flag is OFF.**
+
+The `resolveDownloadUrl` stays wired regardless of flag state. **Existing entries with `objectId` image-blocks (created when the flag was previously ON) continue to render** even after the flag flips OFF for the workspace — only NEW uploads are blocked.
+
+### Configuration
+
+| Variable | Required? | Default | Purpose |
+|---|---|---|---|
+| `NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE` | No | empty | JSON-shaped local-dev override. Applied AFTER the gateway fetch, so it's the source of truth for the page lifetime when set. Example: `{"cms_editor_storage_uploads":true}`. |
+
+In production, flag flips happen in PostHog admin against the gateway-side `FeatureFlagService` — no FE redeploy needed.
+
+### Rollout posture
+
+- **Default:** `cms_editor_storage_uploads` is OFF in every workspace (set in `DEFAULT_FLAGS` on both sides).
+- **Order:** dev workspace → 1 internal workspace → 5 friendly customers → general availability.
+- **Per-step gate:** a fresh `bash scripts/smoke-universal-storage.sh --full --provider r2` run + redaction sweep against the workspace's `platform.workspace_storage_providers` row must pass before each step.
+- **Forbidden:** `*: on` wildcard. Workspace-specific overrides only.
+
+### SSR / hydration
+
+The SDK's `<FeatureFlagsProvider>` initialises with `DEFAULT_FEATURE_FLAGS` (off for `cms_editor_storage_uploads`) on first render — on the server AND during initial client mount. The PostHog-resolved value lands on a second render after the gateway fetch resolves. On flag-on workspaces the editor briefly renders without the upload affordance before hydration flips it on. Acceptable because the editor is already a heavyweight client-only component (Lexical) showing a loading state during that window.
+
+### Why this is NOT client-side PostHog
+
+The earlier client-side `posthog-js` design was rejected because:
+1. `xynes-gateway` already integrates `posthog-node` server-side (INFRA-BE-1 `FeatureFlagService`).
+2. `@xynes/auth-sdk` already exposes the canonical `useFeatureFlag(flag)` hook consuming the gateway.
+3. No `phc_*` key in the browser → no key exposed in bundle.
+4. Adblocker-resilient — `/flags` rides the first-party gateway domain.
+5. Single source of truth for flag definitions and per-workspace overrides.
+
+### Quality gates (STORAGE-LIVE-5)
+
+- **Lumia DS:** 1121 passed / 2 skipped / 0 fail / 104 files (was 1119; +2 net new for the additive `source` arg on `MediaUploadCallbacks.onUploadStart`). Lint clean. `tsc --noEmit` baseline byte-identical (146 errors). `pnpm --filter @lumia-ui/editor build` succeeds (ESM 202.71 KB, DTS 16.01 KB).
+- **CMS Console:** 573 passed / 0 fail / 59 files (was 556; +17 net new: 5 `CmsEditorScreen` flag-gate tests, 7 `overrides` tests, 5 `CmsFeatureFlagsProvider` bridge tests). Lint clean. `tsc --noEmit` baseline byte-identical (12 errors). `pnpm build` succeeds.
+- **Coverage:** overall **93.91% stmts / 87.74% branches / 96.36% funcs / 93.91% lines** (above ADR-001 80% floor). New `src/lib/feature-flags/` directory at **100% / 100% / 100% / 100%**.
+
+### Out of scope (deferred)
+
+- **Client-side telemetry for upload events.** A previous draft of STORAGE-LIVE-5 emitted `storage.upload.{started,completed,failed}` events from the browser via `posthog-js`. The gateway-architecture migration dropped this because (a) PostHog is server-only here, (b) gateway audit-log telemetry already captures storage actions (STORAGE-9). If a future story wants per-user upload analytics, route them through the gateway's existing telemetry pipeline rather than re-introducing client-side PostHog.
+- **Server-side flag evaluation via `posthog-node` directly from CMS Console RSCs.** The editor is a `"use client"` boundary; no RSC needs the flag at MVP. Future RSC consumers should add a thin server helper that hits the gateway `/flags/:key` endpoint (already documented in `xynes/api-docs/gateway/README.md`).
+- **The `source` arg on `MediaUploadCallbacks.onUploadStart`** (Lumia DS) was added speculatively for the original client-telemetry design. It's currently **unconsumed** but stays in the API surface for the eventual gateway-proxied telemetry story.
