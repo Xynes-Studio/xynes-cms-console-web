@@ -561,10 +561,12 @@ export function CmsEditorScreen({
           }
           variant="full"
           className="min-h-75"
-          media={{
-            uploadAdapter: storageMedia.uploadAdapter,
-            resolveDownloadUrl: storageMedia.resolveDownloadUrl,
-          }}
+          // Pass the memoized bridge directly. Constructing a fresh
+          // `{ uploadAdapter, resolveDownloadUrl }` literal here would
+          // re-trigger ImageBlockNode's resolveDownloadUrl effect on
+          // every render, looping into setDraft → re-render → repeat
+          // (and PATCH-spamming the entry update endpoint).
+          media={storageMedia}
         />
       </CmsEditorLayout>
     </>
