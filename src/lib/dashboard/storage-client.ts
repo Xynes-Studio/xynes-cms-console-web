@@ -112,6 +112,19 @@ export interface CreateUploadSessionResult {
   readonly parts: ReadonlyArray<CreateUploadSessionPart>;
   readonly expiresAt: string;
   readonly object: StorageObject;
+  /**
+   * DEDUP-2 — `true` when the storage-service short-circuited the upload
+   * because an existing object in the workspace already carries the same
+   * `sha256`. Callers MUST:
+   *   - Skip the direct provider upload (`directProviderUpload` is a no-op
+   *     in this case but call sites should also avoid handing it a `Blob`
+   *     they would otherwise have to keep alive).
+   *   - Skip `completeStorageUploadSession` — the server already
+   *     finalised the existing object.
+   * Defaults to `false` for backwards compatibility with older
+   * storage-service builds that don't emit the field.
+   */
+  readonly dedupHit: boolean;
 }
 
 export interface CompletedPart {
@@ -203,6 +216,27 @@ export const UNAVAILABLE_STORAGE_CLIENT_RESPONSE_FIELDS = Object.freeze([
 export const CMS_DEFAULT_UPLOAD_PURPOSE = "cms_media";
 export const CMS_DEFAULT_UPLOAD_VISIBILITY: StorageObjectVisibility = "private";
 export const CMS_DEFAULT_UPLOAD_COMPRESSION = true;
+
+/**
+ * DEDUP-2 — closed-set owner kinds accepted by `storage-service` for the
+ * `storage_object_references` join table. Mirrors the canonical migration
+ * + the storage-service handler-side closed set byte-for-byte.
+ *
+ * The CMS Console currently only mints `cms_entry` references (one per
+ * `(workspaceId, sha256)` upload tied to an editor entry), but the type is
+ * exported so future consumers (comments / user avatars / workspace
+ * branding) reuse the same closed set.
+ */
+export const STORAGE_OBJECT_REFERENCE_OWNER_KINDS = [
+  "cms_entry",
+  "comment",
+  "doc_service",
+  "user_avatar",
+  "workspace_logo",
+  "platform_generic",
+] as const;
+export type StorageObjectReferenceOwnerKind =
+  (typeof STORAGE_OBJECT_REFERENCE_OWNER_KINDS)[number];
 
 // ─────────────────────────────────────────────────────────────────────────
 // Validation helpers — generic, no per-provider config knowledge.
@@ -532,6 +566,21 @@ export interface CreateUploadSessionFileInput {
   readonly purpose?: string;
   readonly visibility?: StorageObjectVisibility;
   readonly compression?: boolean;
+  /**
+   * DEDUP-2 — owner kind for the `storage_object_references` row that the
+   * storage-service mints on every upload (whether dedup-hit or fresh).
+   * Defaults to `platform_generic` server-side. CMS Console editor flows
+   * should pass `cms_entry` so subsequent deletes drop the right reference.
+   */
+  readonly ownerKind?: StorageObjectReferenceOwnerKind;
+  /**
+   * DEDUP-2 — owner-id UUID for the reference row. Defaults server-side to
+   * a freshly-generated UUID — only used to pad the `(object_id, owner_kind,
+   * owner_id)` composite PK so multiple anonymous references can coexist.
+   * Editor flows that want to track the CMS entry's reference should pass
+   * the entry id here.
+   */
+  readonly ownerId?: string;
 }
 
 export interface CreateUploadSessionArgs {
@@ -572,6 +621,12 @@ export async function createStorageUploadSession({
   if (file.sha256 !== undefined) {
     body.sha256 = file.sha256;
   }
+  if (file.ownerKind !== undefined) {
+    body.ownerKind = file.ownerKind;
+  }
+  if (file.ownerId !== undefined) {
+    body.ownerId = file.ownerId;
+  }
 
   const response = await fetchImpl(endpoint, {
     method: "POST",
@@ -606,6 +661,13 @@ export async function createStorageUploadSession({
     parts: parseUploadParts(unwrapped.parts),
     expiresAt: unwrapped.expiresAt,
     object: parseStorageObject(unwrapped.object),
+    // DEDUP-2 — only honour explicit `true`. Anything else (missing,
+    // string "true", number 1, null, undefined) collapses to `false` for
+    // backwards compatibility with older storage-service builds. The
+    // strict boolean check is deliberate: the caller's branch decision
+    // (skip provider PUT? skip complete?) MUST NOT be tricked by an
+    // implicit truthy value.
+    dedupHit: unwrapped.dedupHit === true,
   };
 }
 
@@ -676,6 +738,19 @@ export async function directProviderUpload({
   fetchImpl = fetch,
   signal,
 }: DirectProviderUploadArgs): Promise<DirectUploadResult> {
+  // DEDUP-2 — short-circuit: when storage-service reported a dedup hit,
+  // the bytes already exist on the provider for this workspace + sha256.
+  // There is NOTHING to PUT. The storage-service has already created the
+  // `storage_object_references` row and the parent object is already in
+  // `uploaded` / `processing` / `ready`. The session's `uploadUrl` will be
+  // `null` and `parts` will be empty, so dropping this guard would also
+  // surface the "missing uploadUrl on single session" / "multipart session
+  // has no parts" errors below — but those errors are misleading on the
+  // dedup-hit path. Make the no-op explicit.
+  if (session.dedupHit) {
+    return { parts: [] };
+  }
+
   if (session.uploadMethod === "single") {
     if (!isNonEmptyString(session.uploadUrl)) {
       throw new Error("Cannot upload: missing uploadUrl on single session");

@@ -42,6 +42,9 @@ const buildSession = (overrides: Partial<Record<string, unknown>> = {}) => ({
   uploadHeaders: {},
   parts: [],
   expiresAt: "2026-12-31T23:59:59Z",
+  // DEDUP-2 — default no-dedup posture so existing tests behave as
+  // before. Tests covering the dedup-hit branch override to `true`.
+  dedupHit: false,
   object: {
     id: "obj_1",
     workspaceId: "ws_1",
@@ -415,5 +418,116 @@ describe("useStorageUploadAdapter — bridge stability", () => {
     await waitFor(() => {
       expect(result.current.uploadAdapter).toBe(first);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// DEDUP-2 — content-hash dedup behaviour on the editor bridge.
+//
+// Plan §9 acceptance: when `createStorageUploadSession` reports
+// `dedupHit: true`, the adapter MUST skip `directProviderUpload` and
+// `completeStorageUploadSession` entirely. The display URL is fetched
+// against the existing object id (which storage-service already returned
+// as `session.object.id`).
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("useStorageUploadAdapter — DEDUP-2 dedup-hit branch", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("skips directProviderUpload + completeStorageUploadSession on dedupHit=true and mints a download URL against the existing object", async () => {
+    const dedupSession = buildSession({ dedupHit: true, uploadUrl: null });
+    mockedCreateSession.mockResolvedValueOnce(dedupSession as never);
+    mockedCreateDownloadUrl.mockResolvedValueOnce({
+      objectId: "obj_1",
+      url: "https://signed.example/dedup-download",
+      expiresAt: "2026-12-31T23:59:59Z",
+    });
+
+    const { result } = renderHook(() => useStorageUploadAdapter(baseArgs));
+    const adapter = result.current.uploadAdapter;
+    if (!adapter) throw new Error("adapter not ready");
+    const uploadFile = adapter.uploadFile;
+
+    const file = new File([new Uint8Array([1, 2, 3])], "photo.png", {
+      type: "image/png",
+    });
+    const uploadResult = await uploadFile(file);
+
+    expect(mockedCreateSession).toHaveBeenCalledTimes(1);
+    expect(mockedDirectUpload).not.toHaveBeenCalled();
+    expect(mockedCompleteSession).not.toHaveBeenCalled();
+    expect(mockedAbortSession).not.toHaveBeenCalled();
+    expect(uploadResult).toEqual({
+      url: "https://signed.example/dedup-download",
+      mime: "image/png",
+      size: 1024,
+      objectId: "obj_1",
+    });
+  });
+
+  it("dedupHit=true: tolerates a download-URL failure (returns empty url, editor re-resolves on next mount)", async () => {
+    const dedupSession = buildSession({ dedupHit: true, uploadUrl: null });
+    mockedCreateSession.mockResolvedValueOnce(dedupSession as never);
+    mockedCreateDownloadUrl.mockRejectedValueOnce(
+      new Error("processing not ready"),
+    );
+
+    const { result } = renderHook(() => useStorageUploadAdapter(baseArgs));
+    const adapter = result.current.uploadAdapter;
+    if (!adapter) throw new Error("adapter not ready");
+    const uploadFile = adapter.uploadFile;
+
+    const file = new File([new Uint8Array([1])], "photo.png", {
+      type: "image/png",
+    });
+    const uploadResult = await uploadFile(file);
+
+    expect(uploadResult.url).toBe("");
+    expect(uploadResult.objectId).toBe("obj_1");
+    // direct / complete still NOT called even when the optional URL fetch fails.
+    expect(mockedDirectUpload).not.toHaveBeenCalled();
+    expect(mockedCompleteSession).not.toHaveBeenCalled();
+  });
+
+  it("dedupHit=true: does NOT issue an abort if the download-URL fetch fails (no provider-side session was opened)", async () => {
+    const dedupSession = buildSession({ dedupHit: true, uploadUrl: null });
+    mockedCreateSession.mockResolvedValueOnce(dedupSession as never);
+    mockedCreateDownloadUrl.mockRejectedValueOnce(new Error("download failed"));
+
+    const { result } = renderHook(() => useStorageUploadAdapter(baseArgs));
+    const adapter = result.current.uploadAdapter;
+    if (!adapter) throw new Error("adapter not ready");
+    await adapter.uploadFile(
+      new File([new Uint8Array([0])], "x.png", { type: "image/png" }),
+    );
+
+    expect(mockedAbortSession).not.toHaveBeenCalled();
+  });
+
+  it("dedupHit=false (default): preserves the existing direct-then-complete flow byte-for-byte", async () => {
+    const freshSession = buildSession(); // dedupHit: false by default
+    mockedCreateSession.mockResolvedValueOnce(freshSession as never);
+    mockedDirectUpload.mockResolvedValueOnce({ parts: [] });
+    mockedCompleteSession.mockResolvedValueOnce(buildComplete() as never);
+    mockedCreateDownloadUrl.mockResolvedValueOnce({
+      objectId: "obj_1",
+      url: "https://signed.example/fresh-download",
+      expiresAt: "2026-12-31T23:59:59Z",
+    });
+
+    const { result } = renderHook(() => useStorageUploadAdapter(baseArgs));
+    const adapter = result.current.uploadAdapter;
+    if (!adapter) throw new Error("adapter not ready");
+    const uploadFile = adapter.uploadFile;
+
+    const file = new File([new Uint8Array([1, 2, 3])], "photo.png", {
+      type: "image/png",
+    });
+    await uploadFile(file);
+
+    expect(mockedDirectUpload).toHaveBeenCalledTimes(1);
+    expect(mockedCompleteSession).toHaveBeenCalledTimes(1);
   });
 });

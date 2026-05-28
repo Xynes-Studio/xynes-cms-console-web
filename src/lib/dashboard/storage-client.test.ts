@@ -303,6 +303,7 @@ describe("createStorageUploadSession", () => {
         "parts",
         "expiresAt",
         "object",
+        "dedupHit",
       ].sort(),
     );
 
@@ -446,6 +447,7 @@ describe("directProviderUpload", () => {
       updatedAt: "2026-05-14T00:00:00.000Z",
       uploadedAt: null,
     },
+    dedupHit: false,
   };
 
   it("PUTs the blob to the signed provider URL using only provider-supplied headers", async () => {
@@ -1505,17 +1507,15 @@ describe("get object — parser hardening", () => {
   });
 
   it("rejects when object record is missing", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            data: { variants: [], processingJobs: [] },
-          }),
-          { status: 200 },
-        ),
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { variants: [], processingJobs: [] },
+        }),
+        { status: 200 },
+      ),
+    );
     await expect(
       getStorageObject({
         apiBaseUrl: "http://localhost:4100",
@@ -1756,6 +1756,7 @@ describe("direct upload — network error path", () => {
       updatedAt: "2026-05-14T00:00:00.000Z",
       uploadedAt: null,
     },
+    dedupHit: false,
   };
 
   it("surfaces a generic 'network error' message when fetch throws — never echoes the raw fetch error", async () => {
@@ -1853,7 +1854,9 @@ describe("parseUploadParts strict partNumber validation (Codex PR #33 P2)", () =
     );
 
   const callCreate = async (partsValue: unknown) => {
-    const fetchMock = vi.fn().mockResolvedValue(buildSessionEnvelope(partsValue));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(buildSessionEnvelope(partsValue));
     return createStorageUploadSession({
       apiBaseUrl: "http://localhost:4100",
       workspaceId: VALID_WORKSPACE_ID,
@@ -1865,49 +1868,101 @@ describe("parseUploadParts strict partNumber validation (Codex PR #33 P2)", () =
 
   it("drops partNumber = 0 (out of the [1, 10000] AWS S3 range)", async () => {
     const result = await callCreate([
-      { partNumber: 0, url: "https://p0", expiresAt: "2026-05-14T01:00:00.000Z" },
-      { partNumber: 1, url: "https://p1", expiresAt: "2026-05-14T01:00:00.000Z" },
+      {
+        partNumber: 0,
+        url: "https://p0",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+      {
+        partNumber: 1,
+        url: "https://p1",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
     ]);
     expect(result.parts.map((p) => p.partNumber)).toEqual([1]);
   });
 
   it("drops negative partNumber", async () => {
     const result = await callCreate([
-      { partNumber: -1, url: "https://pn", expiresAt: "2026-05-14T01:00:00.000Z" },
-      { partNumber: 2, url: "https://p2", expiresAt: "2026-05-14T01:00:00.000Z" },
+      {
+        partNumber: -1,
+        url: "https://pn",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+      {
+        partNumber: 2,
+        url: "https://p2",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
     ]);
     expect(result.parts.map((p) => p.partNumber)).toEqual([2]);
   });
 
   it("drops floating-point partNumber (e.g. 1.5)", async () => {
     const result = await callCreate([
-      { partNumber: 1.5, url: "https://pfloat", expiresAt: "2026-05-14T01:00:00.000Z" },
-      { partNumber: 3, url: "https://p3", expiresAt: "2026-05-14T01:00:00.000Z" },
+      {
+        partNumber: 1.5,
+        url: "https://pfloat",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+      {
+        partNumber: 3,
+        url: "https://p3",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
     ]);
     expect(result.parts.map((p) => p.partNumber)).toEqual([3]);
   });
 
   it("drops partNumber > 10000 (out of the AWS S3 range)", async () => {
     const result = await callCreate([
-      { partNumber: 10_001, url: "https://phi", expiresAt: "2026-05-14T01:00:00.000Z" },
-      { partNumber: 1, url: "https://p1", expiresAt: "2026-05-14T01:00:00.000Z" },
+      {
+        partNumber: 10_001,
+        url: "https://phi",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+      {
+        partNumber: 1,
+        url: "https://p1",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
     ]);
     expect(result.parts.map((p) => p.partNumber)).toEqual([1]);
   });
 
   it("accepts the boundary values partNumber = 1 and partNumber = 10000", async () => {
     const result = await callCreate([
-      { partNumber: 1, url: "https://p1", expiresAt: "2026-05-14T01:00:00.000Z" },
-      { partNumber: 10_000, url: "https://pmax", expiresAt: "2026-05-14T01:00:00.000Z" },
+      {
+        partNumber: 1,
+        url: "https://p1",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+      {
+        partNumber: 10_000,
+        url: "https://pmax",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
     ]);
     expect(result.parts.map((p) => p.partNumber)).toEqual([1, 10_000]);
   });
 
   it("drops duplicate partNumber entries (keeps the first)", async () => {
     const result = await callCreate([
-      { partNumber: 1, url: "https://p1-first", expiresAt: "2026-05-14T01:00:00.000Z" },
-      { partNumber: 1, url: "https://p1-dup", expiresAt: "2026-05-14T01:00:00.000Z" },
-      { partNumber: 2, url: "https://p2", expiresAt: "2026-05-14T01:00:00.000Z" },
+      {
+        partNumber: 1,
+        url: "https://p1-first",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+      {
+        partNumber: 1,
+        url: "https://p1-dup",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
+      {
+        partNumber: 2,
+        url: "https://p2",
+        expiresAt: "2026-05-14T01:00:00.000Z",
+      },
     ]);
     expect(result.parts).toEqual([
       {
@@ -1963,12 +2018,25 @@ describe("directProviderUpload sorts parts by partNumber before slicing (Codex P
       uploadUrl: null,
       uploadHeaders: {},
       parts: [
-        { partNumber: 3, url: PART_URL_3, expiresAt: "2026-05-14T01:00:00.000Z" },
-        { partNumber: 1, url: PART_URL_1, expiresAt: "2026-05-14T01:00:00.000Z" },
-        { partNumber: 2, url: PART_URL_2, expiresAt: "2026-05-14T01:00:00.000Z" },
+        {
+          partNumber: 3,
+          url: PART_URL_3,
+          expiresAt: "2026-05-14T01:00:00.000Z",
+        },
+        {
+          partNumber: 1,
+          url: PART_URL_1,
+          expiresAt: "2026-05-14T01:00:00.000Z",
+        },
+        {
+          partNumber: 2,
+          url: PART_URL_2,
+          expiresAt: "2026-05-14T01:00:00.000Z",
+        },
       ],
       expiresAt: "2026-05-14T01:00:00.000Z",
       object: baseObject,
+      dedupHit: false,
     };
 
     const calls: Array<{ url: string; chunkBytes: number[] }> = [];
@@ -2040,11 +2108,20 @@ describe("directProviderUpload sorts parts by partNumber before slicing (Codex P
       uploadUrl: null,
       uploadHeaders: {},
       parts: [
-        { partNumber: 1, url: PART_URL_1, expiresAt: "2026-05-14T01:00:00.000Z" },
-        { partNumber: 2, url: PART_URL_2, expiresAt: "2026-05-14T01:00:00.000Z" },
+        {
+          partNumber: 1,
+          url: PART_URL_1,
+          expiresAt: "2026-05-14T01:00:00.000Z",
+        },
+        {
+          partNumber: 2,
+          url: PART_URL_2,
+          expiresAt: "2026-05-14T01:00:00.000Z",
+        },
       ],
       expiresAt: "2026-05-14T01:00:00.000Z",
       object: baseObject,
+      dedupHit: false,
     };
 
     const urlsSeen: string[] = [];
@@ -2078,16 +2155,297 @@ describe("directProviderUpload sorts parts by partNumber before slicing (Codex P
       parts: originalParts,
       expiresAt: "2026-05-14T01:00:00.000Z",
       object: baseObject,
+      dedupHit: false,
     };
 
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response("", { status: 200, headers: { ETag: '"etag"' } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response("", { status: 200, headers: { ETag: '"etag"' } }),
+      );
     const blob = new Blob([new Uint8Array([1, 2])]);
     await directProviderUpload({ session, blob, fetchImpl: fetchMock });
 
     // Original session.parts ordering is untouched.
     expect(session.parts[0].partNumber).toBe(2);
     expect(session.parts[1].partNumber).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// DEDUP-2 — content-hash dedup contract.
+//
+// Covers the FE side of `xynes/xynes-infra/docs/plans/2026-05-27-storage-followups-combined.md`
+// §9 "Storage-service unit tests" + "CMS Console storage-client unit tests".
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("createStorageUploadSession — DEDUP-2 dedup hit + owner-kind/owner-id wiring", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const dedupResponsePayload = {
+    uploadId: VALID_UPLOAD_ID,
+    objectId: VALID_OBJECT_ID,
+    uploadMethod: "single" as const,
+    uploadUrl: null,
+    uploadHeaders: {},
+    parts: [],
+    expiresAt: "2026-05-28T01:00:00.000Z",
+    object: {
+      id: VALID_OBJECT_ID,
+      workspaceId: VALID_WORKSPACE_ID,
+      filename: "logo.png",
+      contentType: "image/png",
+      byteSize: 1024,
+      sha256: "a".repeat(64),
+      purpose: "cms_media",
+      visibility: "private",
+      status: "ready",
+      compressionRequested: true,
+      createdBy: null,
+      createdAt: "2026-05-14T00:00:00.000Z",
+      updatedAt: "2026-05-14T00:00:00.000Z",
+      uploadedAt: "2026-05-14T00:00:01.000Z",
+    },
+    dedupHit: true,
+  };
+
+  it("parses dedupHit=true and returns it on the result", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, data: dedupResponsePayload }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const result = await createStorageUploadSession({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: VALID_WORKSPACE_ID,
+      accessToken: "jwt-token",
+      file: {
+        filename: "logo.png",
+        contentType: "image/png",
+        byteSize: 1024,
+        sha256: "a".repeat(64),
+      },
+      fetchImpl: fetchMock,
+    });
+
+    expect(result.dedupHit).toBe(true);
+    expect(result.uploadUrl).toBeNull();
+    expect(result.parts).toEqual([]);
+    expect(result.object.id).toBe(VALID_OBJECT_ID);
+  });
+
+  it("defaults dedupHit to false when the server omits the field (backwards compat with old servers)", async () => {
+    // Strip `dedupHit` from the payload to simulate an older storage-service.
+    const legacyPayload: Record<string, unknown> = { ...dedupResponsePayload };
+    delete legacyPayload.dedupHit;
+    const legacyWithUrl = {
+      ...legacyPayload,
+      uploadUrl: "https://signed.provider.example/put",
+    };
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, data: legacyWithUrl }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const result = await createStorageUploadSession({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: VALID_WORKSPACE_ID,
+      accessToken: "jwt-token",
+      file: { filename: "logo.png", contentType: "image/png", byteSize: 1024 },
+      fetchImpl: fetchMock,
+    });
+
+    expect(result.dedupHit).toBe(false);
+  });
+
+  it("coerces dedupHit=null / string / number to false (strict boolean parse)", async () => {
+    const hostilePayload = { ...dedupResponsePayload, dedupHit: "true" };
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, data: hostilePayload }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const result = await createStorageUploadSession({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: VALID_WORKSPACE_ID,
+      accessToken: "jwt-token",
+      file: { filename: "logo.png", contentType: "image/png", byteSize: 1024 },
+      fetchImpl: fetchMock,
+    });
+
+    // Strict boolean — anything that isn't === true collapses to false.
+    expect(result.dedupHit).toBe(false);
+  });
+
+  it("forwards ownerKind + ownerId to the gateway body when supplied", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, data: dedupResponsePayload }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await createStorageUploadSession({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: VALID_WORKSPACE_ID,
+      accessToken: "jwt-token",
+      file: {
+        filename: "logo.png",
+        contentType: "image/png",
+        byteSize: 1024,
+        sha256: "a".repeat(64),
+        ownerKind: "cms_entry",
+        ownerId: "00000000-0000-4000-8000-00000000abcd",
+      },
+      fetchImpl: fetchMock,
+    });
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(requestInit.body as string);
+    expect(body.ownerKind).toBe("cms_entry");
+    expect(body.ownerId).toBe("00000000-0000-4000-8000-00000000abcd");
+    expect(body.sha256).toBe("a".repeat(64));
+  });
+
+  it("omits ownerKind + ownerId from the gateway body when not supplied", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, data: dedupResponsePayload }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await createStorageUploadSession({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: VALID_WORKSPACE_ID,
+      accessToken: "jwt-token",
+      file: { filename: "logo.png", contentType: "image/png", byteSize: 1024 },
+      fetchImpl: fetchMock,
+    });
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(requestInit.body as string);
+    expect("ownerKind" in body).toBe(false);
+    expect("ownerId" in body).toBe(false);
+  });
+});
+
+describe("directProviderUpload — DEDUP-2 short-circuit", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const dedupSession: CreateUploadSessionResult = {
+    uploadId: VALID_UPLOAD_ID,
+    objectId: VALID_OBJECT_ID,
+    uploadMethod: "single",
+    uploadUrl: null, // No URL because storage-service short-circuited.
+    uploadHeaders: {},
+    parts: [],
+    expiresAt: "2026-05-28T01:00:00.000Z",
+    object: {
+      id: VALID_OBJECT_ID,
+      workspaceId: VALID_WORKSPACE_ID,
+      filename: "logo.png",
+      contentType: "image/png",
+      byteSize: 1024,
+      sha256: "a".repeat(64),
+      purpose: "cms_media",
+      visibility: "private",
+      status: "ready",
+      compressionRequested: true,
+      createdBy: null,
+      createdAt: "2026-05-14T00:00:00.000Z",
+      updatedAt: "2026-05-14T00:00:00.000Z",
+      uploadedAt: "2026-05-14T00:00:01.000Z",
+    },
+    dedupHit: true,
+  };
+
+  it("dedupHit=true: returns synthetic { parts: [] } without calling fetch", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(
+        new Error("provider PUT MUST NOT be called on dedup hit"),
+      );
+    const blob = new Blob([new Uint8Array([1, 2, 3])]);
+
+    const result = await directProviderUpload({
+      session: dedupSession,
+      blob,
+      fetchImpl: fetchMock,
+    });
+
+    expect(result.parts).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("dedupHit=true: does NOT throw 'missing uploadUrl' error (the guard is short-circuited before that branch)", async () => {
+    // The pre-DEDUP-2 path threw "Cannot upload: missing uploadUrl on single session"
+    // when uploadUrl was null. The dedup-hit branch must short-circuit BEFORE that
+    // guard so callers see the clean no-op envelope.
+    const fetchMock = vi.fn();
+    const blob = new Blob([new Uint8Array([1])]);
+
+    await expect(
+      directProviderUpload({
+        session: dedupSession,
+        blob,
+        fetchImpl: fetchMock,
+      }),
+    ).resolves.toEqual({ parts: [] });
+  });
+
+  it("dedupHit=false (default): preserves the existing STORAGE-10 PUT flow byte-for-byte", async () => {
+    const freshSession: CreateUploadSessionResult = {
+      ...dedupSession,
+      uploadUrl: "https://signed.provider.example/put",
+      dedupHit: false,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 200 }));
+    const blob = new Blob([new Uint8Array([1, 2])]);
+
+    await directProviderUpload({
+      session: freshSession,
+      blob,
+      fetchImpl: fetchMock,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://signed.provider.example/put",
+    );
+  });
+
+  it("dedupHit=true on a (hypothetical) multipart session also no-ops without calling fetch", async () => {
+    // Defensive guard — storage-service never combines `dedupHit: true` with
+    // multipart parts, but if a future bug did, the FE must still no-op
+    // safely instead of trying to upload to provider URLs that don't exist.
+    const multipartDedup: CreateUploadSessionResult = {
+      ...dedupSession,
+      uploadMethod: "multipart",
+      parts: [], // Empty parts — would normally throw "no parts" error.
+    };
+    const fetchMock = vi.fn();
+    const blob = new Blob([new Uint8Array([1])]);
+
+    const result = await directProviderUpload({
+      session: multipartDedup,
+      blob,
+      fetchImpl: fetchMock,
+    });
+
+    expect(result).toEqual({ parts: [] });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

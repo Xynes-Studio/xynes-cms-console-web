@@ -154,6 +154,43 @@ export function useStorageUploadAdapter({
         });
         createdUploadId = session.uploadId;
 
+        // DEDUP-2 — short-circuit when storage-service reported a dedup
+        // hit. The provider PUT is unnecessary (`directProviderUpload`
+        // would no-op anyway), and `completeStorageUploadSession` MUST be
+        // skipped because the server-side row is already in `uploaded` /
+        // `processing` / `ready` — calling complete against an already-
+        // completed session would surface as a state-conflict envelope.
+        //
+        // `session.object` is the EXISTING object that won the dedup race,
+        // not a fresh `pending_upload` row; use it directly for the
+        // display URL fetch below. `createdUploadId` is intentionally
+        // nulled so the catch block does NOT issue an abort against a
+        // session that storage-service never opened on the provider.
+        if (session.dedupHit) {
+          createdUploadId = null;
+          options?.onProgress?.(95);
+          let dedupDisplayUrl = "";
+          try {
+            const downloadUrl = await createStorageDownloadUrl({
+              apiBaseUrl,
+              workspaceId,
+              accessToken,
+              objectId: session.object.id,
+            });
+            dedupDisplayUrl = downloadUrl.url;
+          } catch {
+            // Non-fatal: editor will refresh via resolveDownloadUrl on
+            // next mount. Same posture as the fresh-upload path.
+          }
+          options?.onProgress?.(100);
+          return {
+            url: dedupDisplayUrl,
+            mime: session.object.contentType,
+            size: session.object.byteSize,
+            objectId: session.object.id,
+          };
+        }
+
         // 2) Upload directly to the provider
         options?.onProgress?.(10);
         const direct = await directProviderUpload({
