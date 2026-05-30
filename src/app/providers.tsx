@@ -26,17 +26,24 @@ export function Providers({ children, locale, messages }: ProvidersProps) {
     <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
       <ToastProvider>
         <AuthProvider config={cmsAuthConfig}>
-          {/* STORAGE-LIVE-5: CmsFeatureFlagsProvider wires the auth-sdk's
-              FeatureFlagsProvider to the gateway /flags route. Mounted
-              INSIDE AuthProvider so it can read `getAccessToken` for
-              authenticated workspace-scoped flag evaluation. Mounted
-              OUTSIDE WorkspaceProvider so the same FeatureFlagsContext is
-              shared across workspace switches (the SDK refetches /flags
-              automatically when the access token rotates). No `phc_*` key
-              in the browser — PostHog only runs on the gateway. */}
-          <CmsFeatureFlagsProvider apiBaseUrl={cmsAuthConfig.apiBaseUrl}>
-            <WorkspaceProvider>{workspaceChildren}</WorkspaceProvider>
-          </CmsFeatureFlagsProvider>
+          {/* BUG-CMS-5 / STORAGE-LIVE-5: CmsFeatureFlagsProvider wires the
+              auth-sdk's FeatureFlagsProvider to the gateway /flags route.
+              MUST be mounted INSIDE AuthProvider AND INSIDE WorkspaceProvider
+              so it can read both:
+                - useAuth().getAccessToken — to authenticate the /flags fetch
+                - useWorkspace().currentWorkspace — to thread the active
+                  workspace id into the /flags request as X-XS-Workspace-Id,
+                  which the gateway forwards to PostHog as a `workspace`
+                  group for per-workspace flag rollouts (e.g. flipping the
+                  `cms_editor_storage_uploads` flag ON for a single
+                  workspace in the PostHog admin UI).
+              No `phc_*` key in the browser — PostHog only runs on the
+              gateway. */}
+          <WorkspaceProvider>
+            <CmsFeatureFlagsProvider apiBaseUrl={cmsAuthConfig.apiBaseUrl}>
+              {workspaceChildren}
+            </CmsFeatureFlagsProvider>
+          </WorkspaceProvider>
         </AuthProvider>
       </ToastProvider>
     </NextIntlClientProvider>

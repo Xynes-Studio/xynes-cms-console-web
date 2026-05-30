@@ -12,32 +12,41 @@ import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseAuth, mockGetAccessToken, mockFeatureFlagsProvider } =
-  vi.hoisted(() => ({
-    mockUseAuth: vi.fn(),
-    mockGetAccessToken: vi.fn(),
-    mockFeatureFlagsProvider: vi.fn(),
-  }));
+const {
+  mockUseAuth,
+  mockGetAccessToken,
+  mockFeatureFlagsProvider,
+  mockUseWorkspace,
+} = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockFeatureFlagsProvider: vi.fn(),
+  mockUseWorkspace: vi.fn(),
+}));
 
 vi.mock("@xynes/auth-sdk", () => ({
   useAuth: mockUseAuth,
+  useWorkspace: mockUseWorkspace,
   FeatureFlagsProvider: ({
     children,
     apiBaseUrl,
     fetchOnMount,
     getAccessToken,
+    workspaceId,
     flagOverrides,
   }: {
     children: ReactNode;
     apiBaseUrl: string;
     fetchOnMount: boolean;
     getAccessToken?: () => Promise<string | null>;
+    workspaceId?: string | null;
     flagOverrides?: Record<string, boolean>;
   }) => {
     mockFeatureFlagsProvider({
       apiBaseUrl,
       fetchOnMount,
       getAccessToken,
+      workspaceId,
       flagOverrides,
     });
     return <div data-testid="sdk-feature-flags-provider">{children}</div>;
@@ -65,6 +74,10 @@ beforeEach(() => {
   delete process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE;
   mockUseAuth.mockReturnValue({
     getAccessToken: mockGetAccessToken,
+  });
+  // Default to no workspace selected; individual tests override.
+  mockUseWorkspace.mockReturnValue({
+    currentWorkspace: null,
   });
 });
 
@@ -139,5 +152,77 @@ describe("CmsFeatureFlagsProvider", () => {
         flagOverrides: {},
       }),
     );
+  });
+
+  // BUG-CMS-5: thread the active workspace id into the SDK provider so the
+  // gateway can resolve workspace-scoped flag rollouts (e.g.
+  // cms_editor_storage_uploads turned ON for a single workspace from the
+  // PostHog admin UI).
+  describe("workspace context (BUG-CMS-5)", () => {
+    it("threads currentWorkspace.id into the SDK provider as workspaceId", () => {
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: { id: "ws-abc123", name: "Acme", slug: "acme" },
+      });
+
+      render(
+        <CmsFeatureFlagsProvider apiBaseUrl="http://localhost:4100">
+          <span>child</span>
+        </CmsFeatureFlagsProvider>,
+      );
+
+      expect(mockFeatureFlagsProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: "ws-abc123",
+        }),
+      );
+    });
+
+    it("passes workspaceId=null when no workspace is selected (mid-onboarding)", () => {
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: null,
+      });
+
+      render(
+        <CmsFeatureFlagsProvider apiBaseUrl="http://localhost:4100">
+          <span>child</span>
+        </CmsFeatureFlagsProvider>,
+      );
+
+      expect(mockFeatureFlagsProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: null,
+        }),
+      );
+    });
+
+    it("re-renders pass through the new workspaceId when the active workspace changes", () => {
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: { id: "ws-aaa", name: "A", slug: "a" },
+      });
+
+      const { rerender } = render(
+        <CmsFeatureFlagsProvider apiBaseUrl="http://localhost:4100">
+          <span>child</span>
+        </CmsFeatureFlagsProvider>,
+      );
+
+      expect(mockFeatureFlagsProvider).toHaveBeenLastCalledWith(
+        expect.objectContaining({ workspaceId: "ws-aaa" }),
+      );
+
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: { id: "ws-bbb", name: "B", slug: "b" },
+      });
+
+      rerender(
+        <CmsFeatureFlagsProvider apiBaseUrl="http://localhost:4100">
+          <span>child</span>
+        </CmsFeatureFlagsProvider>,
+      );
+
+      expect(mockFeatureFlagsProvider).toHaveBeenLastCalledWith(
+        expect.objectContaining({ workspaceId: "ws-bbb" }),
+      );
+    });
   });
 });

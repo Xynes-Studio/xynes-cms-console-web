@@ -880,6 +880,8 @@ CmsEditorScreen.tsx
 - `src/lib/feature-flags/CmsFeatureFlagsProvider.tsx` — thin bridge mounted inside `<AuthProvider>` (so it can read `useAuth().getAccessToken` for the authenticated `/flags` fetch). Wraps the SDK's `<FeatureFlagsProvider>`.
 - `src/lib/feature-flags/overrides.ts` — `getCmsFeatureFlagOverrides()` parses `NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE` (JSON-shaped env var) for local-dev / CI flag forcing. Mirrors the auth-app pattern.
 
+> **BUG-CMS-5 (2026-05-30):** the bridge is also mounted **inside `<WorkspaceProvider>`** so it can read `useWorkspace().currentWorkspace.id` and forward it to the SDK provider as `workspaceId`. The SDK sends the value as the `X-XS-Workspace-Id` request header on `/flags`; the gateway lifts it into a PostHog `workspace` group + `groupProperties` so per-workspace flag rollouts (e.g. flipping `cms_editor_storage_uploads` ON for a single workspace in the PostHog admin UI) resolve correctly. Without this wiring, the gateway sent no workspace context at all and PostHog returned the default (`false`) regardless of admin-configured workspace conditions — see the BUG-CMS-5 verification block in workspace-root `AGENTS.md` for the full root-cause trace.
+
 ### Reading a flag
 
 ```tsx
