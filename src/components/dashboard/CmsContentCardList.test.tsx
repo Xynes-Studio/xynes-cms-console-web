@@ -57,9 +57,9 @@ vi.mock("@lumia-ui/components", () => ({
   Badge: ({
     children,
     ...props
-  }: React.HTMLAttributes<HTMLSpanElement> & { children?: React.ReactNode }) => (
-    <span {...props}>{children}</span>
-  ),
+  }: React.HTMLAttributes<HTMLSpanElement> & {
+    children?: React.ReactNode;
+  }) => <span {...props}>{children}</span>,
   Card: ({
     children,
     ...props
@@ -69,7 +69,9 @@ vi.mock("@lumia-ui/components", () => ({
   Button: ({
     children,
     ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children?: React.ReactNode }) => (
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    children?: React.ReactNode;
+  }) => (
     <button type="button" {...props}>
       {children}
     </button>
@@ -109,7 +111,6 @@ describe("CmsContentCardList", () => {
       <CmsContentCardList
         entryId="entry-1"
         title="List Card Entry"
-        description="Detailed content summary text for the card body."
         ownerName="Archan Ray"
         createdAt="2026-02-23T10:00:00.000Z"
         collaborators={["Ava", "Suman", "Sowjanya", "Chris"]}
@@ -123,7 +124,9 @@ describe("CmsContentCardList", () => {
     );
 
     expect(screen.getByText("List Card Entry")).toBeInTheDocument();
-    expect(screen.getByText("Archan Ray · Feb 23, 2026 · Ava, Suman, Sowjanya, +1")).toBeInTheDocument();
+    expect(
+      screen.getByText("Archan Ray · Feb 23, 2026 · Ava, Suman, Sowjanya, +1"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Draft")).toBeInTheDocument();
   });
 
@@ -132,7 +135,6 @@ describe("CmsContentCardList", () => {
       <CmsContentCardList
         entryId="entry-2"
         title="Published Card"
-        description="Fallback metadata check."
         ownerName={null}
         createdAt={null}
         collaborators={[]}
@@ -170,7 +172,6 @@ describe("CmsContentCardList", () => {
       <CmsContentCardList
         entryId="entry-5"
         title="Pseudo Card"
-        description="Localized metadata check."
         ownerName={null}
         createdAt="2026-02-23T10:00:00.000Z"
         collaborators={[]}
@@ -214,7 +215,6 @@ describe("CmsContentCardList", () => {
       <CmsContentCardList
         entryId="entry-3"
         title="Open Card"
-        description="Open behavior check."
         ownerName="Owner Name"
         createdAt="2026-02-23T10:00:00.000Z"
         collaborators={[]}
@@ -227,7 +227,9 @@ describe("CmsContentCardList", () => {
       />,
     );
 
-    const openRegion = screen.getByRole("button", { name: /Open content Open Card/i });
+    const openRegion = screen.getByRole("button", {
+      name: /Open content Open Card/i,
+    });
     fireEvent.click(openRegion);
     fireEvent.keyDown(openRegion, { key: "Enter" });
     fireEvent.keyDown(openRegion, { key: " " });
@@ -247,7 +249,6 @@ describe("CmsContentCardList", () => {
       <CmsContentCardList
         entryId="entry-4"
         title="Action Card"
-        description="Action behavior check."
         ownerName="Owner Name"
         createdAt="2026-02-23T10:00:00.000Z"
         collaborators={[]}
@@ -260,16 +261,124 @@ describe("CmsContentCardList", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Delete content Action Card/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Share content Action Card/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Unfavorite content Action Card/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Delete content Action Card/i }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Share content Action Card/i }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Unfavorite content Action Card/i }),
+    );
 
     expect(onDelete).toHaveBeenCalledWith("entry-4");
     expect(onShare).toHaveBeenCalledWith("entry-4");
     expect(onToggleFavorite).toHaveBeenCalledWith("entry-4");
-    expect(screen.getByRole("button", { name: /Unfavorite content Action Card/i })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    expect(
+      screen.getByRole("button", { name: /Unfavorite content Action Card/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("BUG-CMS-1: renders no description <p> element", () => {
+    const { container } = render(
+      <CmsContentCardList
+        entryId="entry-no-desc"
+        title="No Description Slot"
+        ownerName="Owner"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="draft"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
     );
+
+    const descriptionParas = Array.from(container.querySelectorAll("p")).filter(
+      (p) => /min-h-\[72px\]|line-clamp/.test(p.className),
+    );
+    expect(descriptionParas).toHaveLength(0);
+  });
+
+  it("BUG-CMS-1: card vertical structure is metadata-row + actions-row only", () => {
+    // After BUG-CMS-1 the card has exactly two direct children: the open
+    // region (metadata) and the actions row.
+    const { container } = render(
+      <CmsContentCardList
+        entryId="entry-struct"
+        title="Structure Check"
+        ownerName="Owner"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="draft"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    const card = container.firstElementChild as HTMLElement | null;
+    expect(card).not.toBeNull();
+    expect(card?.children).toHaveLength(2);
+  });
+
+  it("BUG-CMS-1: list rows have identical DOM shape across mixed entries", () => {
+    const { container: emptyCard } = render(
+      <CmsContentCardList
+        entryId="empty"
+        title="Entry A"
+        ownerName="A"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="draft"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+    const { container: shortCard } = render(
+      <CmsContentCardList
+        entryId="short"
+        title="Entry B"
+        ownerName="B"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="draft"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+    const { container: longCard } = render(
+      <CmsContentCardList
+        entryId="long"
+        title="Entry C"
+        ownerName="C"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="draft"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    const a = emptyCard.firstElementChild as HTMLElement;
+    const b = shortCard.firstElementChild as HTMLElement;
+    const c = longCard.firstElementChild as HTMLElement;
+    expect(a.children.length).toBe(b.children.length);
+    expect(b.children.length).toBe(c.children.length);
+    expect(a.className).toBe(b.className);
+    expect(b.className).toBe(c.className);
   });
 });

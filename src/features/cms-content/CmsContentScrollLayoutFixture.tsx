@@ -125,11 +125,7 @@ const buildDirectorySection = (): DashboardDirectorySection => {
   };
 };
 
-export function CmsContentScrollLayoutFixture({
-  mode,
-}: {
-  mode: FixtureMode;
-}) {
+export function CmsContentScrollLayoutFixture({ mode }: { mode: FixtureMode }) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<CmsContentSortBy>("date");
   const [view, setView] = useState<CmsContentView>("list");
@@ -212,7 +208,10 @@ export function CmsContentScrollLayoutFixture({
         aria-label="Content list panel"
         className="flex h-full min-h-0 flex-col overflow-hidden"
       >
-        <div data-testid="content-toolbar-stack" className="shrink-0 bg-background">
+        <div
+          data-testid="content-toolbar-stack"
+          className="shrink-0 bg-background"
+        >
           <CmsContentToolbar
             breadcrumbItems={[{ label: "Contents", onClick: () => undefined }]}
             itemCount={visibleEntries.length}
@@ -275,7 +274,6 @@ export function CmsContentScrollLayoutFixture({
                       <CmsContentCardGrid
                         entryId={entry.id}
                         title={entry.title}
-                        description={entry.description}
                         ownerName={entry.ownerName}
                         createdAt={entry.createdAt}
                         avatarUrl={entry.avatarUrl}
@@ -286,7 +284,6 @@ export function CmsContentScrollLayoutFixture({
                       <CmsContentCardList
                         entryId={entry.id}
                         title={entry.title}
-                        description={entry.description}
                         ownerName={entry.ownerName}
                         createdAt={entry.createdAt}
                         avatarUrl={entry.avatarUrl}

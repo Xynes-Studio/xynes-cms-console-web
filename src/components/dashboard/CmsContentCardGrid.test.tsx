@@ -47,9 +47,9 @@ vi.mock("@lumia-ui/components", () => ({
   Badge: ({
     children,
     ...props
-  }: React.HTMLAttributes<HTMLSpanElement> & { children?: React.ReactNode }) => (
-    <span {...props}>{children}</span>
-  ),
+  }: React.HTMLAttributes<HTMLSpanElement> & {
+    children?: React.ReactNode;
+  }) => <span {...props}>{children}</span>,
   Card: ({
     children,
     ...props
@@ -77,7 +77,6 @@ describe("CmsContentCardGrid", () => {
       <CmsContentCardGrid
         entryId="entry-1"
         title="Quarterly Marketing Plan 2026"
-        description="Long-form content for campaign launch and editorial sequencing."
         ownerName="Archan Ray"
         createdAt="2026-02-23T10:00:00.000Z"
         status="draft"
@@ -85,10 +84,11 @@ describe("CmsContentCardGrid", () => {
       />,
     );
 
-    expect(screen.getByText("Quarterly Marketing Plan 2026")).toBeInTheDocument();
+    expect(
+      screen.getByText("Quarterly Marketing Plan 2026"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Archan Ray · Feb 23, 2026")).toBeInTheDocument();
     expect(screen.getByText("Draft")).toBeInTheDocument();
-    expect(screen.getByText(/Long-form content/)).toBeInTheDocument();
   });
 
   it("falls back for missing owner/date and hides draft badge when published", () => {
@@ -96,7 +96,6 @@ describe("CmsContentCardGrid", () => {
       <CmsContentCardGrid
         entryId="entry-2"
         title="Roadmap Notes"
-        description="Fallback rendering check."
         ownerName={null}
         createdAt={null}
         status="published"
@@ -123,7 +122,6 @@ describe("CmsContentCardGrid", () => {
       <CmsContentCardGrid
         entryId="entry-5"
         title="Pseudo Grid"
-        description="Localized grid metadata check."
         ownerName={null}
         createdAt="2026-02-23T10:00:00.000Z"
         status="draft"
@@ -155,7 +153,6 @@ describe("CmsContentCardGrid", () => {
       <CmsContentCardGrid
         entryId="entry-3"
         title="Avatar Test"
-        description="Initials fallback check."
         ownerName="Archan Ray"
         createdAt="2026-02-23T10:00:00.000Z"
         status="draft"
@@ -173,7 +170,6 @@ describe("CmsContentCardGrid", () => {
       <CmsContentCardGrid
         entryId="entry-4"
         title="Open Interaction"
-        description="Open callback behavior."
         ownerName="Team Owner"
         createdAt="2026-02-23T10:00:00.000Z"
         status="published"
@@ -181,7 +177,9 @@ describe("CmsContentCardGrid", () => {
       />,
     );
 
-    const card = screen.getByRole("button", { name: /Open content Open Interaction/i });
+    const card = screen.getByRole("button", {
+      name: /Open content Open Interaction/i,
+    });
     fireEvent.click(card);
     fireEvent.keyDown(card, { key: "Enter" });
     fireEvent.keyDown(card, { key: " " });
@@ -190,5 +188,94 @@ describe("CmsContentCardGrid", () => {
     expect(onOpen).toHaveBeenNthCalledWith(1, "entry-4");
     expect(onOpen).toHaveBeenNthCalledWith(2, "entry-4");
     expect(onOpen).toHaveBeenNthCalledWith(3, "entry-4");
+  });
+
+  it("BUG-CMS-1: renders no description <p> element", () => {
+    const { container } = render(
+      <CmsContentCardGrid
+        entryId="entry-6"
+        title="No Description Slot"
+        ownerName="Owner"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="draft"
+        onOpen={vi.fn()}
+      />,
+    );
+
+    // The metadata row keeps two short <p>s (title is <h3>, meta line is <p>).
+    // After BUG-CMS-1 there must NOT be a multi-line description <p> with
+    // the line-clamp / min-height utility classes that previously held the
+    // description copy.
+    const descriptionParas = Array.from(container.querySelectorAll("p")).filter(
+      (p) => /min-h-\[72px\]|line-clamp/.test(p.className),
+    );
+    expect(descriptionParas).toHaveLength(0);
+  });
+
+  it("BUG-CMS-1: card vertical structure is title-row + (optional) badge only", () => {
+    // Regression guard: title + meta + badge live inside ONE row container.
+    // After BUG-CMS-1 there is no sibling description block.
+    const { container } = render(
+      <CmsContentCardGrid
+        entryId="entry-7"
+        title="Structure Check"
+        ownerName="Owner"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="draft"
+        onOpen={vi.fn()}
+      />,
+    );
+
+    const card = container.firstElementChild as HTMLElement | null;
+    expect(card).not.toBeNull();
+    // After the change, the card's only direct child is the metadata row.
+    // (Previously there was a sibling <p> description block.)
+    expect(card?.children).toHaveLength(1);
+  });
+
+  it("BUG-CMS-1: grid cards render at uniform height regardless of upstream description copy on the entry DTO", () => {
+    // The entry DTO retains `description` (used by the editor), but the
+    // card no longer accepts/renders it. Mounting three card variants
+    // (which would previously have rendered three different description
+    // clamps) yields identical DOM shape per the structural assertion above.
+    const { container: emptyCard } = render(
+      <CmsContentCardGrid
+        entryId="empty"
+        title="Empty desc upstream"
+        ownerName="A"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="draft"
+        onOpen={vi.fn()}
+      />,
+    );
+    const { container: shortCard } = render(
+      <CmsContentCardGrid
+        entryId="short"
+        title="Short desc upstream"
+        ownerName="B"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="draft"
+        onOpen={vi.fn()}
+      />,
+    );
+    const { container: longCard } = render(
+      <CmsContentCardGrid
+        entryId="long"
+        title="Long desc upstream"
+        ownerName="C"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="draft"
+        onOpen={vi.fn()}
+      />,
+    );
+
+    // Same DOM child-count, same className on the outermost card.
+    const a = emptyCard.firstElementChild as HTMLElement;
+    const b = shortCard.firstElementChild as HTMLElement;
+    const c = longCard.firstElementChild as HTMLElement;
+    expect(a.children.length).toBe(b.children.length);
+    expect(b.children.length).toBe(c.children.length);
+    expect(a.className).toBe(b.className);
+    expect(b.className).toBe(c.className);
   });
 });

@@ -22,7 +22,6 @@ export const mapEntryToGridCardProps = ({
 }): CmsEntryCardGridProps => ({
   entryId: entry.id,
   title: entry.title,
-  description: entry.description,
   ownerName: entry.ownerName,
   createdAt: entry.createdAt,
   avatarUrl: entry.avatarUrl,
@@ -43,7 +42,6 @@ export const mapEntryToListCardProps = ({
 }): CmsEntryCardListProps => ({
   entryId: entry.id,
   title: entry.title,
-  description: entry.description,
   ownerName: entry.ownerName,
   createdAt: entry.createdAt,
   avatarUrl: entry.avatarUrl,
