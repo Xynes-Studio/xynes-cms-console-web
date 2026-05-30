@@ -9,6 +9,8 @@ const i18nState = vi.hoisted(() => ({
     fallbackOwner: "Unknown owner",
     fallbackDate: "--",
     draft: "Draft",
+    archived: "Archived",
+    archivedAriaLabel: "{title} (archived)",
     openAriaLabel: "Open content {title}",
     avatarAlt: "{owner} avatar",
     delete: "Delete",
@@ -89,6 +91,8 @@ afterEach(() => {
     fallbackOwner: "Unknown owner",
     fallbackDate: "--",
     draft: "Draft",
+    archived: "Archived",
+    archivedAriaLabel: "{title} (archived)",
     openAriaLabel: "Open content {title}",
     avatarAlt: "{owner} avatar",
     delete: "Delete",
@@ -380,5 +384,121 @@ describe("CmsContentCardList", () => {
     expect(b.children.length).toBe(c.children.length);
     expect(a.className).toBe(b.className);
     expect(b.className).toBe(c.className);
+  });
+
+  it("BUG-CMS-7: archived list row renders the Archived badge and dims the metadata block", () => {
+    const { container } = render(
+      <CmsContentCardList
+        entryId="entry-archived"
+        title="Old Brief"
+        ownerName="Archan Ray"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="archived"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+    expect(screen.queryByText("Draft")).toBeNull();
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.dataset.status).toBe("archived");
+    // The dim treatment is applied to the open-region (metadata) only — the
+    // outer Card itself must NOT carry the dim utilities, so the actions row
+    // (delete / share / favourite) below stays at full opacity.
+    expect(card.className).not.toMatch(/opacity-60/);
+    expect(card.className).not.toMatch(/grayscale/);
+    const openRegion = screen.getByRole("button", {
+      name: "Old Brief (archived)",
+    });
+    expect(openRegion.className).toMatch(/opacity-60/);
+    expect(openRegion.className).toMatch(/grayscale/);
+  });
+
+  it("BUG-CMS-7: archived list row keeps the actions row fully visible", () => {
+    render(
+      <CmsContentCardList
+        entryId="entry-archived-actions"
+        title="Old Brief"
+        ownerName="Archan Ray"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="archived"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    // The action buttons keep their normal Lumia DS styling — they are NOT
+    // inside the dimmed open-region.
+    const deleteButton = screen.getByRole("button", {
+      name: /Delete content Old Brief/i,
+    });
+    expect(deleteButton.className).not.toMatch(/opacity-60/);
+    expect(deleteButton.className).not.toMatch(/grayscale/);
+  });
+
+  it("BUG-CMS-7: archived row still navigates on click + keyboard (un-archive path)", () => {
+    const onOpen = vi.fn();
+
+    render(
+      <CmsContentCardList
+        entryId="entry-archived-click"
+        title="Old Brief"
+        ownerName="Archan Ray"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="archived"
+        onOpen={onOpen}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    const openRegion = screen.getByRole("button", {
+      name: "Old Brief (archived)",
+    });
+    fireEvent.click(openRegion);
+    fireEvent.keyDown(openRegion, { key: "Enter" });
+    fireEvent.keyDown(openRegion, { key: " " });
+
+    expect(onOpen).toHaveBeenCalledTimes(3);
+    expect(onOpen).toHaveBeenNthCalledWith(1, "entry-archived-click");
+  });
+
+  it("BUG-CMS-7: published rows are NOT dimmed and carry no Archived badge", () => {
+    const { container } = render(
+      <CmsContentCardList
+        entryId="entry-published"
+        title="Live Brief"
+        ownerName="Archan Ray"
+        createdAt="2026-02-23T10:00:00.000Z"
+        collaborators={[]}
+        isFavorite={false}
+        status="published"
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Archived")).toBeNull();
+    expect(screen.queryByText("Draft")).toBeNull();
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.dataset.status).toBe("published");
+    const openRegion = screen.getByRole("button", {
+      name: /Open content Live Brief/i,
+    });
+    expect(openRegion.className).not.toMatch(/opacity-60/);
   });
 });

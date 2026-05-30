@@ -977,3 +977,38 @@ Both `CmsContentCardGrid.test.tsx` and `CmsContentCardList.test.tsx` ship three 
 - "renders no description `<p>` element" — fails if a future change re-adds a `<p>` with `min-h-[72px]` or a `line-clamp` utility (the previous description-slot signature).
 - "card vertical structure" — asserts the card has exactly the documented number of direct children (1 for grid: metadata row; 2 for list: open region + actions row).
 - "uniform DOM shape across mixed entries" — mounts three card instances and asserts identical `className` + `children.length` on the outermost element.
+
+## Archived Status Visual Treatment (BUG-CMS-7)
+
+`CmsContentCardGrid` and `CmsContentCardList` now surface the third entry status (`archived`) explicitly. The mappers no longer collapse `archived` into `draft`.
+
+### Contract
+
+- `status: "draft" | "published" | "archived"` on both card prop types.
+- `mappers.ts::resolveCardStatus` returns `archived` directly when the upstream `WorkspaceContentEntry.status === "archived"`. No fallback collapse.
+- Each card carries a `data-status` attribute (`"draft" | "published" | "archived"`) for stylesheet hooks and integration tests.
+- Archived rendering:
+  - Adds the utility classes `opacity-60 grayscale` to the card root (grid) or to the open-region only (list — the actions row stays at full opacity so users can navigate in to un-archive, delete, or favourite without visual ambiguity).
+  - Renders a Lumia DS `<Badge variant="subtle">` with the localized `cms.content.card.archived` copy.
+  - Replaces the open-region `aria-label` with the dedicated `cms.content.card.archivedAriaLabel` so screen readers announce "<title> (archived)" instead of "Open content <title>".
+- Click + keyboard (`Enter` / `Space`) navigation still triggers `onOpen` for archived entries (un-archive path).
+
+### Badge variant note
+
+The sprint plan called for `Badge variant="muted"`. Lumia DS Badge variants are `'default' | 'outline' | 'subtle'`. We use `variant="subtle"` (the closest semantic match — a lower-weight visual treatment) rather than introduce a new variant token. If product later wants a stronger "archived" treatment, the right move is to add a dedicated `archived` token to Lumia DS, not to layer Tailwind utilities on top of the badge.
+
+### i18n keys (en-US, en-XA)
+
+`messages/<locale>/cms.content.json` → `cms.content.card`:
+- `archived` — the badge label ("Archived" / "[AArrcchhiivveedd]").
+- `archivedAriaLabel` — the open-region accessible name for archived entries ("{title} (archived)" / "[{title} ((aarrcchhiivveedd))]").
+
+### Regression guards (per-test-file)
+
+`CmsContentCardGrid.test.tsx` and `CmsContentCardList.test.tsx` each ship four BUG-CMS-7 regression tests covering:
+1. Archived badge renders + Draft badge does NOT render + `data-status="archived"` + dim utilities applied.
+2. Archived `aria-label` matches the dedicated archived hint (no "Open content …" override).
+3. Click + keyboard navigation still works on archived entries (un-archive workflow preserved).
+4. Published entries are NOT dimmed and carry no Archived badge (baseline-state regression guard).
+
+`mappers.test.ts` also has two new BUG-CMS-7 cases: archived → archived (grid + list) instead of the prior archived → draft collapse.

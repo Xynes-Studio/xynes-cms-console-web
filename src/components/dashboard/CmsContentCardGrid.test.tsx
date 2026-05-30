@@ -9,6 +9,8 @@ const i18nState = vi.hoisted(() => ({
     fallbackOwner: "Unknown owner",
     fallbackDate: "--",
     draft: "Draft",
+    archived: "Archived",
+    archivedAriaLabel: "{title} (archived)",
     openAriaLabel: "Open content {title}",
     avatarAlt: "{owner} avatar",
   },
@@ -65,6 +67,8 @@ afterEach(() => {
     fallbackOwner: "Unknown owner",
     fallbackDate: "--",
     draft: "Draft",
+    archived: "Archived",
+    archivedAriaLabel: "{title} (archived)",
     openAriaLabel: "Open content {title}",
     avatarAlt: "{owner} avatar",
   };
@@ -277,5 +281,88 @@ describe("CmsContentCardGrid", () => {
     expect(b.children.length).toBe(c.children.length);
     expect(a.className).toBe(b.className);
     expect(b.className).toBe(c.className);
+  });
+
+  it("BUG-CMS-7: archived entries render the Archived badge and dim the card", () => {
+    const { container } = render(
+      <CmsContentCardGrid
+        entryId="entry-archived"
+        title="Old Marketing Brief"
+        ownerName="Archan Ray"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="archived"
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+    expect(screen.queryByText("Draft")).toBeNull();
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.dataset.status).toBe("archived");
+    expect(card.className).toMatch(/opacity-60/);
+    expect(card.className).toMatch(/grayscale/);
+  });
+
+  it("BUG-CMS-7: archived entry aria-label announces archived state", () => {
+    render(
+      <CmsContentCardGrid
+        entryId="entry-archived-aria"
+        title="Old Brief"
+        ownerName="Archan Ray"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="archived"
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Old Brief (archived)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Open content Old Brief/i }),
+    ).toBeNull();
+  });
+
+  it("BUG-CMS-7: archived entries still navigate on click + keyboard (un-archive path)", () => {
+    const onOpen = vi.fn();
+
+    render(
+      <CmsContentCardGrid
+        entryId="entry-archived-click"
+        title="Old Brief"
+        ownerName="Archan Ray"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="archived"
+        onOpen={onOpen}
+      />,
+    );
+
+    const card = screen.getByRole("button", { name: "Old Brief (archived)" });
+    fireEvent.click(card);
+    fireEvent.keyDown(card, { key: "Enter" });
+    fireEvent.keyDown(card, { key: " " });
+
+    expect(onOpen).toHaveBeenCalledTimes(3);
+    expect(onOpen).toHaveBeenNthCalledWith(1, "entry-archived-click");
+  });
+
+  it("BUG-CMS-7: published cards are NOT dimmed and carry no Archived badge", () => {
+    const { container } = render(
+      <CmsContentCardGrid
+        entryId="entry-published"
+        title="Live Brief"
+        ownerName="Archan Ray"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="published"
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Archived")).toBeNull();
+    expect(screen.queryByText("Draft")).toBeNull();
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.dataset.status).toBe("published");
+    expect(card.className).not.toMatch(/opacity-60/);
+    expect(card.className).not.toMatch(/grayscale/);
   });
 });

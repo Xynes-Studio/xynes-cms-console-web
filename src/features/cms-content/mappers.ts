@@ -9,9 +9,18 @@ type EntryActionHandlers = {
   onToggleFavorite: (entryId: string) => void;
 };
 
+// BUG-CMS-7: archived is now a first-class status surfaced on the cards.
 const resolveCardStatus = (
   status: WorkspaceContentEntry["status"],
-): "draft" | "published" => (status === "published" ? "published" : "draft");
+): "draft" | "published" | "archived" => {
+  if (status === "published") {
+    return "published";
+  }
+  if (status === "archived") {
+    return "archived";
+  }
+  return "draft";
+};
 
 export const mapEntryToGridCardProps = ({
   entry,
