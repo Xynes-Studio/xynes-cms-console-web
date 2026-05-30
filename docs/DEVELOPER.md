@@ -946,3 +946,32 @@ The earlier client-side `posthog-js` design was rejected because:
 - **Client-side telemetry for upload events.** A previous draft of STORAGE-LIVE-5 emitted `storage.upload.{started,completed,failed}` events from the browser via `posthog-js`. The gateway-architecture migration dropped this because (a) PostHog is server-only here, (b) gateway audit-log telemetry already captures storage actions (STORAGE-9). If a future story wants per-user upload analytics, route them through the gateway's existing telemetry pipeline rather than re-introducing client-side PostHog.
 - **Server-side flag evaluation via `posthog-node` directly from CMS Console RSCs.** The editor is a `"use client"` boundary; no RSC needs the flag at MVP. Future RSC consumers should add a thin server helper that hits the gateway `/flags/:key` endpoint (already documented in `xynes/api-docs/gateway/README.md`).
 - **The `source` arg on `MediaUploadCallbacks.onUploadStart`** (Lumia DS) was added speculatively for the original client-telemetry design. It's currently **unconsumed** but stays in the API surface for the eventual gateway-proxied telemetry story.
+
+## Content Card Rendering (BUG-CMS-1)
+
+CMS content cards intentionally do NOT render the `description` field from the entry DTO. This is the BUG-CMS-1 decision (sprint plan §5 / `xynes/xynes-infra/docs/plans/2026-05-29-q2-bugfix-sprint-stories.md`).
+
+### Contract
+
+- `CmsContentCardGrid` and `CmsContentCardList` (under `src/components/dashboard/`) accept ONLY `title`, `ownerName`, `createdAt`, `avatarUrl`, `status`, and (for the list variant) `collaborators` + `isFavorite` + action callbacks.
+- Neither component accepts a `description` prop. Adding one back requires a product decision (see "Future hover-reveal / detail view" below).
+- The entry DTO field `description` (`WorkspaceContentEntry.description`) is **preserved** for the editor + future detail view. Only the card render is dropped.
+- `mappers.ts` (`mapEntryToGridCardProps` / `mapEntryToListCardProps`) does NOT forward `entry.description`.
+
+### Why no description slot
+
+Three options were weighed during planning (recorded in `xynes/xynes-infra/docs/plans/2026-05-29-q2-bugfix-sprint-stories.md` §5 / BUG-CMS-1 Decision):
+1. Collapse the slot to zero when empty → rejected (sparse descriptions produce ragged tile heights).
+2. Remove the slot entirely → **chosen** (uniform card height, denser grid, no layout shift, converges with BUG-CMS-7 archived badge + BUG-CMS-8 owner display name).
+3. Reserve the slot with a placeholder → rejected (visual noise on the majority of cards).
+
+### Future hover-reveal / detail view
+
+If product later wants description previews back, the recommended follow-up is a hover-reveal tooltip or an info-icon-triggered detail panel — both preserve information without sacrificing grid rhythm. That work is **out of scope** for BUG-CMS-1 (feature, not a bug fix).
+
+### Regression guards (per-test-file)
+
+Both `CmsContentCardGrid.test.tsx` and `CmsContentCardList.test.tsx` ship three BUG-CMS-1 regression tests:
+- "renders no description `<p>` element" — fails if a future change re-adds a `<p>` with `min-h-[72px]` or a `line-clamp` utility (the previous description-slot signature).
+- "card vertical structure" — asserts the card has exactly the documented number of direct children (1 for grid: metadata row; 2 for list: open region + actions row).
+- "uniform DOM shape across mixed entries" — mounts three card instances and asserts identical `className` + `children.length` on the outermost element.

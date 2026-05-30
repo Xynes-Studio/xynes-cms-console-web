@@ -5,7 +5,6 @@ import { useLocale, useTranslations } from "next-intl";
 export type CmsEntryCardListProps = {
   entryId: string;
   title: string;
-  description: string;
   ownerName?: string | null;
   createdAt?: string | null;
   avatarUrl?: string | null;
@@ -58,7 +57,6 @@ const formatCollaborators = (collaborators: string[]) => {
 export function CmsContentCardList({
   entryId,
   title,
-  description,
   ownerName,
   createdAt,
   avatarUrl,
@@ -84,7 +82,10 @@ export function CmsContentCardList({
     : `${resolvedOwner} · ${resolvedDate}`;
 
   return (
-    <Card className="flex flex-col gap-4 border-border bg-background p-4">
+    <Card
+      data-testid="cms-content-card-list"
+      className="flex flex-col gap-4 border-border bg-background p-4"
+    >
       <div
         role="button"
         tabIndex={0}
@@ -122,9 +123,6 @@ export function CmsContentCardList({
             </Badge>
           ) : null}
         </div>
-        <p className="mt-3 min-h-[72px] overflow-hidden text-base leading-6 text-foreground/90 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">
-          {description}
-        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
