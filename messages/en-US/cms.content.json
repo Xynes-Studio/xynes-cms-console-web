@@ -23,6 +23,7 @@
   },
   "card": {
     "fallbackOwner": "Unknown owner",
+    "apiKeyCreator": "Created via API key",
     "fallbackDate": "--",
     "draft": "Draft",
     "archived": "Archived",

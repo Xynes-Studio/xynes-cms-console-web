@@ -20,6 +20,10 @@ const sampleListResult = {
       updatedAt: "2026-02-26T10:00:00.000Z",
       collaborators: [],
       isFavorite: false,
+      // BUG-CMS-8: structured creator field. `null` simulates the api_key
+      // actor entry path here so the hook tests exercise the most common
+      // shape upstream.
+      creator: null,
     },
   ],
   count: 1,

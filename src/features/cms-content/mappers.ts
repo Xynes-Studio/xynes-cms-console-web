@@ -32,6 +32,10 @@ export const mapEntryToGridCardProps = ({
   entryId: entry.id,
   title: entry.title,
   ownerName: entry.ownerName,
+  // BUG-CMS-8: forward the structured creator so the card renders the
+  // real human display name (or the localized "Created via API key"
+  // label when the entry was created by an api_key actor).
+  creator: entry.creator,
   createdAt: entry.createdAt,
   avatarUrl: entry.avatarUrl,
   status: resolveCardStatus(entry.status),
@@ -52,6 +56,8 @@ export const mapEntryToListCardProps = ({
   entryId: entry.id,
   title: entry.title,
   ownerName: entry.ownerName,
+  // BUG-CMS-8: same forwarding rule as the grid mapper.
+  creator: entry.creator,
   createdAt: entry.createdAt,
   avatarUrl: entry.avatarUrl,
   status: resolveCardStatus(entry.status),

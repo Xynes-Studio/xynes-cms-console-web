@@ -17,6 +17,11 @@ const makeEntry = (overrides: Record<string, unknown> = {}) => ({
   updatedAt: "2026-02-27T00:00:00.000Z",
   collaborators: ["A", "B"],
   isFavorite: false,
+  // BUG-CMS-8: default to a human creator. Tests that care about the
+  // api_key actor path pass `creator: null` via overrides.
+  creator: { id: "user-1", displayName: "Owner" } as
+    | { id: string; displayName: string | null }
+    | null,
   ...overrides,
 });
 
@@ -78,5 +83,66 @@ describe("cms-content mappers", () => {
     expect(mapped.collaborators).toEqual(["A", "B"]);
     mapped.onDelete("entry-1");
     expect(handlers.onDelete).toHaveBeenCalledWith("entry-1");
+  });
+
+  // BUG-CMS-8 — mappers must forward the structured creator field.
+  it("forwards a non-null creator from the entry to the grid card props", () => {
+    const mapped = mapEntryToGridCardProps({
+      entry: makeEntry({
+        creator: { id: "user-7", displayName: "Aiyana Patel" },
+      }),
+      onOpen: vi.fn(),
+    });
+
+    expect(mapped.creator).toEqual({
+      id: "user-7",
+      displayName: "Aiyana Patel",
+    });
+  });
+
+  it("forwards a null creator (api_key actor) from the entry to the grid card props", () => {
+    const mapped = mapEntryToGridCardProps({
+      entry: makeEntry({ creator: null }),
+      onOpen: vi.fn(),
+    });
+
+    expect(mapped.creator).toBeNull();
+  });
+
+  it("forwards a non-null creator from the entry to the list card props", () => {
+    const handlers = {
+      onOpen: vi.fn(),
+      onDelete: vi.fn(),
+      onShare: vi.fn(),
+      onToggleFavorite: vi.fn(),
+    };
+
+    const mapped = mapEntryToListCardProps({
+      entry: makeEntry({
+        creator: { id: "user-7", displayName: "Aiyana Patel" },
+      }),
+      handlers,
+    });
+
+    expect(mapped.creator).toEqual({
+      id: "user-7",
+      displayName: "Aiyana Patel",
+    });
+  });
+
+  it("forwards a null creator (api_key actor) from the entry to the list card props", () => {
+    const handlers = {
+      onOpen: vi.fn(),
+      onDelete: vi.fn(),
+      onShare: vi.fn(),
+      onToggleFavorite: vi.fn(),
+    };
+
+    const mapped = mapEntryToListCardProps({
+      entry: makeEntry({ creator: null }),
+      handlers,
+    });
+
+    expect(mapped.creator).toBeNull();
   });
 });

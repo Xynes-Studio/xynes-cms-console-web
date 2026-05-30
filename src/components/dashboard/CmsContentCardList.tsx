@@ -1,11 +1,21 @@
 import { Avatar, Badge, Button, Card } from "@lumia-ui/components";
 import { Icon } from "@lumia-ui/icons";
 import { useLocale, useTranslations } from "next-intl";
+import {
+  type CmsEntryCardCreator,
+  resolveOwnerLabel,
+} from "./cms-content-card-owner";
+
+// BUG-CMS-8: `creator` is the new authoritative owner field. See
+// `cms-content-card-owner.ts` for the full precedence + api_key
+// security contract.
+export type { CmsEntryCardCreator } from "./cms-content-card-owner";
 
 export type CmsEntryCardListProps = {
   entryId: string;
   title: string;
   ownerName?: string | null;
+  creator?: CmsEntryCardCreator | null;
   createdAt?: string | null;
   avatarUrl?: string | null;
   status: "draft" | "published" | "archived";
@@ -58,6 +68,7 @@ export function CmsContentCardList({
   entryId,
   title,
   ownerName,
+  creator,
   createdAt,
   avatarUrl,
   status,
@@ -72,9 +83,12 @@ export function CmsContentCardList({
 }: CmsEntryCardListProps) {
   const locale = useLocale();
   const t = useTranslations("cms.content.card");
-  const resolvedOwner = ownerName?.trim()
-    ? ownerName.trim()
-    : t("fallbackOwner");
+  const resolvedOwner = resolveOwnerLabel({
+    creator,
+    ownerName,
+    apiKeyCreatorLabel: t("apiKeyCreator"),
+    fallbackOwnerLabel: t("fallbackOwner"),
+  });
   const resolvedDate = formatCreatedDate(locale, t("fallbackDate"), createdAt);
   const collaboratorText = formatCollaborators(collaborators);
   const metaText = collaboratorText

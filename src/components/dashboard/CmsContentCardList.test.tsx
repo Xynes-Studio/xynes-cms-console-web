@@ -7,6 +7,7 @@ const i18nState = vi.hoisted(() => ({
   locale: "en-US",
   messages: {
     fallbackOwner: "Unknown owner",
+    apiKeyCreator: "Created via API key",
     fallbackDate: "--",
     draft: "Draft",
     archived: "Archived",
@@ -89,6 +90,7 @@ afterEach(() => {
   i18nState.locale = "en-US";
   i18nState.messages = {
     fallbackOwner: "Unknown owner",
+    apiKeyCreator: "Created via API key",
     fallbackDate: "--",
     draft: "Draft",
     archived: "Archived",
@@ -500,5 +502,127 @@ describe("CmsContentCardList", () => {
       name: /Open content Live Brief/i,
     });
     expect(openRegion.className).not.toMatch(/opacity-60/);
+  });
+});
+
+// BUG-CMS-8 — creator field precedence on list cards.
+describe("CmsContentCardList — BUG-CMS-8 creator precedence", () => {
+  const baseProps = {
+    entryId: "entry-creator-list",
+    title: "Owner Resolution Card",
+    createdAt: "2026-02-23T10:00:00.000Z",
+    collaborators: [],
+    isFavorite: false,
+    status: "draft" as const,
+    onOpen: vi.fn(),
+    onDelete: vi.fn(),
+    onShare: vi.fn(),
+    onToggleFavorite: vi.fn(),
+  };
+
+  it("renders creator.displayName when a real human created the entry", () => {
+    render(
+      <CmsContentCardList
+        {...baseProps}
+        ownerName={null}
+        creator={{
+          id: "11111111-1111-4111-8111-111111111111",
+          displayName: "Aiyana Patel",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Aiyana Patel · Feb 23, 2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the localized api-key label when creator is null (api_key actor)", () => {
+    render(<CmsContentCardList {...baseProps} ownerName={null} creator={null} />);
+
+    expect(
+      screen.getByText("Created via API key · Feb 23, 2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not leak api-key audit handles into the visible markup", () => {
+    const { container } = render(
+      <CmsContentCardList {...baseProps} ownerName={null} creator={null} />,
+    );
+
+    // The visible text must NOT carry the api-key audit handles even if a
+    // future regression accidentally passed them through props.
+    const text = container.textContent ?? "";
+    expect(text).not.toMatch(/apiKeyId/i);
+    expect(text).not.toMatch(/keyPrefix/i);
+    expect(text).not.toMatch(/keyHash/i);
+    expect(text).not.toMatch(/xynes_live_/);
+  });
+
+  it("falls back to the legacy ownerName when creator.displayName is null", () => {
+    render(
+      <CmsContentCardList
+        {...baseProps}
+        ownerName="Legacy Editor Alias"
+        creator={{
+          id: "22222222-2222-4222-8222-222222222222",
+          displayName: null,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Legacy Editor Alias · Feb 23, 2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the generic Unknown owner label when creator and ownerName are both empty", () => {
+    render(
+      <CmsContentCardList
+        {...baseProps}
+        ownerName={null}
+        creator={{
+          id: "33333333-3333-4333-8333-333333333333",
+          displayName: null,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Unknown owner · Feb 23, 2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the legacy ownerName when creator is undefined (PR #41 codex review — absent creator must not be conflated with api_key actor)", () => {
+    render(
+      <CmsContentCardList
+        {...baseProps}
+        ownerName="Legacy Editor Alias"
+        creator={undefined}
+      />,
+    );
+
+    // Absent creator (older / partial gateway response) MUST surface the
+    // legacy `ownerName`, NOT the api-key label. Conflating absent with
+    // explicit-null would suppress legacy ownerName for every entry on a
+    // gateway response that omits the new `creator` field.
+    expect(
+      screen.getByText("Legacy Editor Alias · Feb 23, 2026"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Created via API key/)).not.toBeInTheDocument();
+  });
+
+  it("uses the pseudo-locale api-key label when the active locale is en-XA", () => {
+    i18nState.locale = "en-XA";
+    i18nState.messages = {
+      ...i18nState.messages,
+      apiKeyCreator: "[CCrreeaatteedd vviiaa AAPPII kkeeyy]",
+    };
+
+    render(<CmsContentCardList {...baseProps} ownerName={null} creator={null} />);
+
+    expect(
+      screen.getByText("[CCrreeaatteedd vviiaa AAPPII kkeeyy] · Feb 23, 2026"),
+    ).toBeInTheDocument();
   });
 });

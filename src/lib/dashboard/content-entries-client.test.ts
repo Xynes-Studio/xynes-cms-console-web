@@ -30,6 +30,10 @@ const sampleEntry: WorkspaceContentEntry = {
   updatedAt: "2026-02-26T10:00:00.000Z",
   collaborators: ["A", "B"],
   isFavorite: false,
+  // BUG-CMS-8: structured creator field. Default to a human-actor entry
+  // so existing tests that don't care about creator semantics still see
+  // a non-null owner.
+  creator: { id: "user-1", displayName: "Owner" },
 };
 
 describe("content-entries-client", () => {
@@ -955,5 +959,132 @@ describe("content-entries-client", () => {
     ).rejects.toThrow(
       "Failed to generate content entry share link: HTTP 403 Forbidden",
     );
+  });
+});
+
+// BUG-CMS-8 — strict parser tests for the structured `creator` field. The
+// parser must NEVER spread hostile upstream fields and must fail-soft to
+// `null` on malformed payloads so the UI fallback path is reached.
+describe("listWorkspaceContentEntries — BUG-CMS-8 creator field parsing", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const respondWith = (creator: unknown) =>
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            items: [{ ...sampleEntry, creator }],
+            count: 1,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+  const callList = async (creator: unknown) => {
+    const fetchMock = respondWith(creator);
+    return listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+  };
+
+  it("parses a well-formed human-actor creator", async () => {
+    const result = await callList({
+      id: "11111111-1111-4111-8111-111111111111",
+      displayName: "Aiyana Patel",
+    });
+    expect(result.items[0]?.creator).toEqual({
+      id: "11111111-1111-4111-8111-111111111111",
+      displayName: "Aiyana Patel",
+    });
+  });
+
+  it("preserves an explicit null creator (api_key actor)", async () => {
+    const result = await callList(null);
+    expect(result.items[0]?.creator).toBeNull();
+  });
+
+  it("returns undefined when creator is missing entirely from the payload (BUG-CMS-8 PR #41 codex review)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            items: [
+              {
+                ...sampleEntry,
+                // creator key intentionally absent
+                creator: undefined,
+              },
+            ],
+            count: 1,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await listWorkspaceContentEntries({
+      apiBaseUrl: "http://localhost:4100",
+      workspaceId: "workspace-1",
+      accessToken: "jwt-token",
+      fetchImpl: fetchMock,
+    });
+    // Absent / malformed creator MUST surface as `undefined`, not `null`.
+    // Returning `null` would conflate with the api_key actor signal and
+    // suppress the legacy `ownerName` fallback for older / partial
+    // gateway responses.
+    expect(result.items[0]?.creator).toBeUndefined();
+  });
+
+  it("returns undefined when creator is a non-record value", async () => {
+    const result = await callList("not-an-object");
+    expect(result.items[0]?.creator).toBeUndefined();
+  });
+
+  it("returns undefined when creator.id is missing", async () => {
+    const result = await callList({ displayName: "No id" });
+    expect(result.items[0]?.creator).toBeUndefined();
+  });
+
+  it("returns { id, displayName: null } when displayName is missing", async () => {
+    const result = await callList({
+      id: "22222222-2222-4222-8222-222222222222",
+    });
+    expect(result.items[0]?.creator).toEqual({
+      id: "22222222-2222-4222-8222-222222222222",
+      displayName: null,
+    });
+  });
+
+  it("never copies hostile fields (apiKeyId/keyPrefix/keyHash/rawKey/email) through the creator slot", async () => {
+    const result = await callList({
+      id: "33333333-3333-4333-8333-333333333333",
+      displayName: "Aiyana",
+      apiKeyId: "0a1b2c3d-...",
+      keyPrefix: "0a1b2c3d",
+      keyHash: "$argon2id$...",
+      rawKey: "xynes_live_DEADBEEF",
+      email: "[email protected]",
+    });
+    expect(result.items[0]?.creator).toEqual({
+      id: "33333333-3333-4333-8333-333333333333",
+      displayName: "Aiyana",
+    });
+
+    // Defense-in-depth: a sweep of the serialised entry must NOT carry the
+    // hostile substrings.
+    const wire = JSON.stringify(result.items[0]);
+    expect(wire).not.toMatch(/apiKeyId/);
+    expect(wire).not.toMatch(/keyPrefix/);
+    expect(wire).not.toMatch(/keyHash/);
+    expect(wire).not.toMatch(/rawKey/);
+    expect(wire).not.toMatch(/xynes_live_/);
   });
 });

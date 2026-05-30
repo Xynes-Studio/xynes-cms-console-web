@@ -7,6 +7,7 @@ const i18nState = vi.hoisted(() => ({
   locale: "en-US",
   messages: {
     fallbackOwner: "Unknown owner",
+    apiKeyCreator: "Created via API key",
     fallbackDate: "--",
     draft: "Draft",
     archived: "Archived",
@@ -65,6 +66,7 @@ afterEach(() => {
   i18nState.locale = "en-US";
   i18nState.messages = {
     fallbackOwner: "Unknown owner",
+    apiKeyCreator: "Created via API key",
     fallbackDate: "--",
     draft: "Draft",
     archived: "Archived",
@@ -364,5 +366,104 @@ describe("CmsContentCardGrid", () => {
     expect(card.dataset.status).toBe("published");
     expect(card.className).not.toMatch(/opacity-60/);
     expect(card.className).not.toMatch(/grayscale/);
+  });
+});
+
+// BUG-CMS-8 — creator field precedence on grid cards.
+describe("CmsContentCardGrid — BUG-CMS-8 creator precedence", () => {
+  const baseProps = {
+    entryId: "entry-creator-grid",
+    title: "Owner Resolution Card",
+    createdAt: "2026-02-23T10:00:00.000Z",
+    status: "draft" as const,
+    onOpen: vi.fn(),
+  };
+
+  it("renders creator.displayName when a real human created the entry", () => {
+    render(
+      <CmsContentCardGrid
+        {...baseProps}
+        ownerName={null}
+        creator={{
+          id: "11111111-1111-4111-8111-111111111111",
+          displayName: "Aiyana Patel",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Aiyana Patel · Feb 23, 2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the localized api-key label when creator is null (api_key actor)", () => {
+    render(<CmsContentCardGrid {...baseProps} ownerName={null} creator={null} />);
+
+    expect(
+      screen.getByText("Created via API key · Feb 23, 2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not leak api-key audit handles into the visible markup", () => {
+    const { container } = render(
+      <CmsContentCardGrid {...baseProps} ownerName={null} creator={null} />,
+    );
+
+    const text = container.textContent ?? "";
+    expect(text).not.toMatch(/apiKeyId/i);
+    expect(text).not.toMatch(/keyPrefix/i);
+    expect(text).not.toMatch(/keyHash/i);
+    expect(text).not.toMatch(/xynes_live_/);
+  });
+
+  it("falls back to the legacy ownerName when creator.displayName is null", () => {
+    render(
+      <CmsContentCardGrid
+        {...baseProps}
+        ownerName="Legacy Editor Alias"
+        creator={{
+          id: "22222222-2222-4222-8222-222222222222",
+          displayName: null,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Legacy Editor Alias · Feb 23, 2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the generic Unknown owner label when creator and ownerName are both empty", () => {
+    render(
+      <CmsContentCardGrid
+        {...baseProps}
+        ownerName={null}
+        creator={{
+          id: "33333333-3333-4333-8333-333333333333",
+          displayName: null,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Unknown owner · Feb 23, 2026"),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the legacy ownerName when creator is undefined (PR #41 codex review — absent creator must not be conflated with api_key actor)", () => {
+    render(
+      <CmsContentCardGrid
+        {...baseProps}
+        ownerName="Legacy Editor Alias"
+        creator={undefined}
+      />,
+    );
+
+    // Absent creator (older / partial gateway response) MUST surface the
+    // legacy `ownerName`, NOT the api-key label.
+    expect(
+      screen.getByText("Legacy Editor Alias · Feb 23, 2026"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Created via API key/)).not.toBeInTheDocument();
   });
 });

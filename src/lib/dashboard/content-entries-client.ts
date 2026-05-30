@@ -31,6 +31,28 @@ export interface WorkspaceContentEntry {
   updatedAt: string;
   collaborators: string[];
   isFavorite: boolean;
+  // BUG-CMS-8: structured creator surface keyed off the CMS Core
+  // `creator` field. See cms-core `mapEntry` for the source-of-truth
+  // contract.
+  //   - `null` => api_key actor created this entry. The frontend renders
+  //     the localized "Created via API key" label here and MUST NOT leak
+  //     any key id / prefix / hash through the visible owner slot.
+  //   - `{ id, displayName: string | null }` => real human creator. The
+  //     `identity.users.display_name` column is nullable, so the UI must
+  //     gracefully fall back when `displayName` is null.
+  //   - `undefined` => the gateway payload omitted the field (older /
+  //     partial response) OR the field was malformed. The UI falls
+  //     through to `ownerName` / `fallbackOwner` and MUST NOT render
+  //     "Created via API key" for this path. Codex review on PR #41
+  //     flagged that conflating absent with explicit-null would suppress
+  //     legacy `ownerName` and incorrectly tag partial responses as
+  //     api-key-created.
+  creator: WorkspaceContentEntryCreator | null | undefined;
+}
+
+export interface WorkspaceContentEntryCreator {
+  id: string;
+  displayName: string | null;
 }
 
 export interface WorkspaceContentEntriesListResult {
@@ -200,6 +222,44 @@ const isWorkspaceContentEntryStatus = (
   value === "published" ||
   value === "archived";
 
+// BUG-CMS-8: parse the structured `creator` field from a cms-core entry.
+//   - Explicit `null` (api_key actor entry) => returns `null`.
+//   - Object with a non-empty UUID-shaped `id` and an optional string
+//     `displayName` => returns the normalized creator object. Hostile
+//     extras (e.g. `apiKeyId`, `keyPrefix`, `keyHash`, `rawKey`, `email`)
+//     are NEVER copied through — only the two documented fields land on
+//     the wire DTO consumed by the UI.
+//   - Missing / malformed / `undefined` => returns `undefined`. The
+//     resolver in `cms-content-card-owner.ts` falls through to
+//     `ownerName` / `fallbackOwner` for this path so older / partial
+//     gateway responses that omit `creator` keep their legacy
+//     `ownerName` instead of being incorrectly tagged as api-key-created.
+//     (Codex review on PR #41.)
+const parseWorkspaceContentEntryCreator = (
+  value: unknown,
+): WorkspaceContentEntryCreator | null | undefined => {
+  if (value === null) {
+    return null;
+  }
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  if (!isNonEmptyString(value.id)) {
+    return undefined;
+  }
+  const id = value.id.trim();
+  if (!id) {
+    return undefined;
+  }
+  const displayName = isNonEmptyString(value.displayName)
+    ? value.displayName.trim() || null
+    : null;
+  return { id, displayName };
+};
+
 const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
   if (!isRecord(value)) {
     throw new Error("Invalid workspace content entry");
@@ -241,6 +301,7 @@ const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
     updatedAt: value.updatedAt.trim(),
     collaborators: normalizeStringArray(value.collaborators),
     isFavorite: value.isFavorite,
+    creator: parseWorkspaceContentEntryCreator(value.creator),
   };
 };
 
