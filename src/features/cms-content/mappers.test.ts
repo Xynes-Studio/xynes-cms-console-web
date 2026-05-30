@@ -21,7 +21,7 @@ const makeEntry = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("cms-content mappers", () => {
-  it("maps grid card props and normalizes archived status to draft", () => {
+  it("maps grid card props and preserves archived status (BUG-CMS-7)", () => {
     const onOpen = vi.fn();
 
     const mapped = mapEntryToGridCardProps({
@@ -30,9 +30,34 @@ describe("cms-content mappers", () => {
     });
 
     expect(mapped.entryId).toBe("entry-1");
-    expect(mapped.status).toBe("draft");
+    expect(mapped.status).toBe("archived");
     mapped.onOpen("entry-1");
     expect(onOpen).toHaveBeenCalledWith("entry-1");
+  });
+
+  it("maps grid card props and falls back to draft for unknown status", () => {
+    const mapped = mapEntryToGridCardProps({
+      entry: makeEntry({ status: "draft" }),
+      onOpen: vi.fn(),
+    });
+
+    expect(mapped.status).toBe("draft");
+  });
+
+  it("maps list card props and preserves archived status (BUG-CMS-7)", () => {
+    const handlers = {
+      onOpen: vi.fn(),
+      onDelete: vi.fn(),
+      onShare: vi.fn(),
+      onToggleFavorite: vi.fn(),
+    };
+
+    const mapped = mapEntryToListCardProps({
+      entry: makeEntry({ status: "archived" }),
+      handlers,
+    });
+
+    expect(mapped.status).toBe("archived");
   });
 
   it("maps list card props and preserves published status", () => {

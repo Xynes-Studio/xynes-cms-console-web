@@ -25,6 +25,8 @@
     "fallbackOwner": "Unknown owner",
     "fallbackDate": "--",
     "draft": "Draft",
+    "archived": "Archived",
+    "archivedAriaLabel": "{title} (archived)",
     "openAriaLabel": "Open content {title}",
     "avatarAlt": "{owner} avatar",
     "delete": "Delete",

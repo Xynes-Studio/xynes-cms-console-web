@@ -7,7 +7,7 @@ export type CmsEntryCardGridProps = {
   ownerName?: string | null;
   createdAt?: string | null;
   avatarUrl?: string | null;
-  status: "draft" | "published";
+  status: "draft" | "published" | "archived";
   onOpen: (entryId: string) => void;
 };
 
@@ -48,14 +48,25 @@ export function CmsContentCardGrid({
     : t("fallbackOwner");
   const resolvedDate = formatCreatedDate(locale, t("fallbackDate"), createdAt);
   const metaText = `${resolvedOwner} · ${resolvedDate}`;
+  // BUG-CMS-7: archived entries dim their visual treatment and surface a
+  // dedicated subtle badge + aria-label hint so screen readers announce the
+  // archived state. The card stays focusable + clickable so users can navigate
+  // in to un-archive.
+  const isArchived = status === "archived";
+  const cardAriaLabel = isArchived
+    ? t("archivedAriaLabel", { title })
+    : t("openAriaLabel", { title });
 
   return (
     <Card
       role="button"
       tabIndex={0}
       data-testid="cms-content-card-grid"
-      aria-label={t("openAriaLabel", { title })}
-      className="flex h-full cursor-pointer flex-col gap-4 border-border bg-background p-4 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      data-status={status}
+      aria-label={cardAriaLabel}
+      className={`flex h-full cursor-pointer flex-col gap-4 border-border bg-background p-4 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background${
+        isArchived ? " opacity-60 grayscale" : ""
+      }`}
       onClick={() => onOpen(entryId)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -85,6 +96,14 @@ export function CmsContentCardGrid({
             className="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
           >
             {t("draft")}
+          </Badge>
+        ) : null}
+        {status === "archived" ? (
+          <Badge
+            variant="subtle"
+            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
+          >
+            {t("archived")}
           </Badge>
         ) : null}
       </div>

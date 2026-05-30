@@ -25,6 +25,8 @@
     "fallbackOwner": "[UUnnkknnoowwnn oowwnneerr]",
     "fallbackDate": "--",
     "draft": "[DDrraafftt]",
+    "archived": "[AArrcchhiivveedd]",
+    "archivedAriaLabel": "[{title} ((aarrcchhiivveedd))]",
     "openAriaLabel": "[OOppeenn ccoonntteenntt {title}]",
     "avatarAlt": "[{owner} aavvaattaarr]",
     "delete": "[DDeelleettee]",
