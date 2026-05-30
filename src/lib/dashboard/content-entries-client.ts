@@ -40,7 +40,14 @@ export interface WorkspaceContentEntry {
   //   - `{ id, displayName: string | null }` => real human creator. The
   //     `identity.users.display_name` column is nullable, so the UI must
   //     gracefully fall back when `displayName` is null.
-  creator: WorkspaceContentEntryCreator | null;
+  //   - `undefined` => the gateway payload omitted the field (older /
+  //     partial response) OR the field was malformed. The UI falls
+  //     through to `ownerName` / `fallbackOwner` and MUST NOT render
+  //     "Created via API key" for this path. Codex review on PR #41
+  //     flagged that conflating absent with explicit-null would suppress
+  //     legacy `ownerName` and incorrectly tag partial responses as
+  //     api-key-created.
+  creator: WorkspaceContentEntryCreator | null | undefined;
 }
 
 export interface WorkspaceContentEntryCreator {
@@ -222,23 +229,30 @@ const isWorkspaceContentEntryStatus = (
 //     extras (e.g. `apiKeyId`, `keyPrefix`, `keyHash`, `rawKey`, `email`)
 //     are NEVER copied through — only the two documented fields land on
 //     the wire DTO consumed by the UI.
-//   - Missing / malformed / `undefined` => returns `null` (fail-soft to
-//     match the panel-wide "no creator info available" rendering path).
+//   - Missing / malformed / `undefined` => returns `undefined`. The
+//     resolver in `cms-content-card-owner.ts` falls through to
+//     `ownerName` / `fallbackOwner` for this path so older / partial
+//     gateway responses that omit `creator` keep their legacy
+//     `ownerName` instead of being incorrectly tagged as api-key-created.
+//     (Codex review on PR #41.)
 const parseWorkspaceContentEntryCreator = (
   value: unknown,
-): WorkspaceContentEntryCreator | null => {
+): WorkspaceContentEntryCreator | null | undefined => {
   if (value === null) {
     return null;
   }
+  if (value === undefined) {
+    return undefined;
+  }
   if (!isRecord(value)) {
-    return null;
+    return undefined;
   }
   if (!isNonEmptyString(value.id)) {
-    return null;
+    return undefined;
   }
   const id = value.id.trim();
   if (!id) {
-    return null;
+    return undefined;
   }
   const displayName = isNonEmptyString(value.displayName)
     ? value.displayName.trim() || null

@@ -1010,7 +1010,7 @@ describe("listWorkspaceContentEntries — BUG-CMS-8 creator field parsing", () =
     expect(result.items[0]?.creator).toBeNull();
   });
 
-  it("returns null when creator is missing entirely from the payload", async () => {
+  it("returns undefined when creator is missing entirely from the payload (BUG-CMS-8 PR #41 codex review)", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -1036,17 +1036,21 @@ describe("listWorkspaceContentEntries — BUG-CMS-8 creator field parsing", () =
       accessToken: "jwt-token",
       fetchImpl: fetchMock,
     });
-    expect(result.items[0]?.creator).toBeNull();
+    // Absent / malformed creator MUST surface as `undefined`, not `null`.
+    // Returning `null` would conflate with the api_key actor signal and
+    // suppress the legacy `ownerName` fallback for older / partial
+    // gateway responses.
+    expect(result.items[0]?.creator).toBeUndefined();
   });
 
-  it("returns null when creator is a non-record value", async () => {
+  it("returns undefined when creator is a non-record value", async () => {
     const result = await callList("not-an-object");
-    expect(result.items[0]?.creator).toBeNull();
+    expect(result.items[0]?.creator).toBeUndefined();
   });
 
-  it("returns null when creator.id is missing", async () => {
+  it("returns undefined when creator.id is missing", async () => {
     const result = await callList({ displayName: "No id" });
-    expect(result.items[0]?.creator).toBeNull();
+    expect(result.items[0]?.creator).toBeUndefined();
   });
 
   it("returns { id, displayName: null } when displayName is missing", async () => {

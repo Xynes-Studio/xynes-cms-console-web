@@ -449,4 +449,21 @@ describe("CmsContentCardGrid — BUG-CMS-8 creator precedence", () => {
       screen.getByText("Unknown owner · Feb 23, 2026"),
     ).toBeInTheDocument();
   });
+
+  it("falls back to the legacy ownerName when creator is undefined (PR #41 codex review — absent creator must not be conflated with api_key actor)", () => {
+    render(
+      <CmsContentCardGrid
+        {...baseProps}
+        ownerName="Legacy Editor Alias"
+        creator={undefined}
+      />,
+    );
+
+    // Absent creator (older / partial gateway response) MUST surface the
+    // legacy `ownerName`, NOT the api-key label.
+    expect(
+      screen.getByText("Legacy Editor Alias · Feb 23, 2026"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Created via API key/)).not.toBeInTheDocument();
+  });
 });

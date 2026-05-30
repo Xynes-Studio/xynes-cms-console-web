@@ -593,6 +593,25 @@ describe("CmsContentCardList — BUG-CMS-8 creator precedence", () => {
     ).toBeInTheDocument();
   });
 
+  it("falls back to the legacy ownerName when creator is undefined (PR #41 codex review — absent creator must not be conflated with api_key actor)", () => {
+    render(
+      <CmsContentCardList
+        {...baseProps}
+        ownerName="Legacy Editor Alias"
+        creator={undefined}
+      />,
+    );
+
+    // Absent creator (older / partial gateway response) MUST surface the
+    // legacy `ownerName`, NOT the api-key label. Conflating absent with
+    // explicit-null would suppress legacy ownerName for every entry on a
+    // gateway response that omits the new `creator` field.
+    expect(
+      screen.getByText("Legacy Editor Alias · Feb 23, 2026"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Created via API key/)).not.toBeInTheDocument();
+  });
+
   it("uses the pseudo-locale api-key label when the active locale is en-XA", () => {
     i18nState.locale = "en-XA";
     i18nState.messages = {
