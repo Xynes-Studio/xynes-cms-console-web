@@ -385,6 +385,10 @@ const makeEntry = (
   updatedAt: "2026-01-01T00:00:00.000Z",
   collaborators: [],
   isFavorite: false,
+  // BUG-CMS-8: structured creator field. Default to a human creator so
+  // editor tests that don't care about the owner contract still produce
+  // a typed `WorkspaceContentEntry`.
+  creator: { id: "user-1", displayName: "Owner" },
   ...overrides,
 });
 

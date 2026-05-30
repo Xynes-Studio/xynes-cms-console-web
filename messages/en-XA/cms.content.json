@@ -23,6 +23,7 @@
   },
   "card": {
     "fallbackOwner": "[UUnnkknnoowwnn oowwnneerr]",
+    "apiKeyCreator": "[CCrreeaatteedd vviiaa AAPPII kkeeyy]",
     "fallbackDate": "--",
     "draft": "[DDrraafftt]",
     "archived": "[AArrcchhiivveedd]",

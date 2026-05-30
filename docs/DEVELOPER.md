@@ -1012,3 +1012,42 @@ The sprint plan called for `Badge variant="muted"`. Lumia DS Badge variants are 
 4. Published entries are NOT dimmed and carry no Archived badge (baseline-state regression guard).
 
 `mappers.test.ts` also has two new BUG-CMS-7 cases: archived → archived (grid + list) instead of the prior archived → draft collapse.
+
+## Content Card Owner Label (BUG-CMS-8)
+
+CMS content cards surface a structured `creator` field threaded end-to-end from CMS Core's `cms.entry.listByDirectory` / `cms.entry.getById` action handlers. The wire DTO is documented on `WorkspaceContentEntry.creator` in `src/lib/dashboard/content-entries-client.ts`. Card components consume it through `src/components/dashboard/cms-content-card-owner.ts`, which is the single source of truth for the owner-label precedence used by both grid and list cards.
+
+### Wire contract
+
+| Value | Meaning | Source-of-truth |
+|---|---|---|
+| `null` | The entry was created by an `api_key` actor (see CMS-API-KEY-ACTOR-1 Story C). `created_by` is `NULL` in `cms.content_entries`. | `mapEntry` in `xynes-cms-core/src/actions/handlers/entry-management.handler.ts`. |
+| `{ id, displayName: string }` | Real human creator. `id` is the `identity.users.id` UUID; `displayName` is from `identity.users.display_name`. | Cross-schema lookup via `listEntryCreatorsByUserIds`. |
+| `{ id, displayName: null }` | Real `created_by` UUID but no matching `identity.users` row (deleted user / future cascade-less path). | Fall-through branch in `resolveCreator`. |
+
+### Owner-label precedence
+
+`resolveOwnerLabel` in `cms-content-card-owner.ts` picks the visible label in this order:
+
+1. `creator === null` → `apiKeyCreator` (`"Created via API key"` in `en-US`).
+2. `creator.displayName` trimmed → display name.
+3. `ownerName` trimmed → legacy editor-alias on the entry `data` blob.
+4. otherwise → `fallbackOwner` (`"Unknown owner"` in `en-US`).
+
+### Security invariants (regression-guarded)
+
+- The visible label NEVER carries `apiKeyId`, `keyPrefix`, `keyHash`, `rawKey`, or any `xynes_live_*` substring — the cms-core handler ships `creator: null` instead of a partial object, and the parser in `content-entries-client.ts` ONLY copies the two documented fields off the wire (`id` + `displayName`).
+- `parseWorkspaceContentEntryCreator` fails soft to `null` on malformed payloads, so a hostile upstream can never break the list render.
+- The `apiKeyCreator` i18n string is product copy only — callers MUST NOT interpolate any key id / prefix / hash into it.
+
+### Tests
+
+- `src/lib/dashboard/content-entries-client.test.ts` — `BUG-CMS-8 creator field parsing` block (7 tests) covers the parser's success / fail-soft / hostile-field-sweep paths.
+- `src/components/dashboard/CmsContentCardGrid.test.tsx` — `BUG-CMS-8 creator precedence` block (5 tests).
+- `src/components/dashboard/CmsContentCardList.test.tsx` — `BUG-CMS-8 creator precedence` block (6 tests, including the pseudo-locale assertion).
+- `src/features/cms-content/mappers.test.ts` — 4 new mapper tests forwarding both null and non-null creators.
+
+### i18n
+
+- `messages/en-US/cms.content.json` adds `card.apiKeyCreator: "Created via API key"`.
+- `messages/en-XA/cms.content.json` adds the pseudo-locale mirror `[CCrreeaatteedd vviiaa AAPPII kkeeyy]`.
