@@ -201,6 +201,38 @@ Rules:
 - Do not introduce app-local re-implementations of shell internals.
 - If shell internals need adjustment (for example, workspace trigger alignment), fix in `lumia-ds` and consume the updated package in apps.
 
+### Dashboard shell contract (BUG-CMS-9, landed 2026-05-31)
+
+Background: BUG-LDS-1 (landed 2026-05-29) made Lumia DS `DashboardShell` the single viewport-height + scroll authority — its root is `h-dvh w-full overflow-hidden`, the sidebar uses fixed-height grid rows with anchored top/bottom slots, and the right pane is `h-full overflow-y-auto`. After BUG-LDS-1, consumer routes that mount inside the shell must NOT reintroduce shell-bypassing layout primitives, otherwise the document grows past the viewport and the workspace switcher / profile menu slide off the rail again.
+
+Contract:
+
+- Routes that mount inside `<CmsDashboardShell>` must inherit the shell's scroll containment. **Do not** add `fixed inset-0`, `min-h-screen`, `h-screen`, or document-level `overflow-hidden` inside these routes.
+- Panel-internal `overflow-y-auto` is fine as long as the panel root is bounded (`h-full min-h-0`). This is the pattern in `CmsContentListPanel.tsx` — a `flex h-full min-h-0 flex-col overflow-hidden` shell with a sticky toolbar (`shrink-0`) above a scrolling results region (`min-h-0 flex-1 overflow-y-auto`). The inner scroll is required for the infinite-scroll handler; it does NOT contribute to document scroll because the panel root is clamped to the shell pane.
+- The Playwright fixture `CmsContentScrollLayoutFixture.tsx` deliberately mirrors the panel layout — it tests the same contract.
+
+Documented escape hatches (the only allowed shell bypasses within scan scope):
+
+1. **Editor full-screen overlay** — `app/dashboard/[workspaceSlug]/content/entry/[entryId]/edit/layout.tsx` uses `fixed inset-0 z-50 overflow-hidden bg-background` so the writer gets the entire viewport. Intentional focused-writing UX. The layout carries a `data-bug-cms-9="editor-fullscreen-overlay"` marker.
+2. **Pre-auth / loading fallback `<main>`** blocks inside `CmsDashboardShell.tsx` — `<main className="flex min-h-screen items-center justify-center px-6">` is rendered ONLY when no shell is mounted (auth loading, redirect-to-login). These are not shell consumers, so `min-h-screen` is correct.
+3. **Toolbar collapsible-row `overflow-hidden`** in `CmsContentToolbar.tsx:138` — this is the animation transition for the secondary row, not a viewport-scroll escape (the regression guard only treats `fixed inset-0`, `min-h-screen`, and `h-screen` as bypasses).
+
+Out of scan scope (intentionally NOT shell consumers):
+
+- Top-level dashboard redirector pages: `app/dashboard/page.tsx`, `app/dashboard/current/[[...segments]]/page.tsx`. These render a centered status `<main>` BEFORE the workspace slug is resolved; no `<DashboardShell>` is mounted, so `min-h-screen` is the correct vertical centering. They live above `app/dashboard/[workspaceSlug]/layout.tsx` (which is where `<CmsDashboardShell>` mounts) and the regression guard's `SCAN_DIRS` deliberately excludes them.
+
+Regression guard:
+
+- `app/dashboard-shell-contract.test.ts` scans `app/dashboard/[workspaceSlug]/**`, `src/components/dashboard/**`, and `src/features/**` for any of the bypass patterns above and fails the build if a new offender appears outside the allowlist. The test exists so a future contributor adding a benign-looking `min-h-screen` to a shell-mounted panel is caught at PR time rather than during the next scroll regression.
+- The test treats `app/dashboard/[workspaceSlug]/content/entry/[entryId]/edit/layout.tsx` and `src/components/dashboard/CmsDashboardShell.tsx` as the only allowlist entries. Adding a new allowlist entry MUST come with a new bullet under "Documented escape hatches" above.
+
+If a new shell escape hatch is genuinely needed:
+
+1. Add the file to the allowlist in `app/dashboard-shell-contract.test.ts`.
+2. Add a corresponding bullet to the "Documented escape hatches" list above.
+3. Add a `data-bug-cms-9="<short-purpose>"` marker on the bypassing wrapper so the intent is visible at the markup level.
+4. Justify the bypass in the PR description against the BUG-LDS-1 contract.
+
 ### UXR-6 Dashboard Alignment (landed 2026-05-10)
 
 Background: UXR-6 in `xynes/xynes-infra/docs/research/ux-review/01-user-stories.md` aligns the CMS Console dashboard with the shared Lumia design language without breaking directory-first authoring or Workspace Admin contextual ownership.
