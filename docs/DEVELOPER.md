@@ -1083,3 +1083,43 @@ CMS content cards surface a structured `creator` field threaded end-to-end from 
 
 - `messages/en-US/cms.content.json` adds `card.apiKeyCreator: "Created via API key"`.
 - `messages/en-XA/cms.content.json` adds the pseudo-locale mirror `[CCrreeaatteedd vviiaa AAPPII kkeeyy]`.
+
+## Workspace Slug Guard on `/dashboard/[workspaceSlug]/*` Routes (BUG-AUTH-9, 2026-06-01)
+
+The CMS Console's workspace-scoped routes are protected by `CmsDashboardShell` (mounted from `app/dashboard/[workspaceSlug]/layout.tsx`). Two new guards run AFTER the existing `redirectToLogin` auth guard:
+
+### Wrong-slug guard (cross-tenant probe)
+
+- Trigger: `!isAuthLoading && isAuthenticated && workspaces.length > 0 && workspaceBySlug === null`. The user is signed in, has at least one workspace, but the slug in the URL does NOT match any workspace they can access.
+- Action: `router.replace("/dashboard")`. The CMS Console's own dashboard resolver at `app/dashboard/page.tsx` then picks the user's `currentWorkspace` (or the first workspace) and redirects to its content section. Same-app redirect — we deliberately do NOT cross-app to the auth-app workspace selector, because staying inside the CMS Console preserves any in-flight CMS routing context.
+- Render: `<main data-testid="cms-dashboard-workspace-guard-fallback" data-guard-reason="wrong-slug">` with `role="status"` and translated copy from `cms.shell.status.{wrongWorkspaceTitle,wrongWorkspaceDescription}`. The Lumia DashboardShell itself is NOT mounted — no flash of nav rendered against a `null` workspace context.
+
+### No-workspace guard
+
+- Trigger: `!isAuthLoading && isAuthenticated && workspaces.length === 0`. The user is signed in but has no workspaces at all.
+- Action: `router.replace(buildAuthWorkspaceCreationUrl())`. This is the cross-app onboarding link the shell already uses for "Create new workspace" — already honours the WSA-FIX-2 `?redirect=<cms-landing>` semantics so the user lands back on the CMS Console once they create a workspace via the auth app.
+- Render: same fallback `<main>` with `data-guard-reason="no-workspace"` and the `cms.shell.status.{noWorkspaceTitle,noWorkspaceDescription}` strings.
+
+### Order of guards
+
+Auth (redirect to login) runs first; workspace guards (this story) run second. Both are gated on `!isAuthLoading` so a transient empty `workspaces` array during auth bootstrap does not falsely trigger a redirect.
+
+### BUG-CMS-9 contract preservation
+
+The fallback `<main>` uses `min-h-screen` just like the two pre-existing pre-auth fallbacks in `CmsDashboardShell.tsx` (`Loading dashboard…` and `Redirecting to login…`). `CmsDashboardShell.tsx` already sits on the `app/dashboard-shell-contract.test.ts` allowlist for that exact reason — no allowlist change required for BUG-AUTH-9.
+
+### Regression coverage
+
+`src/components/dashboard/CmsDashboardShell.test.tsx > workspace guard (BUG-AUTH-9)` — 5 tests:
+
+1. Unknown slug → `router.replace("/dashboard")` + `data-guard-reason="wrong-slug"` + no shell render.
+2. Empty workspaces → `router.replace("http://localhost:3100/onboarding...")` + `data-guard-reason="no-workspace"` + no shell render.
+3. Matching slug → no redirect, shell renders normally.
+4. `isLoading === true` → no redirect (waits for auth bootstrap).
+5. Wrong-slug fallback has `role="status"` for screen-reader announcement.
+
+### i18n
+
+- `messages/en-US/cms.shell.json` adds four `status.*` keys.
+- `messages/en-XA/cms.shell.json` mirrors them in the existing doubled-char pseudo pattern.
+- `messages.meta/cms.shell.json` documents the new keys under the existing `status` context.

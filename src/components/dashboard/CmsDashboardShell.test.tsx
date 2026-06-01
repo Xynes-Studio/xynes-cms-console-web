@@ -6,6 +6,7 @@ import { CmsDashboardShell } from "./CmsDashboardShell";
 const mockUseAuth = vi.fn();
 const mockUseWorkspace = vi.fn();
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 const mockDashboardShell = vi.fn();
 const mockRedirectToLogin = vi.fn();
 const mockGetAccessToken = vi.fn();
@@ -16,7 +17,7 @@ const pathnameState = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => pathnameState.value,
 }));
 
@@ -43,6 +44,12 @@ vi.mock("next-intl", () => ({
         "cms.shell.directory.deleteFailedTitle": "Could not delete directory",
         "cms.shell.status.loadingDashboard": "Loading dashboard...",
         "cms.shell.status.redirectingToLogin": "Redirecting to login...",
+        "cms.shell.status.noWorkspaceTitle": "Setting up your workspace…",
+        "cms.shell.status.noWorkspaceDescription":
+          "Redirecting you to create your first workspace.",
+        "cms.shell.status.wrongWorkspaceTitle": "Switching workspace…",
+        "cms.shell.status.wrongWorkspaceDescription":
+          "We could not find that workspace. Taking you to one you can access.",
         "cms.shell.shell.workspaceCreationDisabledMessage":
           "Workspace creation is unavailable. Check settings or contact admin.",
         "cms.shell.shell.footerNote":
@@ -115,6 +122,7 @@ describe("CmsDashboardShell", () => {
     process.env.NEXT_PUBLIC_AUTH_APP_URL = "http://localhost:3100";
     pathnameState.value = "/dashboard/acme/plugins";
     mockPush.mockReset();
+    mockReplace.mockReset();
     mockDashboardShell.mockReset();
     mockRedirectToLogin.mockReset();
     mockGetAccessToken.mockReset();
@@ -1681,6 +1689,124 @@ describe("CmsDashboardShell", () => {
           process.env.NEXT_PUBLIC_AUTH_APP_URL = previousAuthAppUrl;
         }
       }
+    });
+  });
+
+  describe("workspace guard (BUG-AUTH-9)", () => {
+    it("redirects to /dashboard when the URL slug does not match any workspace the user can access", () => {
+      // Default beforeEach gives workspaces `acme` and `beta-workspace`.
+      // Pass an unknown slug — this is the cross-tenant probe path.
+      const { getByTestId, queryByTestId } = render(
+        <CmsDashboardShell workspaceSlug="not-my-workspace">
+          <div data-testid="dashboard-body">Should NOT render</div>
+        </CmsDashboardShell>,
+      );
+
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+      expect(mockReplace).toHaveBeenCalledWith("/dashboard");
+
+      // Fallback main rendered with the wrong-slug copy + reason tag.
+      const fallback = getByTestId("cms-dashboard-workspace-guard-fallback");
+      expect(fallback.getAttribute("data-guard-reason")).toBe("wrong-slug");
+      expect(fallback.textContent).toContain("Switching workspace");
+
+      // Dashboard body NOT rendered (no flash of broken shell).
+      expect(queryByTestId("dashboard-body")).toBeNull();
+      // Lumia shell NOT rendered.
+      expect(mockDashboardShell).not.toHaveBeenCalled();
+    });
+
+    it("redirects to the auth-app onboarding URL when the user has zero workspaces", () => {
+      mockUseAuth.mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+        redirectToLogin: mockRedirectToLogin,
+        getAccessToken: mockGetAccessToken,
+        user: {
+          displayName: "Brand New",
+          email: "new@example.com",
+          avatarUrl: null,
+        },
+        workspaces: [],
+      });
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: null,
+        selectWorkspace: vi.fn(),
+      });
+
+      const { getByTestId } = render(
+        <CmsDashboardShell workspaceSlug="acme">
+          <div data-testid="dashboard-body">Should NOT render</div>
+        </CmsDashboardShell>,
+      );
+
+      // The shell uses buildAuthWorkspaceCreationUrl() which prepends
+      // NEXT_PUBLIC_AUTH_APP_URL when set (default test env sets
+      // http://localhost:3100). The URL also carries ?redirect= back to the
+      // CMS dashboard resolver per WSA-FIX-2.
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+      const calledWith = String(mockReplace.mock.calls[0]?.[0] ?? "");
+      expect(calledWith.startsWith("http://localhost:3100/onboarding")).toBe(
+        true,
+      );
+
+      // Fallback main rendered with the no-workspace copy + reason tag.
+      const fallback = getByTestId("cms-dashboard-workspace-guard-fallback");
+      expect(fallback.getAttribute("data-guard-reason")).toBe("no-workspace");
+      expect(fallback.textContent).toContain("Setting up your workspace");
+
+      expect(mockDashboardShell).not.toHaveBeenCalled();
+    });
+
+    it("does NOT redirect when the slug matches a workspace the user can access", () => {
+      // Default beforeEach matches slug=acme → workspace ws-1. Existing
+      // behaviour: shell renders normally and replace is NOT called.
+      render(
+        <CmsDashboardShell workspaceSlug="acme">
+          <div data-testid="dashboard-body">Renders normally</div>
+        </CmsDashboardShell>,
+      );
+
+      expect(mockReplace).not.toHaveBeenCalled();
+      expect(mockDashboardShell).toHaveBeenCalled();
+    });
+
+    it("does NOT redirect while auth bootstrap is still in flight", () => {
+      mockUseAuth.mockReturnValue({
+        isAuthenticated: false,
+        isLoading: true,
+        redirectToLogin: mockRedirectToLogin,
+        getAccessToken: mockGetAccessToken,
+        user: null,
+        // empty list here would normally trigger the no-workspace guard;
+        // but isLoading=true tells us the workspaces array is not final
+        // yet — the guard must wait for isLoading to flip to false.
+        workspaces: [],
+      });
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: null,
+        selectWorkspace: vi.fn(),
+      });
+
+      render(
+        <CmsDashboardShell workspaceSlug="acme">
+          <div data-testid="dashboard-body">May render once loaded</div>
+        </CmsDashboardShell>,
+      );
+
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it("workspace guard fallback uses role=status for screen-reader announcement", () => {
+      const { getByRole } = render(
+        <CmsDashboardShell workspaceSlug="not-my-workspace">
+          <div>body</div>
+        </CmsDashboardShell>,
+      );
+
+      const status = getByRole("status");
+      expect(status).toBeInTheDocument();
+      expect(status.textContent).toContain("Switching workspace");
     });
   });
 });

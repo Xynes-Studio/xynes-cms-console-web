@@ -5,7 +5,7 @@
   "context": {
     "navigation": "Dashboard sidebar navigation labels. Keep labels short enough for the Lumia dashboard shell.",
     "shell": "Lumia DashboardShell label bundle (UXR-6). Most strings are screen-reader-only (aria-label, aria-labelledby) — translators should keep them descriptive but short. ICU placeholders {unreadCount} and {title} are interpolated by next-intl at render time and must be preserved verbatim. Vocabulary for shared destinations (Access Control, Integrations, Settings) must match the Cross-App Navigation Vocabulary at xynes/xynes-infra/docs/research/ux-review/02-cross-app-navigation-vocabulary.md and stay aligned with the auth-app catalog (auth.dashboard.shell).",
-    "status": "Authentication redirect placeholders shown briefly while the dashboard resolves auth state. Keep concise; tone matches loading affordances elsewhere in the app.",
+    "status": "Authentication redirect placeholders shown briefly while the dashboard resolves auth state. Keep concise; tone matches loading affordances elsewhere in the app. BUG-AUTH-9 (2026-06-01) added noWorkspaceTitle/noWorkspaceDescription/wrongWorkspaceTitle/wrongWorkspaceDescription for workspace-guard transitions; both pairs are visible on a brief redirect card and announced via role=status — keep neutral, not destructive.",
     "directories": "Workspace content directory actions and errors. Directory lifecycle remains CMS-owned; keep error copy generic and avoid backend stack details.",
     "a11y": "ariaLabel values are announced by assistive technology and should describe the control, not the visual icon."
   },

@@ -50,7 +50,11 @@
   },
   "status": {
     "loadingDashboard": "[LLooaaddiinngg ddaasshhbbooaarrdd...]",
-    "redirectingToLogin": "[RReeddiirreeccttiinngg ttoo llooggiinn...]"
+    "redirectingToLogin": "[RReeddiirreeccttiinngg ttoo llooggiinn...]",
+    "noWorkspaceTitle": "[SSeettttiinngg uupp yyoouurr wwoorrkkssppaaccee……]",
+    "noWorkspaceDescription": "[RReeddiirreeccttiinngg yyoouu ttoo ccrreeaattee yyoouurr ffiirrsstt wwoorrkkssppaaccee.]",
+    "wrongWorkspaceTitle": "[SSwwiittcchhiinngg wwoorrkkssppaaccee……]",
+    "wrongWorkspaceDescription": "[WWee ccoouulldd nnoott ffiinndd tthhaatt wwoorrkkssppaaccee. TTaakkiinngg yyoouu ttoo oonnee yyoouu ccaann aacccceessss.]"
   },
   "directory": {
     "ownerOnly": "[OOnnllyy wwoorrkkssppaaccee oowwnneerrss ccaann mmaannaaggee ddiirreeccttoorriieess rriigghhtt nnooww.]",

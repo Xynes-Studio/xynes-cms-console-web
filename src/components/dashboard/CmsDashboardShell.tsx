@@ -273,6 +273,62 @@ export function CmsDashboardShell({
     redirectToLogin(window.location.href);
   }, [isAuthLoading, isAuthenticated, redirectToLogin]);
 
+  /**
+   * BUG-AUTH-9 (2026-06-01): Workspace guard.
+   *
+   * Two cases (both fire AFTER auth has resolved AND the user is
+   * authenticated — the auth-loading + redirect-to-login effect above owns
+   * the unauthenticated path):
+   *
+   *   1. `workspaces.length === 0` → the user has no workspaces. Send them
+   *      cross-app to the auth-app onboarding flow via
+   *      `buildAuthWorkspaceCreationUrl()` (which already honours WSA-FIX-2
+   *      `?redirect=<cms-landing>` semantics so the user lands back here
+   *      once they create one).
+   *
+   *   2. `workspaces.length > 0` AND `workspaceBySlug === null` → the slug
+   *      in the URL does NOT belong to any workspace the authenticated
+   *      user can access. This is the cross-tenant probe path (someone
+   *      typed or pasted another user's workspace slug). Redirect to
+   *      `/dashboard` (the CMS Console's own dashboard resolver), which
+   *      picks the user's current/first workspace and routes them to its
+   *      content section. We deliberately do NOT redirect cross-app to the
+   *      auth-app workspace selector for this case — staying inside the
+   *      CMS Console preserves any in-flight CMS routing the user was
+   *      doing, and the resolver page is the canonical "pick a workspace
+   *      and continue" surface for this app.
+   *
+   * The render guard below uses `useState(false)` to ensure the loading
+   * card stays visible across the `router.replace` transition — without
+   * it, the shell would briefly try to render against the null workspace
+   * before Next.js commits the new route.
+   *
+   * Architectural note: BUG-CMS-9 (2026-05-31) locked the dashboard shell
+   * contract via a regression guard at `app/dashboard-shell-contract.test.ts`.
+   * The loading card here uses a `<main className="flex h-full ...">` so it
+   * inherits the shell's scroll-containment behaviour (BUG-LDS-1) without
+   * adding a new `min-h-screen` / `fixed inset-0` escape hatch.
+   */
+  const isWorkspaceSlugUnknown =
+    !isAuthLoading &&
+    isAuthenticated &&
+    workspaces.length > 0 &&
+    workspaceBySlug === null;
+  const isWorkspaceListEmpty =
+    !isAuthLoading && isAuthenticated && workspaces.length === 0;
+  const shouldShowWorkspaceGuardFallback =
+    isWorkspaceSlugUnknown || isWorkspaceListEmpty;
+
+  useEffect(() => {
+    if (isWorkspaceListEmpty) {
+      router.replace(buildAuthWorkspaceCreationUrl());
+      return;
+    }
+    if (isWorkspaceSlugUnknown) {
+      router.replace("/dashboard");
+    }
+  }, [isWorkspaceListEmpty, isWorkspaceSlugUnknown, router]);
+
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated || !contentDirectoryWorkspaceId) {
       return;
@@ -682,6 +738,46 @@ export function CmsDashboardShell({
         <p role="status" aria-live="polite" className="text-sm text-zinc-600 dark:text-zinc-300">
           {tStatus("redirectingToLogin")}
         </p>
+      </main>
+    );
+  }
+
+  /**
+   * BUG-AUTH-9 (2026-06-01): Workspace-guard fallback. Renders for the brief
+   * `router.replace` transition window when EITHER the user has no
+   * workspaces (cross-app redirect to auth-app /onboarding) OR the URL slug
+   * does not match any workspace they can access (same-app redirect to
+   * `/dashboard` resolver). Prevents a flash of the CMS shell rendered
+   * against a `null` workspace context.
+   *
+   * Lives on the BUG-CMS-9 allowlist alongside the two pre-existing
+   * pre-auth fallback `<main>` blocks above.
+   */
+  if (shouldShowWorkspaceGuardFallback) {
+    const title = isWorkspaceListEmpty
+      ? tStatus("noWorkspaceTitle")
+      : tStatus("wrongWorkspaceTitle");
+    const description = isWorkspaceListEmpty
+      ? tStatus("noWorkspaceDescription")
+      : tStatus("wrongWorkspaceDescription");
+    return (
+      <main
+        data-testid="cms-dashboard-workspace-guard-fallback"
+        data-guard-reason={isWorkspaceListEmpty ? "no-workspace" : "wrong-slug"}
+        className="flex min-h-screen items-center justify-center px-6"
+      >
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex max-w-md flex-col items-center gap-2 text-center"
+        >
+          <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+            {title}
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">
+            {description}
+          </p>
+        </div>
       </main>
     );
   }
