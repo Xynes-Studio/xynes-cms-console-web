@@ -1,20 +1,24 @@
 {
   "heading": "CMS integrations",
-  "summary": "Verified domains, API keys, and future automation are managed from Workspace Admin so the rest of the platform can reuse them. This page summarizes what is configured for your workspace and links you to the right Workspace Admin tab to make changes.",
+  "summary": "Verified domains, API keys, and future automation live in Workspace Admin so every product can share them. This page summarises what is configured for your workspace and links you to the right Workspace Admin tab.",
   "slugLabel": "Active workspace",
   "statusUnavailableTitle": "Workspace integration status is unavailable",
   "statusUnavailableDescription": "Status counts are temporarily unavailable. Workspace Admin links remain available.",
   "loadingTitle": "Loading workspace integration status",
   "loadingDescription": "Checking verified domains and workspace API keys.",
+  "notice": {
+    "title": "Read-only in CMS",
+    "description": "Manage settings in Workspace Admin -- changes apply across every workspace product."
+  },
   "futureAutomationLabel": "Future automation",
   "futureAutomationTitle": "Workspace webhooks",
-  "futureAutomationDescription": "Webhook lifecycle management will live in Workspace Admin. CMS will consume workspace-level webhook status once the platform service is ready.",
+  "futureAutomationDescription": "Workspace webhooks will live in Workspace Admin. CMS will consume them once the platform service is ready.",
   "futureAutomationBadge": "Planned",
   "sections": {
     "domains": {
       "eyebrow": "Workspace setup",
       "title": "Verified domains",
-      "description": "Verify domains in Workspace Admin once, then reuse them across CMS publishing, delivery, and any future workspace product.",
+      "description": "Verify domains once, reuse them across CMS publishing and any future workspace product.",
       "linkLabel": "Manage verified domains",
       "verifiedMetric": "Verified",
       "pendingMetric": "Pending"
@@ -22,7 +26,7 @@
     "apiKeys": {
       "eyebrow": "Workspace setup",
       "title": "Workspace API keys",
-      "description": "API keys are issued and scoped from Workspace Admin. Raw key values are shown once at creation and stored only as hashes -- they cannot be revealed again.",
+      "description": "Issued and scoped from Workspace Admin. Raw values are shown once at creation; hashes only after.",
       "linkLabel": "Manage workspace API keys",
       "activeMetric": "Active",
       "cmsScopedMetric": "CMS-scoped"
@@ -30,13 +34,13 @@
     "contentApi": {
       "eyebrow": "CMS delivery",
       "title": "Content API",
-      "description": "Issue a read-only API key for headless content delivery. The key only grants access to published content and cannot mutate entries.",
+      "description": "Read-only key for headless content delivery. Grants access to published content only.",
       "linkLabel": "Create a read-only Content API key"
     },
     "publisher": {
       "eyebrow": "Publisher automation",
       "title": "Publisher automation",
-      "description": "Issue a publisher API key for build pipelines or scheduled publishing tools that need to author and publish entries on your behalf.",
+      "description": "Publisher key for build pipelines or scheduled jobs that publish on your behalf.",
       "linkLabel": "Create a publisher automation key"
     }
   }
