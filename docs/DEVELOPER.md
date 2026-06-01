@@ -753,6 +753,24 @@ buildWorkspaceAdminIntegrationUrl("cms_publisher_key", "");
 
 **Recipient app.** The Auth App's `WorkspaceHandoffSync` client component mounts inside `AuthDashboardShell` and honours the contract for every dashboard route, not just `/dashboard/integrations`. See `xynes-front-end/xynes-auth-app/docs/DEVELOPER.md` § "Cross-app workspace handoff (FE-XAPP-BUG-001)" for the consumer-side details.
 
+
+### Integrations page UX polish (BUG-CMS-10, landed 2026-06-01)
+
+`CmsIntegrationsPanel.tsx` aligns with the design-system reference at `~/Downloads/xynes-design-system/project/ui_kits/xynes-app/cms-integrations.html` (also mirrored as `CMSIntegrations.jsx` in the same UI-kit folder). Visual contract:
+
+1. **Page header.** Eyebrow `Active workspace · <slug>` + `<h1>` title + a tightened 2-line lead. Lead copy is ≤ 30 words.
+2. **Read-only notice banner.** A neutral `Card` (NOT a destructive `Alert`) immediately below the header, carrying a Lumia `IconInfo` glyph + bold `Read-only in CMS` lead + body copy "Manage settings in Workspace Admin — changes apply across every workspace product." The banner has `data-testid="cms-integrations-read-only-notice"`. **It must not carry `role="alert"`** — that role is reserved for the warning Alert that surfaces when `fetchCmsWorkspaceIntegrationStatus` returns `{ unavailable: true }`. Read-only is the intended UX, not a failure mode; over-signalling it would dilute the warning Alert's a11y semantics.
+3. **2 × 2 card grid.** Four cards (Verified domains, Workspace API keys, Content API, Publisher automation). Each card carries: tiny uppercase eyebrow (`Workspace setup` / `CMS delivery` / `Publisher automation`), 17 px title, single-sentence description, optional metric strip, and a left-aligned outline CTA. Card descriptions are ≤ 20 words.
+4. **Metric strip contract.** The Verified-domains and API-keys cards each render **one** bordered `<dl>` with internal `divide-x divide-border` between cells — NOT two separate boxes. Each cell shows a 10 px uppercase label (`Verified` / `Pending` / `Active` / `CMS-scoped`) above a 24 px numeric value. The strip itself carries `data-testid="cms-integrations-metric-strip-<linkTarget>"` so tests can assert the structural invariant ("one dl wraps both cells") without coupling to class names.
+5. **CTA contract.** Every CTA is a styled native `<a>` (never a `<Button>`, to avoid invalid nested-interactive HTML). External CTAs trail a Lumia `IconExternalLink` glyph plus an `sr-only " (opens in new tab)"` hint and carry `target="_blank" rel="noopener noreferrer"`. Relative-fallback CTAs (when `NEXT_PUBLIC_AUTH_APP_URL` is malformed) deliberately **omit** the icon and the sr-only hint — no new tab opens, so the affordance would mislead.
+6. **Workspace webhooks row.** A full-width horizontal `Card` strip BELOW the 2 × 2 grid (NOT a card inside the grid). Lumia `IconExternalLink` + section title "Workspace webhooks" on the left; Lumia `Badge variant="outline"` with copy "Planned" on the right. Carries `data-testid="cms-integrations-future-automation"`; tests assert it lives outside any element with the `.grid` class.
+
+**Contracts preserved byte-for-byte from the 2026-04-27 landing.** (a) The `UNAVAILABLE_CMS_WORKSPACE_INTEGRATION_STATUS` sentinel rule — panel imports from the client, never redeclares. (b) Native-anchor + safe-rel + sr-only-hint + nested-interactive rules. (c) The `role="alert"` warning Alert when `status.unavailable === true`. (d) Every existing `data-testid` (workspace-slug, deep-link, every metric-value) is preserved. (e) FE-XAPP-BUG-001 `&workspace=<slug>` URL contract.
+
+**Tests landed.** Six new BUG-CMS-10 tests in `CmsIntegrationsPanel.test.tsx` (full suite is now 27 — was 21): read-only notice neutral-semantics, Info icon inside notice, single-bordered metric strip, webhooks row outside the grid, ExternalLink trailing icon on external CTAs, and the no-icon-on-relative-fallback invariant. Lint clean; `npx tsc --noEmit` 12 errors byte-identical to `main` (zero new TS errors); full suite **646/646 pass / 60 files** (+6 net); coverage `CmsIntegrationsPanel.tsx` **94.87% stmts / 91.48% branches / 100% funcs / 94.87% lines** (above ADR-001 80% floor); overall **93.96% / 87.66% / 96.39% / 93.96%**; `pnpm build` ✓ Compiled successfully. Visual review deferred to operator per sprint-plan §8 manual-smoke-accepted posture (matches BUG-CMS-1 / BUG-CMS-7 / BUG-CMS-8 / BUG-LDS-1 convention).
+
+**i18n.** Two new leaf keys (`notice.title` / `notice.description`) added under `cms.integrations`. Existing 12 keys all gained tightened descriptions. `messages/en-XA/cms.integrations.json` regenerated via a deterministic ASCII-doubling helper (the workspace has no `pnpm generate:pseudo` script — the helper is documented in the BUG-CMS-10 commit message). 17/17 leaf-key parity between en-US and en-XA verified.
+
 ## Storage Client (STORAGE-10)
 
 Reference:

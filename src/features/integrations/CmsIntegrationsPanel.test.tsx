@@ -14,10 +14,10 @@ const i18nState = vi.hoisted(() => {
     statusUnavailableTitle: "Integration status unavailable",
     statusUnavailableDescription:
       "Integration status is temporarily unavailable. Counts shown below may be out of date -- refresh the page or open Workspace Admin to confirm.",
-    futureAutomationTitle: "Webhooks & deployment hooks",
+    futureAutomationTitle: "Workspace webhooks",
     futureAutomationDescription:
       "Workspace webhooks for content events and deployment hooks for downstream rebuilds are part of the Workspace Admin roadmap. They will appear here once Workspace Admin ships them -- CMS does not own the webhook lifecycle.",
-    futureAutomationBadge: "Coming soon",
+    futureAutomationBadge: "Planned",
     "sections.domains.eyebrow": "Workspace setup",
     "sections.domains.title": "Verified domains",
     "sections.domains.description":
@@ -42,6 +42,9 @@ const i18nState = vi.hoisted(() => {
     "sections.publisher.description":
       "Issue a publisher API key for build pipelines or scheduled publishing tools that need to author and publish entries on your behalf.",
     "sections.publisher.linkLabel": "Create a publisher automation key",
+    "notice.title": "Read-only in CMS",
+    "notice.description":
+      "Manage settings in Workspace Admin -- changes apply across every workspace product.",
   };
 
   return {
@@ -114,6 +117,28 @@ vi.mock("@lumia-ui/components", () => ({
     },
     sizes: { sm: "s-sm", md: "s-md", lg: "s-lg", icon: "s-icon" },
   },
+}));
+
+// BUG-CMS-10: panel now imports IconExternalLink + IconInfo from Lumia.
+// Mock as simple aria-hidden span stubs so tests can introspect placement
+// without exercising the compiled Lumia icon package in jsdom.
+vi.mock("@lumia-ui/icons", () => ({
+  IconExternalLink: (props: { size?: number; className?: string }) => (
+    <span
+      aria-hidden="true"
+      data-icon="external-link"
+      data-size={props.size}
+      className={props.className}
+    />
+  ),
+  IconInfo: (props: { size?: number; className?: string }) => (
+    <span
+      aria-hidden="true"
+      data-icon="info"
+      data-size={props.size}
+      className={props.className}
+    />
+  ),
 }));
 
 const fetchStatusMock = vi.fn();
@@ -583,5 +608,121 @@ describe("CmsIntegrationsPanel", () => {
         screen.getByTestId("cms-integrations-domains-verified-count"),
       ).toHaveTextContent("—");
     });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // BUG-CMS-10 (P2, 2026-06-01) — page UX polish per the
+  // ~/Downloads/xynes-design-system/project/ui_kits/xynes-app/
+  //   CMSIntegrations.jsx reference. The block below locks in:
+  //   (a) the read-only notice banner (neutral surface, NOT role="alert"),
+  //   (b) the single bordered metric strip (instead of two separate boxes),
+  //   (c) the Workspace webhooks row sitting OUTSIDE the 2-col grid,
+  //   (d) the IconExternalLink trailing the external CTA + the relative-
+  //       fallback path *omitting* the icon (no "new tab" affordance when
+  //       no new tab opens).
+  // ─────────────────────────────────────────────────────────────────────
+
+  it("renders a read-only notice banner with neutral semantics (not role=alert)", () => {
+    render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
+
+    const notice = screen.getByTestId("cms-integrations-read-only-notice");
+    expect(notice).toBeInTheDocument();
+    expect(notice).toHaveTextContent(/Read-only in CMS/i);
+    expect(notice).toHaveTextContent(/Manage settings in Workspace Admin/i);
+
+    // The notice MUST NOT carry role="alert"; that role is reserved for the
+    // status-unavailable warning Alert. The notice's read-only state is
+    // intended UX, not a failure mode.
+    expect(notice.getAttribute("role")).not.toBe("alert");
+    // And the notice itself must not contain a role=alert descendant.
+    expect(notice.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("renders an Info icon inside the read-only notice banner", () => {
+    render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
+
+    const notice = screen.getByTestId("cms-integrations-read-only-notice");
+    const icon = notice.querySelector('[data-icon="info"]');
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("renders metrics as a single bordered strip (one dl per card, not two separate boxes)", () => {
+    render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
+
+    // Domain card: ONE strip wrapping BOTH cells (Verified + Pending).
+    const domainStrip = screen.getByTestId(
+      "cms-integrations-metric-strip-domains",
+    );
+    expect(domainStrip.tagName).toBe("DL");
+    expect(
+      domainStrip.querySelector(
+        '[data-testid="cms-integrations-domains-verified-count"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      domainStrip.querySelector(
+        '[data-testid="cms-integrations-domains-pending-count"]',
+      ),
+    ).not.toBeNull();
+
+    // API keys card: similarly ONE strip wrapping BOTH cells.
+    const apiKeyStrip = screen.getByTestId(
+      "cms-integrations-metric-strip-api_keys",
+    );
+    expect(apiKeyStrip.tagName).toBe("DL");
+    expect(
+      apiKeyStrip.querySelector(
+        '[data-testid="cms-integrations-api-keys-active-count"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      apiKeyStrip.querySelector(
+        '[data-testid="cms-integrations-api-keys-cms-scoped-count"]',
+      ),
+    ).not.toBeNull();
+  });
+
+  it("places the Workspace webhooks row OUTSIDE the integration card grid", () => {
+    render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
+
+    const webhooksRow = screen.getByTestId(
+      "cms-integrations-future-automation",
+    );
+    expect(webhooksRow).toBeInTheDocument();
+    expect(webhooksRow).toHaveTextContent(/workspace webhooks/i);
+    expect(webhooksRow).toHaveTextContent(/planned/i);
+
+    // The grid wrapping the four integration cards uses `grid-cols-1
+    // lg:grid-cols-2`. The webhooks row MUST NOT live inside that grid.
+    const gridParent = webhooksRow.closest(".grid");
+    expect(gridParent).toBeNull();
+  });
+
+  it("trails external Workspace Admin CTAs with an ExternalLink icon", () => {
+    process.env.NEXT_PUBLIC_AUTH_APP_URL = "https://auth.xynes.example";
+
+    render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
+
+    const link = screen.getByRole("link", { name: /manage verified domains/i });
+    const icon = link.querySelector('[data-icon="external-link"]');
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("does NOT render the ExternalLink icon on relative-fallback (same-origin) CTAs", () => {
+    process.env.NEXT_PUBLIC_AUTH_APP_URL = "javascript:alert(1)";
+
+    render(<CmsIntegrationsPanel workspaceSlug="acme-demo" />);
+
+    const link = screen.getByRole("link", { name: /manage verified domains/i });
+    // Fallback href stays relative, no new tab opens, so the affordance
+    // would mislead — the icon and the sr-only hint must both be absent.
+    expect(link).toHaveAttribute(
+      "href",
+      "/dashboard/integrations?tab=domains&workspace=acme-demo",
+    );
+    expect(link.querySelector('[data-icon="external-link"]')).toBeNull();
+    expect(link).not.toHaveAccessibleName(/opens in new tab/i);
   });
 });

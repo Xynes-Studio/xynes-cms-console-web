@@ -12,17 +12,25 @@
  *    deep links; it MUST NOT host add-domain, create-key, or webhook forms.
  *
  * Composition rules:
- *  - Lumia DS only for chrome (`Card`, `Badge`, `Alert`); native `<a>` for
- *    deep links so we do not nest interactive content inside Lumia's
- *    `<button>` element.
+ *  - Lumia DS only for chrome (`Card`, `Badge`, `Alert`, `ExternalLink`,
+ *    `Info`); native `<a>` for deep links so we do not nest interactive
+ *    content inside Lumia's `<button>` element.
  *  - Pure URL/security logic lives in `./workspace-admin-links`.
  *  - Pure data-fetch + envelope logic lives in
  *    `../../lib/dashboard/workspace-integrations-client`.
  *  - This file owns rendering and effect orchestration only.
+ *
+ * Visual design (BUG-CMS-10, 2026-06-01): the page matches the
+ * `~/Downloads/xynes-design-system/project/ui_kits/xynes-app/CMSIntegrations.jsx`
+ * reference — read-only notice banner above the grid, single bordered metric
+ * strip per card with internal divider (instead of two separate boxes), a
+ * full-width "Workspace webhooks (Planned)" row below the grid that is NOT
+ * a card in the grid, and an ExternalLink icon trailing each deep-link CTA.
  */
 
 import { useEffect, useState } from "react";
 import { Alert, Badge, Card, buttonStyles } from "@lumia-ui/components";
+import { IconExternalLink, IconInfo } from "@lumia-ui/icons";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import { useTranslations } from "next-intl";
 import {
@@ -56,7 +64,7 @@ type IntegrationCardProps = {
   metrics?: IntegrationMetric[];
 };
 
-const cardWrapperClasses = "flex h-full flex-col gap-5 p-6";
+const cardWrapperClasses = "flex h-full flex-col gap-4 p-6";
 type IntegrationTranslator = ReturnType<typeof useTranslations>;
 
 /** Pure helper: did the integration status load successfully? */
@@ -72,6 +80,11 @@ function isStatusLive(
  * is a real `<button>` element and nesting an `<a>` inside would produce
  * invalid HTML and an a11y violation (interactive content inside interactive
  * content). Instead we apply Lumia's exported `buttonStyles` to an `<a>`.
+ *
+ * Trailing icon: per the BUG-CMS-10 design reference, the CTA carries a
+ * Lumia DS `ExternalLink` icon on the right edge. For relative-fallback
+ * (same-origin) links, the icon is omitted because no new tab opens — the
+ * affordance would be misleading.
  */
 function WorkspaceAdminDeepLink({
   href,
@@ -86,6 +99,11 @@ function WorkspaceAdminDeepLink({
     buttonStyles.variants.outline,
     buttonStyles.sizes.sm,
     "no-underline",
+    // Per the design reference, the CTA sits left-aligned at the bottom of
+    // its card. `self-start` prevents it from stretching to fill the parent
+    // flex row.
+    "self-start",
+    "gap-2",
   ].join(" ");
 
   return (
@@ -98,9 +116,9 @@ function WorkspaceAdminDeepLink({
       <span>{label}</span>
       {isExternal ? (
         <>
-          <span aria-hidden="true">↗</span>
+          <IconExternalLink size={14} aria-hidden="true" />
           {/* sr-only hint so AT users hear the same affordance as sighted
-              users get from the arrow icon. */}
+              users get from the trailing ExternalLink icon. */}
           <span className="sr-only"> (opens in new tab)</span>
         </>
       ) : null}
@@ -122,28 +140,37 @@ function IntegrationCard({
   return (
     <Card className={cardWrapperClasses}>
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
           {eyebrow}
         </span>
-        <h2 className="text-lg font-semibold leading-6 text-foreground">
+        <h2 className="text-[17px] font-semibold leading-6 text-foreground">
           {title}
         </h2>
-        <p className="text-sm leading-5 text-muted-foreground">{description}</p>
+        <p className="text-[13px] leading-5 text-muted-foreground">
+          {description}
+        </p>
       </div>
 
       {metrics && metrics.length > 0 ? (
-        <dl className="grid grid-cols-2 gap-3">
+        // Single bordered strip with internal divider — matches the design
+        // reference's `.ci-stats` block. Each cell carries a tiny uppercase
+        // label + a large numeric value. The wrapper is a `<dl>` for
+        // semantics; cells are `<div>`s with `<dt>`/`<dd>` children.
+        <dl
+          className="mt-1 flex overflow-hidden rounded-md border border-border bg-muted/30 divide-x divide-border"
+          data-testid={`cms-integrations-metric-strip-${linkTarget}`}
+        >
           {metrics.map((metric) => (
             <div
               key={metric.testId}
-              className="rounded-md border border-border bg-muted/30 px-3 py-2"
+              className="flex-1 px-3.5 py-3 flex flex-col gap-1.5"
             >
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <dt className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
                 {metric.label}
               </dt>
               <dd
                 data-testid={metric.testId}
-                className="mt-1 text-xl font-semibold text-foreground"
+                className="text-2xl font-bold leading-none tracking-tight text-foreground"
               >
                 {metric.value}
               </dd>
@@ -152,7 +179,7 @@ function IntegrationCard({
         </dl>
       ) : null}
 
-      <div className="mt-auto">
+      <div className="mt-auto pt-1">
         <WorkspaceAdminDeepLink href={href} label={linkLabel} />
       </div>
     </Card>
@@ -317,22 +344,46 @@ export function CmsIntegrationsPanel({
   const cards = buildIntegrationCards({ status, t, workspaceSlug });
 
   return (
-    <section className="flex h-full min-h-[420px] flex-col gap-6 p-6">
+    <section className="flex h-full min-h-105 flex-col gap-6 p-6">
       <header className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-muted-foreground">
           {t("slugLabel")}
           {" · "}
           <span data-testid="cms-integrations-workspace-slug">
             {workspaceSlug}
           </span>
         </p>
-        <h1 className="text-2xl font-semibold leading-7 text-foreground">
+        <h1 className="text-[28px] font-bold leading-8.5 tracking-[-0.013em] text-foreground">
           {t("heading")}
         </h1>
-        <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
+        <p className="max-w-140 text-[14px] leading-5.5 text-muted-foreground">
           {t("summary")}
         </p>
       </header>
+
+      {/* Read-only notice banner. Neutral surface (not destructive) — a
+          warning Alert would over-signal here; this page being read-only
+          is the *intended* state, not a failure mode. We use a plain
+          `<Card>` with an `Info` icon so the existing `role="alert"`
+          contract for status-unavailable warnings remains semantically
+          distinct. */}
+      <Card
+        className="flex items-start gap-2.5 rounded-md border border-border bg-muted/30 px-4 py-3 text-[13px] leading-5 text-muted-foreground"
+        data-testid="cms-integrations-read-only-notice"
+      >
+        <IconInfo
+          size={15}
+          aria-hidden="true"
+          className="mt-0.5 shrink-0 text-muted-foreground"
+        />
+        <p className="m-0">
+          <strong className="font-semibold text-foreground">
+            {t("notice.title")}
+          </strong>
+          {" — "}
+          {t("notice.description")}
+        </p>
+      </Card>
 
       {status?.unavailable ? (
         <Alert
@@ -348,16 +399,24 @@ export function CmsIntegrationsPanel({
         ))}
       </div>
 
-      <Card className="flex flex-col gap-2 border-dashed p-6">
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold leading-6 text-foreground">
+      {/* Workspace webhooks (Planned) — full-width horizontal strip below the
+          grid, NOT a card inside the grid. Matches the design reference's
+          `.ci-webhooks` block. */}
+      <Card
+        className="flex items-center justify-between gap-3 rounded-lg border border-border px-5 py-4"
+        data-testid="cms-integrations-future-automation"
+      >
+        <div className="flex items-center gap-2.5">
+          <IconExternalLink
+            size={17}
+            aria-hidden="true"
+            className="text-muted-foreground"
+          />
+          <h3 className="text-[15px] font-semibold leading-none text-foreground">
             {t("futureAutomationTitle")}
           </h3>
-          <Badge variant="outline">{t("futureAutomationBadge")}</Badge>
         </div>
-        <p className="text-sm leading-5 text-muted-foreground">
-          {t("futureAutomationDescription")}
-        </p>
+        <Badge variant="outline">{t("futureAutomationBadge")}</Badge>
       </Card>
     </section>
   );
