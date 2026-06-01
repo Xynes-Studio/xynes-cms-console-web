@@ -363,12 +363,19 @@ export function CmsIntegrationsPanel({
 
       {/* Read-only notice banner. Neutral surface (not destructive) — a
           warning Alert would over-signal here; this page being read-only
-          is the *intended* state, not a failure mode. We use a plain
-          `<Card>` with an `Info` icon so the existing `role="alert"`
-          contract for status-unavailable warnings remains semantically
-          distinct. */}
-      <Card
-        className="flex items-start gap-2.5 rounded-md border border-border bg-muted/30 px-4 py-3 text-[13px] leading-5 text-muted-foreground"
+          is the *intended* state, not a failure mode. We deliberately use
+          a plain `<div>` (NOT a Lumia `<Card>`) because Card's baked-in
+          `rounded-lg border bg-background shadow-sm overflow-hidden`
+          chrome (a) over-emphasises the notice into looking like a
+          dedicated panel, and (b) conflicts with our `bg-muted/30`
+          tint so the className-merger keeps both `bg-background`
+          (Card's default) and `bg-muted/30` (our override) in the
+          class list, leaving the final swatch up to CSS source order
+          rather than our intent. The notice also keeps `role="alert"`
+          contractually distinct from the status-unavailable warning
+          Alert below. */}
+      <div
+        className="flex items-start gap-3 rounded-md border border-border bg-muted/30 px-4 py-3 text-[13px] leading-5 text-muted-foreground"
         data-testid="cms-integrations-read-only-notice"
       >
         <IconInfo
@@ -376,14 +383,13 @@ export function CmsIntegrationsPanel({
           aria-hidden="true"
           className="mt-0.5 shrink-0 text-muted-foreground"
         />
-        <p className="m-0">
+        <p className="m-0 min-w-0 flex-1">
           <strong className="font-semibold text-foreground">
             {t("notice.title")}
-          </strong>
-          {" — "}
+          </strong>{" "}
           {t("notice.description")}
         </p>
-      </Card>
+      </div>
 
       {status?.unavailable ? (
         <Alert
