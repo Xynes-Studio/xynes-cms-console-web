@@ -1792,7 +1792,9 @@ describe("CmsDashboardShell", () => {
       // Direct redirect to the only accessible workspace — no /dashboard
       // round-trip that would re-pick the stale slug.
       expect(mockReplace).toHaveBeenCalledTimes(1);
-      expect(mockReplace).toHaveBeenCalledWith("/dashboard/beta-workspace/content");
+      expect(mockReplace).toHaveBeenCalledWith(
+        "/dashboard/beta-workspace/content",
+      );
       // SDK selection is synced to the accessible workspace so any later
       // resolver navigation stays out of the loop.
       expect(selectWorkspaceSpy).toHaveBeenCalledWith("ws-2");

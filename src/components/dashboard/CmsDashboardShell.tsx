@@ -229,7 +229,8 @@ export function CmsDashboardShell({
   const workspaceBySlug = useMemo(
     () =>
       workspaces.find(
-        (workspace) => workspace.slug.trim().toLowerCase() === normalizedWorkspaceSlug,
+        (workspace) =>
+          workspace.slug.trim().toLowerCase() === normalizedWorkspaceSlug,
       ) ?? null,
     [normalizedWorkspaceSlug, workspaces],
   );
@@ -242,7 +243,9 @@ export function CmsDashboardShell({
       section: defaultDashboardSection,
     }) ?? "/dashboard/content";
   const safeActivePath =
-    activePath && activePath.startsWith("/dashboard/") ? activePath : fallbackContentPath;
+    activePath && activePath.startsWith("/dashboard/")
+      ? activePath
+      : fallbackContentPath;
   const parsedActivePath = parseDashboardSectionPath(safeActivePath);
   const contentTailKey =
     parsedActivePath &&
@@ -442,7 +445,10 @@ export function CmsDashboardShell({
         setContentDirectories(apiDirectoryNodes);
       } catch (error) {
         if (!abortController.signal.aborted) {
-          console.error("Failed to load workspace content directory tree", error);
+          console.error(
+            "Failed to load workspace content directory tree",
+            error,
+          );
         }
       }
     })();
@@ -458,20 +464,24 @@ export function CmsDashboardShell({
     isAuthenticated,
   ]);
 
-  const navItems: LumiaDashboardNavItem[] = getCmsDashboardNavItems(workspaceSlug, {
-    contents: t("nav.contents"),
-    plugins: t("nav.plugins"),
-    "access-control": t("nav.accessControl"),
-    integrations: t("nav.integrations"),
-    settings: t("nav.settings"),
-  }).map((item) => ({
-      id: item.key,
-      label: item.label,
-      href: item.href,
-      icon: item.icon,
-    }));
+  const navItems: LumiaDashboardNavItem[] = getCmsDashboardNavItems(
+    workspaceSlug,
+    {
+      contents: t("nav.contents"),
+      plugins: t("nav.plugins"),
+      "access-control": t("nav.accessControl"),
+      integrations: t("nav.integrations"),
+      settings: t("nav.settings"),
+    },
+  ).map((item) => ({
+    id: item.key,
+    label: item.label,
+    href: item.href,
+    icon: item.icon,
+  }));
   const contentsHref =
-    navItems.find((item) => item.id === "contents")?.href ?? fallbackContentPath;
+    navItems.find((item) => item.id === "contents")?.href ??
+    fallbackContentPath;
   const currentDashboardPath = safeActivePath;
   const materializedContentDirectories = contentDirectories;
   const routeExpandedDirectoryIds = useMemo(
@@ -507,14 +517,17 @@ export function CmsDashboardShell({
   );
   const activeDirectoryHref =
     activeContentTailSegments.length > 0
-      ? buildDashboardSectionPath({
+      ? (buildDashboardSectionPath({
           workspaceSlug: normalizedWorkspaceSlug,
           section: "content",
           tailSegments: activeContentTailSegments,
-        }) ?? undefined
+        }) ?? undefined)
       : undefined;
 
-  const handleCreateDirectory = (input: { parentId: string | null; name: string }) => {
+  const handleCreateDirectory = (input: {
+    parentId: string | null;
+    name: string;
+  }) => {
     if (
       isAuthLoading ||
       !isAuthenticated ||
@@ -647,7 +660,10 @@ export function CmsDashboardShell({
         });
         setDirectoryDataRevision((previous) => previous + 1);
       } catch (error) {
-        console.error("Failed to persist workspace content directory rename", error);
+        console.error(
+          "Failed to persist workspace content directory rename",
+          error,
+        );
         setContentDirectories(previousTree);
         notifyDirectoryActionFailed(t("directory.renameFailedTitle"));
         setDirectoryDataRevision((previous) => previous + 1);
@@ -715,7 +731,10 @@ export function CmsDashboardShell({
         });
         setDirectoryDataRevision((previous) => previous + 1);
       } catch (error) {
-        console.error("Failed to persist workspace content directory delete", error);
+        console.error(
+          "Failed to persist workspace content directory delete",
+          error,
+        );
         setContentDirectories(previousTree);
         setExpandedDirectoryIds(previousExpandedIds);
         notifyDirectoryActionFailed(t("directory.deleteFailedTitle"));
@@ -725,7 +744,9 @@ export function CmsDashboardShell({
   };
 
   const handleWorkspaceSelect = (workspaceId: string) => {
-    const selectedWorkspace = workspaces.find((workspace) => workspace.id === workspaceId);
+    const selectedWorkspace = workspaces.find(
+      (workspace) => workspace.id === workspaceId,
+    );
     if (!selectedWorkspace?.slug) {
       return;
     }
@@ -803,7 +824,11 @@ export function CmsDashboardShell({
   if (isAuthLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
-        <p role="status" aria-live="polite" className="text-sm text-zinc-600 dark:text-zinc-300">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-sm text-zinc-600 dark:text-zinc-300"
+        >
           {tStatus("loadingDashboard")}
         </p>
       </main>
@@ -813,7 +838,11 @@ export function CmsDashboardShell({
   if (!isAuthLoading && !isAuthenticated) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
-        <p role="status" aria-live="polite" className="text-sm text-zinc-600 dark:text-zinc-300">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-sm text-zinc-600 dark:text-zinc-300"
+        >
           {tStatus("redirectingToLogin")}
         </p>
       </main>
@@ -901,11 +930,16 @@ export function CmsDashboardShell({
         "workspaceCreationDisabledMessage",
       )}
       userMenu={{
-        name: user?.displayName || user?.email || tShellUserMenu("fallbackName"),
+        name:
+          user?.displayName || user?.email || tShellUserMenu("fallbackName"),
         email: user?.email || tShellUserMenu("fallbackEmail"),
         avatarSrc: user?.avatarUrl || undefined,
       }}
-      onLogout={() => router.push(`/logout?redirect=${encodeURIComponent(currentDashboardPath)}`)}
+      onLogout={() =>
+        router.push(
+          `/logout?redirect=${encodeURIComponent(currentDashboardPath)}`,
+        )
+      }
       notifications={[]}
       sidebarFooterNote={tShell("footerNote")}
       labels={shellLabels}
