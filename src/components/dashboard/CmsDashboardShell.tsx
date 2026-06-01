@@ -217,7 +217,14 @@ export function CmsDashboardShell({
     redirectToLogin,
     getAccessToken,
   } = useAuth();
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, selectWorkspace } = useWorkspace();
+  // BUG-AUTH-9 follow-up (PR #43, Codex P1): `selectWorkspace` is pulled so
+  // the wrong-slug guard can sync the SDK selection to a known-accessible
+  // workspace before redirecting. Without this sync, the `/dashboard`
+  // resolver page can re-pick a revoked workspace (it prefers
+  // `currentWorkspace?.slug` over the auth-validated `workspaces` list),
+  // which immediately bounces back into this guard and produces an
+  // infinite redirect loop.
   const normalizedWorkspaceSlug = workspaceSlug.trim().toLowerCase();
   const workspaceBySlug = useMemo(
     () =>
@@ -321,15 +328,84 @@ export function CmsDashboardShell({
   const shouldShowWorkspaceGuardFallback =
     isWorkspaceSlugUnknown || isWorkspaceListEmpty;
 
+  /**
+   * BUG-AUTH-9 follow-up (PR #43, Codex P1): "Avoid redirecting stale
+   * workspace slugs back into the guard."
+   *
+   * The wrong-slug branch USED to redirect to `/dashboard` and rely on the
+   * resolver page (`app/dashboard/page.tsx`) to pick a workspace. But the
+   * resolver prefers `currentWorkspace?.slug` over the auth-validated
+   * `workspaces` list. If the user's selected workspace was revoked (or
+   * the SDK still has a stale selection that no longer matches any
+   * accessible workspace), the resolver sends them right back to the same
+   * inaccessible `/dashboard/<stale-slug>/content`, which re-triggers this
+   * guard and produces an infinite redirect loop.
+   *
+   * Fix: skip the resolver round-trip. Pick the first auth-validated
+   * workspace whose slug yields a valid dashboard path, sync the SDK
+   * selection via `selectWorkspace(target.id)`, then redirect directly to
+   * its `/dashboard/<slug>/<defaultSection>` URL. The selection sync
+   * ensures any UI surface that depends on `currentWorkspace` reflects the
+   * post-redirect state on the next render.
+   *
+   * If no accessible workspace can produce a valid path (defensive — the
+   * `workspaces.length > 0` precondition makes this practically
+   * unreachable), fall back to the resolver as before; it will surface
+   * its "Dashboard not found" envelope rather than loop.
+   */
+  const wrongSlugFallbackTarget = useMemo(() => {
+    if (!isWorkspaceSlugUnknown) {
+      return null;
+    }
+    const accessible = workspaces.find((candidate) => {
+      const candidateSlug = candidate?.slug?.trim() ?? "";
+      if (!candidateSlug) {
+        return false;
+      }
+      const path = buildDashboardSectionPath({
+        workspaceSlug: candidateSlug,
+        section: defaultDashboardSection,
+      });
+      return Boolean(path);
+    });
+    if (!accessible) {
+      return null;
+    }
+    const accessibleSlug = accessible.slug.trim();
+    const path =
+      buildDashboardSectionPath({
+        workspaceSlug: accessibleSlug,
+        section: defaultDashboardSection,
+      }) ?? null;
+    return path ? { id: accessible.id, path } : null;
+  }, [isWorkspaceSlugUnknown, workspaces]);
+
   useEffect(() => {
     if (isWorkspaceListEmpty) {
       router.replace(buildAuthWorkspaceCreationUrl());
       return;
     }
     if (isWorkspaceSlugUnknown) {
+      if (wrongSlugFallbackTarget) {
+        // Sync the SDK selection BEFORE the redirect so the resolver (if
+        // anything else navigates the user through `/dashboard` later)
+        // does not re-pick the stale slug. `selectWorkspace` is a no-op
+        // when the id already matches the current selection.
+        selectWorkspace(wrongSlugFallbackTarget.id);
+        router.replace(wrongSlugFallbackTarget.path);
+        return;
+      }
+      // Defensive fallback: no accessible workspace yielded a valid path.
+      // The resolver page will render its "Dashboard not found" envelope.
       router.replace("/dashboard");
     }
-  }, [isWorkspaceListEmpty, isWorkspaceSlugUnknown, router]);
+  }, [
+    isWorkspaceListEmpty,
+    isWorkspaceSlugUnknown,
+    router,
+    selectWorkspace,
+    wrongSlugFallbackTarget,
+  ]);
 
   useEffect(() => {
     if (isAuthLoading || !isAuthenticated || !contentDirectoryWorkspaceId) {
