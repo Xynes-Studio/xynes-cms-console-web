@@ -6,6 +6,7 @@ import { CmsDashboardShell } from "./CmsDashboardShell";
 const mockUseAuth = vi.fn();
 const mockUseWorkspace = vi.fn();
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 const mockDashboardShell = vi.fn();
 const mockRedirectToLogin = vi.fn();
 const mockGetAccessToken = vi.fn();
@@ -16,7 +17,7 @@ const pathnameState = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => pathnameState.value,
 }));
 
@@ -43,6 +44,12 @@ vi.mock("next-intl", () => ({
         "cms.shell.directory.deleteFailedTitle": "Could not delete directory",
         "cms.shell.status.loadingDashboard": "Loading dashboard...",
         "cms.shell.status.redirectingToLogin": "Redirecting to login...",
+        "cms.shell.status.noWorkspaceTitle": "Setting up your workspace…",
+        "cms.shell.status.noWorkspaceDescription":
+          "Redirecting you to create your first workspace.",
+        "cms.shell.status.wrongWorkspaceTitle": "Switching workspace…",
+        "cms.shell.status.wrongWorkspaceDescription":
+          "We could not find that workspace. Taking you to one you can access.",
         "cms.shell.shell.workspaceCreationDisabledMessage":
           "Workspace creation is unavailable. Check settings or contact admin.",
         "cms.shell.shell.footerNote":
@@ -115,6 +122,7 @@ describe("CmsDashboardShell", () => {
     process.env.NEXT_PUBLIC_AUTH_APP_URL = "http://localhost:3100";
     pathnameState.value = "/dashboard/acme/plugins";
     mockPush.mockReset();
+    mockReplace.mockReset();
     mockDashboardShell.mockReset();
     mockRedirectToLogin.mockReset();
     mockGetAccessToken.mockReset();
@@ -1681,6 +1689,210 @@ describe("CmsDashboardShell", () => {
           process.env.NEXT_PUBLIC_AUTH_APP_URL = previousAuthAppUrl;
         }
       }
+    });
+  });
+
+  describe("workspace guard (BUG-AUTH-9)", () => {
+    it("redirects to the first auth-validated workspace's dashboard path when the URL slug does not match any accessible workspace", () => {
+      // Default beforeEach gives workspaces `acme` (ws-1) and
+      // `beta-workspace` (ws-2). Pass an unknown slug — this is the
+      // cross-tenant probe path.
+      //
+      // BUG-AUTH-9 follow-up (PR #43, Codex P1): the guard now redirects
+      // DIRECTLY to the first auth-validated workspace (`ws-1` → `acme`)
+      // instead of round-tripping through `/dashboard`. This avoids the
+      // resolver round-trip that previously could re-pick a stale
+      // `currentWorkspace` and loop the guard.
+      const selectWorkspaceSpy = vi.fn();
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: {
+          id: "ws-1",
+          name: "Xynes",
+          slug: "acme",
+          role: "workspace_owner",
+        },
+        selectWorkspace: selectWorkspaceSpy,
+      });
+
+      const { getByTestId, queryByTestId } = render(
+        <CmsDashboardShell workspaceSlug="not-my-workspace">
+          <div data-testid="dashboard-body">Should NOT render</div>
+        </CmsDashboardShell>,
+      );
+
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+      expect(mockReplace).toHaveBeenCalledWith("/dashboard/acme/content");
+
+      // SDK selection synced to the auth-validated target so any later
+      // navigation through the resolver does not bounce back to a stale
+      // selection.
+      expect(selectWorkspaceSpy).toHaveBeenCalledWith("ws-1");
+
+      // Fallback main rendered with the wrong-slug copy + reason tag.
+      const fallback = getByTestId("cms-dashboard-workspace-guard-fallback");
+      expect(fallback.getAttribute("data-guard-reason")).toBe("wrong-slug");
+      expect(fallback.textContent).toContain("Switching workspace");
+
+      // Dashboard body NOT rendered (no flash of broken shell).
+      expect(queryByTestId("dashboard-body")).toBeNull();
+      // Lumia shell NOT rendered.
+      expect(mockDashboardShell).not.toHaveBeenCalled();
+    });
+
+    it("breaks the stale-currentWorkspace redirect loop (BUG-AUTH-9 PR #43 Codex P1 regression guard)", () => {
+      // Scenario: the user's access to workspace `acme` (ws-1) has been
+      // revoked, but the auth SDK still has it selected as
+      // `currentWorkspace`. The auth-validated `workspaces` list (which is
+      // the source of truth) now contains ONLY `beta-workspace` (ws-2).
+      // The user lands on `/dashboard/acme/content`. Pre-fix this would
+      // redirect to `/dashboard`, the resolver would re-pick `currentWorkspace.slug`
+      // (still `acme`), redirect back to `/dashboard/acme/content`, and
+      // the guard would fire again forever.
+      //
+      // Post-fix: the guard ignores the stale selection, picks the first
+      // accessible workspace (`beta-workspace`), syncs the SDK selection
+      // to `ws-2`, and redirects DIRECTLY to `/dashboard/beta-workspace/content`.
+      mockUseAuth.mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+        redirectToLogin: mockRedirectToLogin,
+        getAccessToken: mockGetAccessToken,
+        user: {
+          displayName: "Archie",
+          email: "archie@xynes.com",
+          avatarUrl: null,
+        },
+        workspaces: [
+          {
+            id: "ws-2",
+            name: "Beta",
+            slug: "beta-workspace",
+            role: "workspace_member",
+          },
+        ],
+      });
+      const selectWorkspaceSpy = vi.fn();
+      mockUseWorkspace.mockReturnValue({
+        // Stale selection that no longer exists in the auth-validated list.
+        currentWorkspace: {
+          id: "ws-1",
+          name: "Xynes",
+          slug: "acme",
+          role: "workspace_owner",
+        },
+        selectWorkspace: selectWorkspaceSpy,
+      });
+
+      render(
+        <CmsDashboardShell workspaceSlug="acme">
+          <div data-testid="dashboard-body">Should NOT render</div>
+        </CmsDashboardShell>,
+      );
+
+      // Direct redirect to the only accessible workspace — no /dashboard
+      // round-trip that would re-pick the stale slug.
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+      expect(mockReplace).toHaveBeenCalledWith(
+        "/dashboard/beta-workspace/content",
+      );
+      // SDK selection is synced to the accessible workspace so any later
+      // resolver navigation stays out of the loop.
+      expect(selectWorkspaceSpy).toHaveBeenCalledWith("ws-2");
+      // Lumia shell NOT mounted against the stale slug.
+      expect(mockDashboardShell).not.toHaveBeenCalled();
+    });
+
+    it("does NOT redirect when the slug matches a workspace the user can access", () => {
+      // Default beforeEach matches slug=acme → workspace ws-1. Existing
+      // behaviour: shell renders normally and replace is NOT called.
+      render(
+        <CmsDashboardShell workspaceSlug="acme">
+          <div data-testid="dashboard-body">Renders normally</div>
+        </CmsDashboardShell>,
+      );
+
+      expect(mockReplace).not.toHaveBeenCalled();
+      expect(mockDashboardShell).toHaveBeenCalled();
+    });
+
+    it("does NOT redirect while auth bootstrap is still in flight", () => {
+      mockUseAuth.mockReturnValue({
+        isAuthenticated: false,
+        isLoading: true,
+        redirectToLogin: mockRedirectToLogin,
+        getAccessToken: mockGetAccessToken,
+        user: null,
+        // empty list here would normally trigger the no-workspace guard;
+        // but isLoading=true tells us the workspaces array is not final
+        // yet — the guard must wait for isLoading to flip to false.
+        workspaces: [],
+      });
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: null,
+        selectWorkspace: vi.fn(),
+      });
+
+      render(
+        <CmsDashboardShell workspaceSlug="acme">
+          <div data-testid="dashboard-body">May render once loaded</div>
+        </CmsDashboardShell>,
+      );
+
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it("workspace guard fallback uses role=status for screen-reader announcement", () => {
+      const { getByRole } = render(
+        <CmsDashboardShell workspaceSlug="not-my-workspace">
+          <div>body</div>
+        </CmsDashboardShell>,
+      );
+
+      const status = getByRole("status");
+      expect(status).toBeInTheDocument();
+      expect(status.textContent).toContain("Switching workspace");
+    });
+
+    it("redirects to the auth-app onboarding URL when the user has zero workspaces", () => {
+      mockUseAuth.mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+        redirectToLogin: mockRedirectToLogin,
+        getAccessToken: mockGetAccessToken,
+        user: {
+          displayName: "Brand New",
+          email: "new@example.com",
+          avatarUrl: null,
+        },
+        workspaces: [],
+      });
+      mockUseWorkspace.mockReturnValue({
+        currentWorkspace: null,
+        selectWorkspace: vi.fn(),
+      });
+
+      const { getByTestId } = render(
+        <CmsDashboardShell workspaceSlug="acme">
+          <div data-testid="dashboard-body">Should NOT render</div>
+        </CmsDashboardShell>,
+      );
+
+      // The shell uses buildAuthWorkspaceCreationUrl() which prepends
+      // NEXT_PUBLIC_AUTH_APP_URL when set (default test env sets
+      // http://localhost:3100). The URL also carries ?redirect= back to the
+      // CMS dashboard resolver per WSA-FIX-2.
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+      const calledWith = String(mockReplace.mock.calls[0]?.[0] ?? "");
+      expect(calledWith.startsWith("http://localhost:3100/onboarding")).toBe(
+        true,
+      );
+
+      // Fallback main rendered with the no-workspace copy + reason tag.
+      const fallback = getByTestId("cms-dashboard-workspace-guard-fallback");
+      expect(fallback.getAttribute("data-guard-reason")).toBe("no-workspace");
+      expect(fallback.textContent).toContain("Setting up your workspace");
+
+      expect(mockDashboardShell).not.toHaveBeenCalled();
     });
   });
 });

@@ -50,7 +50,11 @@
   },
   "status": {
     "loadingDashboard": "Loading dashboard...",
-    "redirectingToLogin": "Redirecting to login..."
+    "redirectingToLogin": "Redirecting to login...",
+    "noWorkspaceTitle": "Setting up your workspace…",
+    "noWorkspaceDescription": "Redirecting you to create your first workspace.",
+    "wrongWorkspaceTitle": "Switching workspace…",
+    "wrongWorkspaceDescription": "We could not find that workspace. Taking you to one you can access."
   },
   "directory": {
     "ownerOnly": "Only workspace owners can manage directories right now.",

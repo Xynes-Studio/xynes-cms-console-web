@@ -869,7 +869,7 @@ These are **additive** Lumia DS changes — all new fields are optional, all exi
 1. **Persisted body never carries a signed URL when an `objectId` is set.** Asserted by `cms-editor-image-refs.test.ts` "STORAGE-11 invariant: no signed URL survives when objectId is set" — `JSON.stringify` of the normalised body sweep for `X-Amz-Signature`, `X-Amz-Credential`, `X-Amz-Security-Token`, `xynes_live_<hex>`, `AKIA[0-9A-Z]+`.
 2. **Provider URLs never reach the user-visible error surface.** `use-storage-upload-adapter.test.ts` "STORAGE-11 invariant: error messages NEVER include raw provider material" injects a hostile error containing bucket name, AWS access key ID, raw API key, signature parameters, and provider hostnames; the thrown adapter error is asserted not to contain any of them.
 3. **Direct upload `fetch` is credential-less.** Inherited from STORAGE-10's `directProviderUpload` test guarantee.
-4. **Soft-deleted objects look like never-existed.** Inherited from STORAGE-10's `getStorageObject` HTTP-404 = `null` behaviour.
+4. **Soft-deleted objects look like never-existed.** Inherited from STORAGE-10's `getStorageObject` HTTP-404 = `null` behavior.
 5. **Bridge stability.** The `uploadAdapter` reference stays stable across re-renders with stable args (proven by `bridge stability` test) so the Lumia editor's `MediaContext` memo doesn't tear down mid-upload.
 
 ### Quality gates (STORAGE-11)
@@ -1083,3 +1083,46 @@ CMS content cards surface a structured `creator` field threaded end-to-end from 
 
 - `messages/en-US/cms.content.json` adds `card.apiKeyCreator: "Created via API key"`.
 - `messages/en-XA/cms.content.json` adds the pseudo-locale mirror `[CCrreeaatteedd vviiaa AAPPII kkeeyy]`.
+
+## Workspace Slug Guard on `/dashboard/[workspaceSlug]/*` Routes (BUG-AUTH-9, 2026-06-01)
+
+The CMS Console's workspace-scoped routes are protected by `CmsDashboardShell` (mounted from `app/dashboard/[workspaceSlug]/layout.tsx`). Two new guards run AFTER the existing `redirectToLogin` auth guard:
+
+### Wrong-slug guard (cross-tenant probe)
+
+- Trigger: `!isAuthLoading && isAuthenticated && workspaces.length > 0 && workspaceBySlug === null`. The user is signed in, has at least one workspace, but the slug in the URL does NOT match any workspace they can access.
+- Action: pick the first auth-validated workspace whose slug yields a valid dashboard path, call `selectWorkspace(target.id)` to sync the SDK selection, then `router.replace(target.path)` directly to its `/dashboard/<slug>/content` URL. The selection sync ensures any UI surface that depends on `currentWorkspace` reflects the post-redirect state on the next render.
+  - **Why not redirect to `/dashboard` (the resolver)?** PR #43 Codex P1 follow-up: the resolver at `app/dashboard/page.tsx` prefers `currentWorkspace?.slug` over the auth-validated `workspaces` list. If the SDK still has a stale selection (e.g. the user's access to that workspace was revoked but the in-memory selection hasn't been cleared), the resolver sends the user right back to the same inaccessible `/dashboard/<stale-slug>/content`, which immediately re-triggers this guard and produces an infinite redirect loop. Skipping the resolver round-trip + syncing the SDK selection together break the loop deterministically.
+  - **Defensive fallback:** if no accessible workspace yields a valid dashboard path (practically unreachable given `workspaces.length > 0`), we fall back to `router.replace("/dashboard")` and let the resolver render its "Dashboard not found" envelope rather than loop.
+- Render: `<main data-testid="cms-dashboard-workspace-guard-fallback" data-guard-reason="wrong-slug">` with `role="status"` and translated copy from `cms.shell.status.{wrongWorkspaceTitle,wrongWorkspaceDescription}`. The Lumia DashboardShell itself is NOT mounted — no flash of nav rendered against a `null` workspace context.
+
+### No-workspace guard
+
+- Trigger: `!isAuthLoading && isAuthenticated && workspaces.length === 0`. The user is signed in but has no workspaces at all.
+- Action: `router.replace(buildAuthWorkspaceCreationUrl())`. This is the cross-app onboarding link the shell already uses for "Create new workspace" — already honours the WSA-FIX-2 `?redirect=<cms-landing>` semantics so the user lands back on the CMS Console once they create a workspace via the auth app.
+- Render: same fallback `<main>` with `data-guard-reason="no-workspace"` and the `cms.shell.status.{noWorkspaceTitle,noWorkspaceDescription}` strings.
+
+### Order of guards
+
+Auth (redirect to login) runs first; workspace guards (this story) run second. Both are gated on `!isAuthLoading` so a transient empty `workspaces` array during auth bootstrap does not falsely trigger a redirect.
+
+### BUG-CMS-9 contract preservation
+
+The fallback `<main>` uses `min-h-screen` just like the two pre-existing pre-auth fallbacks in `CmsDashboardShell.tsx` (`Loading dashboard…` and `Redirecting to login…`). `CmsDashboardShell.tsx` already sits on the `app/dashboard-shell-contract.test.ts` allowlist for that exact reason — no allowlist change required for BUG-AUTH-9.
+
+### Regression coverage
+
+`src/components/dashboard/CmsDashboardShell.test.tsx > workspace guard (BUG-AUTH-9)` — 6 tests:
+
+1. Unknown slug → direct redirect to first accessible workspace's `/dashboard/<slug>/content` + `selectWorkspace` called with the accessible workspace's id + `data-guard-reason="wrong-slug"` + no shell render.
+2. **Stale-`currentWorkspace` loop regression guard (PR #43 Codex P1):** stale `currentWorkspace.slug` no longer matches any accessible workspace → guard still redirects directly to the first accessible workspace (not `/dashboard`) + syncs the SDK selection + no shell render. Locks in that future changes to the resolver page cannot reintroduce the loop.
+3. Empty workspaces → `router.replace("http://localhost:3100/onboarding...")` + `data-guard-reason="no-workspace"` + no shell render.
+4. Matching slug → no redirect, shell renders normally.
+5. `isLoading === true` → no redirect (waits for auth bootstrap).
+6. Wrong-slug fallback has `role="status"` for screen-reader announcement.
+
+### i18n
+
+- `messages/en-US/cms.shell.json` adds four `status.*` keys.
+- `messages/en-XA/cms.shell.json` mirrors them in the existing doubled-char pseudo pattern.
+- `messages.meta/cms.shell.json` documents the new keys under the existing `status` context.
