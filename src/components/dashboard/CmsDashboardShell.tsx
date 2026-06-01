@@ -298,16 +298,18 @@ export function CmsDashboardShell({
    *      doing, and the resolver page is the canonical "pick a workspace
    *      and continue" surface for this app.
    *
-   * The render guard below uses `useState(false)` to ensure the loading
-   * card stays visible across the `router.replace` transition — without
-   * it, the shell would briefly try to render against the null workspace
-   * before Next.js commits the new route.
+   * The render guard below the effect short-circuits to a fallback
+   * `<main role="status">` so the Lumia `DashboardShell` is never mounted
+   * against a `null` workspace context. The two booleans are derived
+   * (no `useState`) — `workspaceBySlug` is already memoised above and
+   * `isAuthLoading` / `isAuthenticated` come from `useAuth()`, so the
+   * derived values are stable across renders.
    *
-   * Architectural note: BUG-CMS-9 (2026-05-31) locked the dashboard shell
-   * contract via a regression guard at `app/dashboard-shell-contract.test.ts`.
-   * The loading card here uses a `<main className="flex h-full ...">` so it
-   * inherits the shell's scroll-containment behaviour (BUG-LDS-1) without
-   * adding a new `min-h-screen` / `fixed inset-0` escape hatch.
+   * Architectural note: the fallback `<main>` uses `min-h-screen` because
+   * NO `<DashboardShell>` is mounted at this point (same posture as the
+   * two pre-existing pre-auth fallbacks in this file). The BUG-CMS-9
+   * shell-contract regression guard (`app/dashboard-shell-contract.test.ts`)
+   * already allowlists `CmsDashboardShell.tsx` for that pattern.
    */
   const isWorkspaceSlugUnknown =
     !isAuthLoading &&
