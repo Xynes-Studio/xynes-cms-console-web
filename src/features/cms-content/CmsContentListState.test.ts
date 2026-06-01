@@ -72,6 +72,42 @@ describe("resolveCmsContentListState", () => {
     }
   });
 
+  it("returns favourites-empty copy when favoritesOnly is on and no rows match (BUG-CMS-11)", () => {
+    const state = resolveCmsContentListState({
+      isLoading: false,
+      error: null,
+      count: 0,
+      query: "",
+      breadcrumbParts: [],
+      favoritesOnly: true,
+    });
+
+    expect(state.kind).toBe("empty");
+    if (state.kind === "empty") {
+      expect(state.title).toBe("No favourites yet");
+      expect(state.description).toBe(
+        "Star entries you want to revisit, or turn off the favourites filter to see everything.",
+      );
+    }
+  });
+
+  it("prefers favourites-empty over directory-empty when both could apply (BUG-CMS-11)", () => {
+    const state = resolveCmsContentListState({
+      isLoading: false,
+      error: null,
+      count: 0,
+      query: "",
+      breadcrumbParts: ["marketing", "blog"],
+      favoritesOnly: true,
+    });
+
+    expect(state.kind).toBe("empty");
+    if (state.kind === "empty") {
+      // Favourites-empty wins over directory-empty so the user sees the filter is the cause.
+      expect(state.title).toBe("No favourites yet");
+    }
+  });
+
   it("uses provided translated copy for empty states", () => {
     const state = resolveCmsContentListState({
       isLoading: false,
@@ -92,6 +128,8 @@ describe("resolveCmsContentListState", () => {
         directoryEmptyDescription: "[CCrreeaattee hheerree]",
         rootEmptyTitle: "[NNoo eennttrriieess yyeett]",
         rootEmptyDescription: "[CCrreeaattee ffiirrsstt]",
+        favoritesEmptyTitle: "[NNoo ffaavvoouurriitteess yyeett]",
+        favoritesEmptyDescription: "[SSttaarr ffoorr llaatteerr]",
       },
     });
 

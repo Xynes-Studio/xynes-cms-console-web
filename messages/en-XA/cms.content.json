@@ -53,6 +53,8 @@
     "directoryEmptyTitle": "[TThhiiss ddiirreeccttoorryy iiss eemmppttyy]",
     "directoryEmptyDescription": "[CCrreeaattee aa nneeww eennttrryy ttoo aadddd ccoonntteenntt ttoo tthhiiss ddiirreeccttoorryy.]",
     "rootEmptyTitle": "[NNoo ccoonntteenntt eennttrriieess yyeett]",
-    "rootEmptyDescription": "[CCrreeaattee yyoouurr ffiirrsstt ccoonntteenntt eennttrryy ttoo ggeett ssttaarrtteedd.]"
+    "rootEmptyDescription": "[CCrreeaattee yyoouurr ffiirrsstt ccoonntteenntt eennttrryy ttoo ggeett ssttaarrtteedd.]",
+    "favoritesEmptyTitle": "[NNoo ffaavvoouurriitteess yyeett]",
+    "favoritesEmptyDescription": "[SSttaarr eennttrriieess yyoouu wwaanntt ttoo rreevviissiitt, oorr ttuurrnn ooffff tthhee ffaavvoouurriitteess ffiilltteerr ttoo sseeee eevveerryytthhiinngg.]"
   }
 }

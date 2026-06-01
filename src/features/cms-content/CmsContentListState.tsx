@@ -35,6 +35,8 @@ export type CmsContentListStateCopy = {
   directoryEmptyDescription: string;
   rootEmptyTitle: string;
   rootEmptyDescription: string;
+  favoritesEmptyTitle: string;
+  favoritesEmptyDescription: string;
 };
 
 const defaultCopy: CmsContentListStateCopy = {
@@ -52,6 +54,9 @@ const defaultCopy: CmsContentListStateCopy = {
     "Create a new entry to add content to this directory.",
   rootEmptyTitle: "No content entries yet",
   rootEmptyDescription: "Create your first content entry to get started.",
+  favoritesEmptyTitle: "No favourites yet",
+  favoritesEmptyDescription:
+    "Star entries you want to revisit, or turn off the favourites filter to see everything.",
 };
 
 export const resolveCmsContentListState = ({
@@ -60,6 +65,7 @@ export const resolveCmsContentListState = ({
   count,
   query,
   breadcrumbParts,
+  favoritesOnly = false,
   copy = defaultCopy,
 }: {
   isLoading: boolean;
@@ -67,6 +73,7 @@ export const resolveCmsContentListState = ({
   count: number;
   query: string;
   breadcrumbParts: string[];
+  favoritesOnly?: boolean;
   copy?: CmsContentListStateCopy;
 }): CmsContentListViewState => {
   if (isLoading) {
@@ -97,6 +104,18 @@ export const resolveCmsContentListState = ({
       kind: "empty",
       title: copy.searchEmptyTitle,
       description: copy.searchEmptyDescription,
+    };
+  }
+
+  // BUG-CMS-11: when the favourites chip is active and the upstream + override
+  // resolution yields zero rows, prefer the favourites-empty copy over the
+  // generic directory/root empty copy so the user understands the filter is
+  // the reason — not a misleading "nothing here, create one".
+  if (favoritesOnly) {
+    return {
+      kind: "empty",
+      title: copy.favoritesEmptyTitle,
+      description: copy.favoritesEmptyDescription,
     };
   }
 
