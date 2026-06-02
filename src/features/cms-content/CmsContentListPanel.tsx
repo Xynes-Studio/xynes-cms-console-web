@@ -300,12 +300,21 @@ export function CmsContentListPanel() {
 
   // Treat directory resolution as a loading phase so the skeleton shows
   const effectiveIsLoading = isLoading || isDirectoryResolving;
-  const visibleItems = items
+  const itemsWithOverrides = items
     .filter((item) => !deletedEntryIds[item.id])
     .map((item) => ({
       ...item,
       isFavorite: favoriteOverrides[item.id] ?? item.isFavorite,
     }));
+  // BUG-CMS-11: when the favourites chip is active, only entries whose
+  // effective isFavorite (after favoriteOverrides) is true should render. The
+  // filter runs AFTER override application so optimistic toggles flow through
+  // immediately — un-favouriting a row while the chip is active hides it on
+  // the next render; if the server rejects the toggle the override rolls back
+  // and the row re-appears in the same paint.
+  const visibleItems = state.favoritesOnly
+    ? itemsWithOverrides.filter((item) => item.isFavorite)
+    : itemsWithOverrides;
   const visibleCount = visibleItems.length;
 
   const handleShare = useCallback(
@@ -486,6 +495,7 @@ export function CmsContentListPanel() {
     count: visibleCount,
     query: state.query,
     breadcrumbParts,
+    favoritesOnly: state.favoritesOnly,
     copy: {
       loadingTitle: t("state.loadingTitle"),
       loadingDescription: t("state.loadingDescription"),
@@ -499,6 +509,8 @@ export function CmsContentListPanel() {
       directoryEmptyDescription: t("state.directoryEmptyDescription"),
       rootEmptyTitle: t("state.rootEmptyTitle"),
       rootEmptyDescription: t("state.rootEmptyDescription"),
+      favoritesEmptyTitle: t("state.favoritesEmptyTitle"),
+      favoritesEmptyDescription: t("state.favoritesEmptyDescription"),
     },
   });
   const resultsScrollRef = useRef<HTMLDivElement | null>(null);

@@ -97,6 +97,9 @@ vi.mock("next-intl", () => ({
       "cms.content.state.rootEmptyTitle": "No content entries yet",
       "cms.content.state.rootEmptyDescription":
         "Create your first content entry to get started.",
+      "cms.content.state.favoritesEmptyTitle": "No favourites yet",
+      "cms.content.state.favoritesEmptyDescription":
+        "Star entries you want to revisit, or turn off the favourites filter to see everything.",
     };
 
     return messages[`${namespace}.${key}`] ?? `${namespace}.${key}`;
@@ -1506,6 +1509,192 @@ describe("CmsContentListPanel", () => {
         description:
           "Please try again. If the issue persists, contact your workspace owner.",
       });
+    });
+  });
+
+  // ─── BUG-CMS-11 favourites chip filter ────────────────────────────────────
+
+  describe("favourites chip filter (BUG-CMS-11)", () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+      mockedEntriesState = {
+        items: [
+          {
+            id: "entry-fav-1",
+            title: "Favourite entry",
+            description: "",
+            status: "draft",
+            ownerName: null,
+            isFavorite: true,
+          },
+          {
+            id: "entry-fav-2",
+            title: "Plain entry",
+            description: "",
+            status: "draft",
+            ownerName: null,
+            isFavorite: false,
+          },
+          {
+            id: "entry-fav-3",
+            title: "Another favourite",
+            description: "",
+            status: "published",
+            ownerName: null,
+            isFavorite: true,
+          },
+        ],
+        count: 3,
+        isLoading: false,
+        error: null,
+      };
+    });
+
+    it("renders every entry when the favourites chip is off (regression baseline)", () => {
+      mockedQueryState = { ...mockedQueryState, favoritesOnly: false };
+
+      render(<CmsContentListPanel />);
+
+      expect(
+        screen.getByTestId("list-card-entry-fav-1"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("list-card-entry-fav-2"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("list-card-entry-fav-3"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("3 Items")).toBeInTheDocument();
+    });
+
+    it("hides non-favourite entries when the favourites chip is on", () => {
+      mockedQueryState = { ...mockedQueryState, favoritesOnly: true };
+
+      render(<CmsContentListPanel />);
+
+      // Favourite entries are visible.
+      expect(
+        screen.getByTestId("list-card-entry-fav-1"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("list-card-entry-fav-3"),
+      ).toBeInTheDocument();
+
+      // The non-favourite entry is filtered out.
+      expect(
+        screen.queryByTestId("list-card-entry-fav-2"),
+      ).not.toBeInTheDocument();
+
+      // The visible-count surfaced to the toolbar follows the filtered set.
+      expect(screen.getByText("2 Items")).toBeInTheDocument();
+    });
+
+    it("optimistically hides an entry when its favourite is toggled off while the chip is active", async () => {
+      mockedQueryState = { ...mockedQueryState, favoritesOnly: true };
+      // Simulate a successful server response that confirms the un-favourite.
+      mockToggleWorkspaceEntryFavorite.mockResolvedValueOnce({
+        entryId: "entry-fav-1",
+        isFavorite: false,
+      });
+
+      render(<CmsContentListPanel />);
+
+      // Both favourites are visible before the toggle.
+      expect(
+        screen.getByTestId("list-card-entry-fav-1"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("list-card-entry-fav-3"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("2 Items")).toBeInTheDocument();
+
+      const favoriteButton = await screen.findByTestId(
+        "list-favorite-entry-fav-1",
+      );
+      fireEvent.click(favoriteButton);
+
+      // The optimistic override hides the row immediately under favourites-on.
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("list-card-entry-fav-1"),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId("list-card-entry-fav-3"),
+      ).toBeInTheDocument();
+      // Wait for the SDK promise to resolve so we don't leak a pending state.
+      await waitFor(() =>
+        expect(mockToggleWorkspaceEntryFavorite).toHaveBeenCalledWith(
+          expect.objectContaining({ entryId: "entry-fav-1" }),
+        ),
+      );
+    });
+
+    it("rolls back the row when the un-favourite request fails (visible again under favourites-on)", async () => {
+      mockedQueryState = { ...mockedQueryState, favoritesOnly: true };
+      mockToggleWorkspaceEntryFavorite.mockRejectedValueOnce(
+        new Error("HTTP 500 Internal Server Error"),
+      );
+
+      render(<CmsContentListPanel />);
+
+      const favoriteButton = await screen.findByTestId(
+        "list-favorite-entry-fav-1",
+      );
+      fireEvent.click(favoriteButton);
+
+      // The override flips back on rejection, so the row re-renders.
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("list-card-entry-fav-1"),
+        ).toBeInTheDocument(),
+      );
+      expect(
+        screen.getByTestId("list-card-entry-fav-3"),
+      ).toBeInTheDocument();
+      expect(mockToastShow).toHaveBeenCalledWith({
+        variant: "error",
+        title: "Could not update favourite",
+        description:
+          "Please try again. If the issue persists, contact your workspace owner.",
+      });
+    });
+
+    it("shows the favourites-empty copy when the chip is on but no favourites exist", () => {
+      mockedQueryState = { ...mockedQueryState, favoritesOnly: true };
+      mockedEntriesState = {
+        items: [
+          {
+            id: "entry-plain-only",
+            title: "Plain entry",
+            description: "",
+            status: "draft",
+            ownerName: null,
+            isFavorite: false,
+          },
+        ],
+        count: 1,
+        isLoading: false,
+        error: null,
+      };
+
+      render(<CmsContentListPanel />);
+
+      // No content cards.
+      expect(
+        screen.queryByTestId("list-card-entry-plain-only"),
+      ).not.toBeInTheDocument();
+      // Localized favourites-empty copy is rendered (NOT the directory/root copy).
+      expect(screen.getByText("No favourites yet")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Star entries you want to revisit, or turn off the favourites filter to see everything.",
+        ),
+      ).toBeInTheDocument();
+      // The directory-empty copy must NOT appear (this is a nested-path render).
+      expect(
+        screen.queryByText("This directory is empty"),
+      ).not.toBeInTheDocument();
     });
   });
 });

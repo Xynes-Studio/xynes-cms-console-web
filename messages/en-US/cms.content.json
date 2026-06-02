@@ -53,6 +53,8 @@
     "directoryEmptyTitle": "This directory is empty",
     "directoryEmptyDescription": "Create a new entry to add content to this directory.",
     "rootEmptyTitle": "No content entries yet",
-    "rootEmptyDescription": "Create your first content entry to get started."
+    "rootEmptyDescription": "Create your first content entry to get started.",
+    "favoritesEmptyTitle": "No favourites yet",
+    "favoritesEmptyDescription": "Star entries you want to revisit, or turn off the favourites filter to see everything."
   }
 }
