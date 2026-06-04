@@ -9,7 +9,19 @@ export function isValidRedirectUrl(
     return false;
   }
 
-  if (url.startsWith("/") && !url.startsWith("//")) {
+  // Same-origin short-circuit. Only accept paths that BOTH:
+  //   - start with `/`
+  //   - do NOT start with `//` (protocol-relative URL)
+  //   - do NOT start with `/\` (browser-normalised protocol-relative — the
+  //     URL constructor + every modern browser treat `/\foo` as `//foo`,
+  //     which resolves to an off-origin host. See Codex review on PR #46
+  //     for the demonstration: `new URL("/\\attacker/x", "https://cms.xynes.com")`
+  //     → `https://attacker/x`).
+  if (
+    url.startsWith("/") &&
+    !url.startsWith("//") &&
+    !url.startsWith("/\\")
+  ) {
     return true;
   }
 
@@ -39,7 +51,15 @@ export function getSafeRedirectUrl(
   allowedDomains: string[]
 ): string {
   if (!url) return defaultUrl;
-  if (url.startsWith("/") && !url.startsWith("//")) return url;
+  // Same-origin short-circuit — mirror the `isValidRedirectUrl` guard so a
+  // `/\attacker/x` payload cannot bypass validation here either.
+  if (
+    url.startsWith("/") &&
+    !url.startsWith("//") &&
+    !url.startsWith("/\\")
+  ) {
+    return url;
+  }
   return isValidRedirectUrl(url, allowedDomains) ? url : defaultUrl;
 }
 

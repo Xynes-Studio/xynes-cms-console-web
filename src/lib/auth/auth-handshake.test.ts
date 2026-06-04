@@ -104,6 +104,25 @@ describe("composeAuthHandshakeUrls", () => {
     expect(out.redirectIsExplicit).toBe(false);
   });
 
+  it("fails closed for a backslash-based protocol-relative redirect (Codex PR #46 P1)", () => {
+    // `new URL('/\\attacker.com/steal', 'https://cms.xynes.com')` resolves to
+    // `https://attacker.com/steal` — the URL spec treats `/\` like `//`.
+    // The handshake MUST fall back to the default destination so neither the
+    // authenticated `redirect(handshake.resolvedRedirect)` path nor the
+    // anonymous handshake URL leaks the hostile value.
+    const out = composeAuthHandshakeUrls({
+      authAppUrl: AUTH_APP_URL,
+      rawRedirect: "/\\attacker.com/steal",
+      allowedRedirectDomains: ALLOWED,
+    });
+    expect(out.resolvedRedirect).toBe(CMS_DEFAULT_POST_AUTH_DESTINATION);
+    expect(out.redirectIsExplicit).toBe(false);
+    // Defense in depth: the rendered signInHref MUST NOT contain the hostile
+    // host either (the synthesised URL stays on the auth-app origin only).
+    expect(out.signInHref).not.toContain("attacker.com");
+    expect(out.signUpHref).not.toContain("attacker.com");
+  });
+
   it("fails closed for an absolute URL whose host is NOT allowlisted", () => {
     const out = composeAuthHandshakeUrls({
       authAppUrl: AUTH_APP_URL,
