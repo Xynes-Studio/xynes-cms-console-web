@@ -19,6 +19,15 @@ describe("redirect.server", () => {
       expect(isValidRedirectUrl("data:text/html;base64,AAA", allowed)).toBe(false);
     });
 
+    it("rejects backslash-based protocol-relative redirects (Codex PR #46 P1)", () => {
+      // `new URL('/\\attacker.example/steal', 'https://cms.xynes.com')` resolves
+      // to `https://attacker.example/steal` because browsers and the URL spec
+      // normalise `/\` to `//`. The same-origin short-circuit MUST reject it.
+      expect(isValidRedirectUrl("/\\attacker.example/steal", allowed)).toBe(false);
+      expect(isValidRedirectUrl("/\\evil.example/path", allowed)).toBe(false);
+      expect(isValidRedirectUrl("/\\", allowed)).toBe(false);
+    });
+
     it("accepts allowlisted absolute URLs and subdomains", () => {
       expect(
         isValidRedirectUrl("http://localhost:3000/acme/content", allowed)
@@ -54,6 +63,16 @@ describe("redirect.server", () => {
       expect(
         getSafeRedirectUrl("https://evil.example/path", fallback, allowed)
       ).toBe(fallback);
+    });
+
+    it("returns fallback for backslash-based protocol-relative input (Codex PR #46 P1)", () => {
+      // Defense in depth — both validators must reject `/\…` to prevent the
+      // URL constructor from normalising it to an off-origin host.
+      expect(getSafeRedirectUrl("/\\attacker.example/steal", fallback, allowed))
+        .toBe(fallback);
+      expect(getSafeRedirectUrl("/\\evil.example/path", fallback, allowed))
+        .toBe(fallback);
+      expect(getSafeRedirectUrl("/\\", fallback, allowed)).toBe(fallback);
     });
   });
 

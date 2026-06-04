@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "title": "Xynes CMS Console",
+    "description": "A focused publishing console connected to Xynes Workspace Admin."
+  },
+  "nav": {
+    "ariaLabel": "Primary",
+    "brandLabel": "xynes home",
+    "signIn": "Sign in",
+    "signUp": "Sign up"
+  },
+  "hero": {
+    "ariaLabel": "Xynes CMS Console",
+    "headline": "Xynes CMS Console",
+    "subhead": "Write, organize, and publish content in a workspace your editors understand, with Workspace Admin handling access and API keys.",
+    "primaryCta": "Sign in",
+    "secondaryCta": "Create an account",
+    "footnote": "Session cookies only. No tracking cookies."
+  },
+  "features": {
+    "ariaLabel": "What the CMS Console does",
+    "directoryFirst": {
+      "headline": "Structure Editors Can Follow",
+      "body": "Organize pages, posts, and reusable content around the way your team plans work, so publishing does not depend on tribal knowledge."
+    },
+    "workspaceScoped": {
+      "headline": "Connected To Workspace Admin",
+      "body": "Use the same workspace identity, verified domains, and API-key lifecycle your administrators already manage in Xynes Workspace Admin."
+    },
+    "openSource": {
+      "headline": "Developer-Ready Delivery",
+      "body": "Give developers a clean content API while editors keep a simple console for drafting, publishing, and returning to work quickly."
+    }
+  },
+  "trust": {
+    "ariaLabel": "Trust and security"
+  },
+  "footer": {
+    "ariaLabel": "Site footer",
+    "copyright": "© 2026 Xynes Studio. Built in the open.",
+    "columns": {
+      "product": {
+        "heading": "Product",
+        "signIn": "Sign in",
+        "signUp": "Sign up",
+        "workspaceAdmin": "Workspace Admin"
+      },
+      "developers": {
+        "heading": "Developers",
+        "cmsConsoleRepo": "cms-console on GitHub",
+        "docs": "Docs"
+      },
+      "company": {
+        "heading": "Company",
+        "website": "xynes.com",
+        "status": "Status"
+      },
+      "legal": {
+        "heading": "Legal",
+        "privacy": "Privacy",
+        "terms": "Terms",
+        "cookies": "Cookies",
+        "security": "Security"
+      }
+    }
+  },
+  "cookie": {
+    "message": "We use a session cookie for sign-in. No tracking cookies.",
+    "policyLabel": "Cookie policy",
+    "dismissLabel": "Got it"
+  }
+}

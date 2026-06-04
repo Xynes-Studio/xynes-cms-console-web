@@ -17,6 +17,7 @@
     "@lumia-ui/editor": "link:../lumia-ds/packages/editor",
     "@lumia-ui/icons": "link:../lumia-ds/packages/icons",
     "@lumia-ui/layout": "link:../lumia-ds/packages/layout",
+    "@lumia-ui/marketing": "link:../lumia-ds/packages/marketing",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-avatar": "^1.1.2",
     "@radix-ui/react-context-menu": "^2.1.6",
