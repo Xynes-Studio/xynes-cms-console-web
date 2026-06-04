@@ -17,7 +17,10 @@ function setMiddlewareEnv(overrides: Partial<NodeJS.ProcessEnv> = {}) {
 }
 
 function toBase64Url(value: string): string {
-  return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return btoa(value)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 }
 
 function createJwt({
@@ -54,10 +57,23 @@ describe("CMS middleware auth protection", () => {
     expect(response.status).toBe(200);
   });
 
+  it("keeps /SECURITY.md public for anonymous landing-page visitors (LP-CMS)", () => {
+    // The LP-CMS landing page links to /SECURITY.md from the trust strip
+    // and footer. Anonymous visitors MUST be able to read it without being
+    // bounced to login. The `public/SECURITY.md` file is served by Next.js
+    // static-file middleware AFTER this custom middleware, so we have to
+    // mark the path public here.
+    setMiddlewareEnv();
+    const request = new NextRequest("http://localhost:3000/SECURITY.md");
+    const response = middleware(request);
+
+    expect(response.status).toBe(200);
+  });
+
   it("skips auth redirect for Next.js static internals", () => {
     setMiddlewareEnv();
     const request = new NextRequest(
-      "http://localhost:3000/_next/static/chunks/app.js"
+      "http://localhost:3000/_next/static/chunks/app.js",
     );
     const response = middleware(request);
 
@@ -74,18 +90,22 @@ describe("CMS middleware auth protection", () => {
 
   it("protects local e2e fixture routes by default", () => {
     setMiddlewareEnv();
-    const request = new NextRequest("http://localhost:3000/e2e/cms-dashboard-scroll");
+    const request = new NextRequest(
+      "http://localhost:3000/e2e/cms-dashboard-scroll",
+    );
     const response = middleware(request);
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fe2e%2Fcms-dashboard-scroll"
+      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fe2e%2Fcms-dashboard-scroll",
     );
   });
 
   it("keeps local e2e fixture routes public only when the test fixture flag is enabled", () => {
     setMiddlewareEnv({ NEXT_PUBLIC_ENABLE_E2E_FIXTURES: "1" });
-    const request = new NextRequest("http://localhost:3000/e2e/cms-dashboard-scroll");
+    const request = new NextRequest(
+      "http://localhost:3000/e2e/cms-dashboard-scroll",
+    );
     const response = middleware(request);
 
     expect(response.status).toBe(200);
@@ -98,7 +118,7 @@ describe("CMS middleware auth protection", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fe2e-foo"
+      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fe2e-foo",
     );
   });
 
@@ -109,7 +129,7 @@ describe("CMS middleware auth protection", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fdashboard"
+      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Fdashboard",
     );
   });
 
@@ -120,7 +140,7 @@ describe("CMS middleware auth protection", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Facme%2Fcontent"
+      "http://localhost:3100/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Facme%2Fcontent",
     );
   });
 
@@ -168,7 +188,7 @@ describe("CMS middleware auth protection", () => {
       exp: Math.floor(Date.now() / 1000) + 300,
     });
     const encodedPayload = `base64-${toBase64Url(
-      JSON.stringify([validToken, "refresh-token"])
+      JSON.stringify([validToken, "refresh-token"]),
     )}`;
     const request = {
       nextUrl: new URL("http://localhost:3000/acme/content"),
@@ -194,7 +214,7 @@ describe("CMS middleware auth protection", () => {
       exp: Math.floor(Date.now() / 1000) + 300,
     });
     const encodedPayload = `base64-${toBase64Url(
-      JSON.stringify([validToken, "refresh-token"])
+      JSON.stringify([validToken, "refresh-token"]),
     )}`;
     const splitIndex = Math.floor(encodedPayload.length / 2);
     const chunk0 = encodedPayload.slice(0, splitIndex);
@@ -202,7 +222,7 @@ describe("CMS middleware auth protection", () => {
     const headers = new Headers();
     headers.set(
       "cookie",
-      `sb-localhost-auth-token.0=${chunk0}; sb-localhost-auth-token.1=${chunk1}`
+      `sb-localhost-auth-token.0=${chunk0}; sb-localhost-auth-token.1=${chunk1}`,
     );
     const request = {
       nextUrl: new URL("http://localhost:3000/acme/content"),

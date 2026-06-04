@@ -1,0 +1,24 @@
+{
+  "namespace": "cms.landing",
+  "owner": "xynes-cms-console-web",
+  "audience": "First-time visitors landing on cms.xynes.com / before they sign in. Mostly returning users hitting the host root from a bookmark or deep link; some net-new visitors arriving from the apex.",
+  "context": {
+    "meta": "Localized <head> title + description served by app/page.tsx generateMetadata. Title is rendered by the browser as a tab label; description feeds search/share previews. Keep both under ~70/160 chars so they don't truncate.",
+    "nav": "Top marketing nav (sticky on scroll). 'brandLabel' is read by screen readers for the brand mark; the visible mark is a graphic. Sign-in / sign-up CTAs forward to auth.xynes.com via the cross-app handshake — translators MUST NOT touch URLs (URLs live in src/lib/landing-copy.ts).",
+    "hero": "Single <h1> + sub-copy + two CTAs. Primary CTA is sign-in (returning user funnel), secondary CTA is sign-up. 'footnote' is a small trust line under the CTA row. The hero shape mirrors LP-AUTH so cms.xynes.com/ and auth.xynes.com/ feel like one product.",
+    "features": "Three feature cards (one row on desktop). Each card has a headline + body; the icon id is structural (lives in landing-copy.ts). The card set is intentionally tight and honest — promises only what the platform ships at MVP.",
+    "trust": "Trust strip below the feature grid. Carries the open-source repo link + license badge + security policy. No residency assertion until product confirms the hosting region (00-overview §14 Q4 open question).",
+    "footer": "Four columns: Product / Developers / Company / Legal. Mirrors the LP-AUTH footer for visual parity across the two host roots.",
+    "cookie": "Non-blocking sticky disclosure. Acknowledges the session cookie used for sign-in; we ship no tracking cookies."
+  },
+  "consumes": [
+    "@lumia-ui/marketing — MarketingNav, MarketingHero, MarketingFeatureGrid + MarketingFeatureCard, MarketingTrustStrip, MarketingFooter, CookieDisclosure (LP-DS primitives)",
+    "@lumia-ui/icons — feature card icons (folder, key, code)"
+  ],
+  "security": {
+    "secretPolicy": "Never include tokens, raw API keys, hashes, internal request ids, or stack traces in translated strings. The full hostile-pattern sweep (xynes_live_*, AKIA*, key_hash, access_token, api_key, X-Amz-Signature) is enforced by src/lib/landing-copy.test.ts.",
+    "htmlPolicy": "Messages are rendered as text. Do not add HTML markup to catalog values.",
+    "linkPolicy": "All URLs (CTAs, footer links, OSS repo) live in src/lib/landing-copy.ts behind a safe-href allowlist; translators MUST NOT add URLs to message strings.",
+    "marketingHonestyPolicy": "Catalog copy must describe what the platform actually ships at MVP. Do not assert features that require operator-side env flips (e.g. STORAGE_PROCESSOR_MODE=live processors), audit cadences that do not exist, or residency regions that have not been confirmed by product."
+  }
+}

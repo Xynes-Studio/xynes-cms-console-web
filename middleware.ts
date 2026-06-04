@@ -4,18 +4,11 @@ import {
   getSafeRedirectUrl,
 } from "./src/lib/auth/redirect.server";
 import { getCmsServerAuthRuntimeConfig } from "./src/lib/auth/server-config";
+import { hasLikelyAuthenticatedSession } from "./src/lib/auth/cookie-session";
 
-const PUBLIC_PATHS = new Set<string>(["/", "/logout"]);
+const PUBLIC_PATHS = new Set<string>(["/", "/logout", "/SECURITY.md"]);
 const PUBLIC_PREFIXES = ["/_next", "/favicon.ico", "/api"];
 const E2E_FIXTURE_PREFIX = "/e2e";
-const AUTH_COOKIE_KEY_PATTERNS = [
-  /^sb-.+-auth-token$/,
-  /^sb-.+-auth-token\.\d+$/,
-  /^supabase-auth-token$/,
-  /^supabase-auth-token\.\d+$/,
-];
-
-type ParsedCookie = { name: string; value: string };
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) {
@@ -33,160 +26,6 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-function base64UrlDecode(value: string): string | null {
-  try {
-    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-    const padding = "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
-    return atob(normalized + padding);
-  } catch {
-    return null;
-  }
-}
-
-function decodeCookieValue(rawValue: string): string {
-  try {
-    return decodeURIComponent(rawValue);
-  } catch {
-    return rawValue;
-  }
-}
-
-function extractAccessTokenFromCookieValue(cookieValue: string): string | null {
-  const decoded = decodeCookieValue(cookieValue).trim();
-  const maybeBase64Payload = decoded.startsWith("base64-")
-    ? (() => {
-        const encodedPayload = decoded.slice("base64-".length);
-        const decodedPayload = base64UrlDecode(encodedPayload);
-        return decodedPayload ?? decoded;
-      })()
-    : decoded;
-
-  try {
-    const parsed = JSON.parse(maybeBase64Payload) as
-      | string
-      | string[]
-      | { access_token?: string };
-    if (typeof parsed === "string") {
-      return parsed;
-    }
-    if (Array.isArray(parsed)) {
-      return typeof parsed[0] === "string" ? parsed[0] : null;
-    }
-    if (parsed && typeof parsed.access_token === "string") {
-      return parsed.access_token;
-    }
-  } catch {
-    // Non-JSON payloads are allowed to continue as raw JWT candidates.
-  }
-
-  return maybeBase64Payload.includes(".") ? maybeBase64Payload : null;
-}
-
-function isJwtLikeAndNotExpired(token: string): boolean {
-  const segments = token.split(".");
-  if (segments.length !== 3) {
-    return false;
-  }
-
-  const payloadRaw = base64UrlDecode(segments[1]);
-  if (!payloadRaw) {
-    return false;
-  }
-
-  try {
-    const payload = JSON.parse(payloadRaw) as {
-      exp?: number;
-      sub?: string;
-    };
-    if (typeof payload.exp !== "number") {
-      return false;
-    }
-    if (!payload.sub || typeof payload.sub !== "string") {
-      return false;
-    }
-    return payload.exp > Math.floor(Date.now() / 1000);
-  } catch {
-    return false;
-  }
-}
-
-function parseCookiesFromHeaders(request: NextRequest): ParsedCookie[] {
-  const uniqueCookies = new Map<string, string>();
-
-  request.cookies.getAll().forEach((cookie) => {
-    if (!uniqueCookies.has(cookie.name)) {
-      uniqueCookies.set(cookie.name, cookie.value);
-    }
-  });
-  const rawCookieHeader = request.headers.get("cookie") ?? "";
-
-  rawCookieHeader
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .forEach((entry) => {
-      const separatorIndex = entry.indexOf("=");
-      if (separatorIndex <= 0) {
-        return;
-      }
-      const name = entry.slice(0, separatorIndex).trim();
-      const value = entry.slice(separatorIndex + 1);
-      if (!uniqueCookies.has(name)) {
-        uniqueCookies.set(name, value);
-      }
-    });
-
-  return Array.from(uniqueCookies.entries()).map(([name, value]) => ({
-    name,
-    value,
-  }));
-}
-
-function getCandidateTokens(cookies: ParsedCookie[]): string[] {
-  const directTokens: string[] = [];
-  const chunkedByBaseName = new Map<string, Array<{ index: number; value: string }>>();
-
-  for (const cookie of cookies) {
-    if (!AUTH_COOKIE_KEY_PATTERNS.some((pattern) => pattern.test(cookie.name))) {
-      continue;
-    }
-
-    const chunkMatch = cookie.name.match(/^(.*)\.(\d+)$/);
-    if (chunkMatch) {
-      const baseName = chunkMatch[1];
-      const index = Number(chunkMatch[2]);
-      const existing = chunkedByBaseName.get(baseName) ?? [];
-      existing.push({ index, value: cookie.value });
-      chunkedByBaseName.set(baseName, existing);
-      continue;
-    }
-
-    const token = extractAccessTokenFromCookieValue(cookie.value);
-    if (token) {
-      directTokens.push(token);
-    }
-  }
-
-  for (const [, chunks] of chunkedByBaseName) {
-    const stitched = chunks
-      .sort((a, b) => a.index - b.index)
-      .map((chunk) => chunk.value)
-      .join("");
-    const token = extractAccessTokenFromCookieValue(stitched);
-    if (token) {
-      directTokens.push(token);
-    }
-  }
-
-  return directTokens;
-}
-
-function hasLikelyAuthenticatedSession(request: NextRequest): boolean {
-  const cookies = parseCookiesFromHeaders(request);
-  const candidateTokens = getCandidateTokens(cookies);
-  return candidateTokens.some(isJwtLikeAndNotExpired);
-}
-
 export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
 
@@ -202,7 +41,7 @@ export function middleware(request: NextRequest): NextResponse {
   const safeRedirect = getSafeRedirectUrl(
     request.nextUrl.toString(),
     fallbackRedirect,
-    allowedDomains
+    allowedDomains,
   );
 
   const loginUrl = buildAuthRouteUrl(authAppUrl, "login", safeRedirect);

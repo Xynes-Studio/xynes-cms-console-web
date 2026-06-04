@@ -7,6 +7,8 @@
 @source "../node_modules/@lumia-ui/editor/dist/**/*.{js,mjs,cjs}";
 @source "../node_modules/@lumia-ui/layout/dist/**/*.{js,mjs,cjs}";
 @source "../node_modules/@lumia-ui/icons/dist/**/*.{js,mjs,cjs}";
+@source "../node_modules/@lumia-ui/marketing/dist/**/*.{js,mjs,cjs}";
+@source "../lumia-ds/packages/marketing/src/**/*.{js,ts,jsx,tsx}";
 
 :root {
   --background: #ffffff;

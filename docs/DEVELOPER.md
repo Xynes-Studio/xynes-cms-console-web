@@ -1159,3 +1159,71 @@ The fallback `<main>` uses `min-h-screen` just like the two pre-existing pre-aut
 - `messages/en-US/cms.shell.json` adds four `status.*` keys.
 - `messages/en-XA/cms.shell.json` mirrors them in the existing doubled-char pseudo pattern.
 - `messages.meta/cms.shell.json` documents the new keys under the existing `status` context.
+
+## Public Landing Page (LP-CMS)
+
+> **Surface:** `https://cms.xynes.com/`
+> **Plan reference:** [LP-CMS](../../infra/docs/plans/2026-06-04-landing-page-template/03-xynes-cms-console-web-landing.md)
+> **Lumia DS dependency:** `@lumia-ui/marketing` (LP-DS primitives)
+
+LP-CMS replaces the Next.js starter placeholder at `/` with a real public marketing splash that mirrors the LP-AUTH (`auth.xynes.com/`) posture: one page, vertical scroll, **three feature cards** (matching LP-AUTH's cadence), trust strip, footer, non-blocking cookie disclosure. **No FAQ section** — earlier iterations carried one, but every honest answer either leaked implementation detail (ClamAV, R2, signed-URL multipart) or required a documentation surface (`docs.xynes.com`) that does not yet exist. Authenticated visitors are server-side redirected straight to `/dashboard`; anonymous visitors see the splash and reach `/login` / `/signup` via the auth-app handshake.
+
+### Hero CTA shape (mirrors LP-AUTH verbatim)
+
+- Primary CTA: **Sign in** → `${authAppUrl}/login` (returning user funnel — dominant case for `cms.xynes.com/`).
+- Secondary CTA: **Create an account** → `${authAppUrl}/signup`.
+
+Both CTAs are same-origin auth handshake; neither uses `target="_blank"`. The OSS repo link lives in the trust strip + footer Developers column, not in the hero.
+
+### Marketing-honesty policy
+
+`messages.meta/cms.landing.json` carries a `marketingHonestyPolicy` field that codifies what catalog copy must NOT assert. The companion test `landing-copy.test.ts > catalog never overpromises features that require operator-side env flips` enforces it: the catalog cannot mention H.264 transcodes, WebP/AVIF variants, PDF previews, ClamAV, Cloudflare R2, or audit cadences — all of those are either operator-flipped at MVP (STORAGE_PROCESSOR_MODE=live + sidecars) or undecided.
+
+### Server vs client split
+
+- `app/page.tsx` is an RSC. It (a) probes the Supabase auth cookie via `hasLikelyAuthenticatedSession`, (b) composes the `${authAppUrl}/login` and `${authAppUrl}/signup` URLs against the runtime allowlist, (c) redirects authenticated visitors immediately, (d) renders `<LandingScreen>` for anonymous visitors. It also exposes `generateMetadata()` which reuses the same locale negotiation path as the root layout so `<head>` is i18n-aware (en-US + en-XA).
+- `src/components/landing/LandingScreen.tsx` is a `"use client"` component (required because `MarketingNav` and `CookieDisclosure` ship `'use client'` boundaries). It consumes `useTranslations('cms.landing')` and renders the LP-DS marketing primitives.
+
+### Auth handshake contract
+
+`src/lib/auth/auth-handshake.ts::composeAuthHandshakeUrls()` is the single point of truth for composing the sign-in / sign-up CTA URLs.
+
+- Always-safe defaults: when no `?redirect=` is supplied, OR the supplied value resolves to the documented default (`/dashboard`), the CTAs land on **bare** `${authAppUrl}/login` and `${authAppUrl}/signup`. Appending `?redirect=/dashboard` would trip the auth-app's login redirect-loop guard.
+- When the visitor brings an allowlisted deep link (e.g. `?redirect=https://cms.xynes.com/dashboard/acme/content`), the CTAs carry `?redirect=<encoded>`.
+- Hostile values (`javascript:`, `data:`, `vbscript:`, protocol-relative `//host`, unallowed external hosts) fail closed to `/dashboard` via `getSafeRedirectUrl`.
+
+### Cookie-session helper
+
+`src/lib/auth/cookie-session.ts` was extracted from `middleware.ts` to deduplicate the JWT-shape probe between the middleware (Edge runtime) and the LP-CMS RSC (Node runtime). Both call `hasLikelyAuthenticatedSession({ cookies, headers })` with the request shape they have. Middleware behaviour is preserved byte-for-byte — the `middleware.test.ts` suite is the regression guard.
+
+### Where copy lives
+
+| Surface | Source |
+|---|---|
+| Human-editable copy doc | `docs/marketing-copy.md` |
+| Runtime catalog (English) | `messages/en-US/cms.landing.json` |
+| Pseudo-locale (stress test) | `messages/en-XA/cms.landing.json` |
+| Translator metadata sidecar | `messages.meta/cms.landing.json` |
+| Structural data (URLs, icons, footer columns) | `src/lib/landing-copy.ts` |
+
+Catalog parity is enforced by `src/lib/landing-copy.test.ts`. Translators MUST NOT add URLs or HTML to catalog values — the sidecar's `linkPolicy` + `htmlPolicy` document this. URLs are sanitized at the structural layer; a hostile catalog cannot inject `javascript:` into a footer link.
+
+### Tests
+
+- `src/lib/landing-copy.test.ts` — structural data + footer builder + catalog parity (en-US ↔ en-XA) + hostile-pattern sweep + SECURITY.md mirror parity.
+- `src/lib/auth/auth-handshake.test.ts` — handshake URL composer (every redirect failure mode + happy paths).
+- `src/lib/auth/cookie-session.test.ts` — extracted helpers regression baseline.
+- `src/components/landing/LandingScreen.test.tsx` — wiring contract (CTAs land on the right URLs, footer columns render, external-link `rel`, no FAQ / form / password / email input, en-XA pseudo-locale renders without leaking key paths). Follows the existing CMS console convention of mocking `@lumia-ui/*` modules.
+- `app/page.test.tsx` — RSC contract (anonymous → render LandingScreen; authenticated → `redirect('/dashboard')`; every `?redirect=` failure mode; `generateMetadata` honours `xynes_locale` cookie + `accept-language` and fails closed on hostile cookies).
+
+### Security posture
+
+- No `<form>`, no password input, no email input on `/`. The only CTA targets are the auth-app handshake URLs and the OSS repo on GitHub.
+- Every external link carries `target="_blank" rel="noopener noreferrer"`.
+- No client-side analytics, no `posthog-js` (STORAGE-LIVE-5 invariant — flag evaluation stays gateway-side).
+- The `<CookieDisclosure>` is sticky, non-blocking, non-modal, and persists dismissal in `localStorage` only — **no tracking cookies are set**.
+- `SECURITY.md` lives at the repo root AND at `public/SECURITY.md` (Next.js serves the latter at `/SECURITY.md`). A test asserts they stay byte-identical.
+
+### Docker dev-stack note
+
+`@lumia-ui/marketing` is a new `link:` dependency. After this branch lands, operators rebuilding the CMS console container must also pull `xynes-front-end/infra`'s sibling branch (`feature/LP-CMS-docker-mounts-marketing`) which adds the `marketing` package build step to `scripts/start-cms-dev.sh` plus a dedicated `node_modules_lumia_marketing` volume. The container mounts the whole `lumia-ds/` workspace, so marketing src+dist+package.json are already reachable; only the build step and the cache volume needed adding. Same trap as the `drizzle-orm` / `@lumia-ui/layout` precedents (STORAGE-LIVE-3 §11, BUG-LDS-1).

@@ -1,6 +1,15 @@
 # xynes-cms-console-web
 
-Next.js 16 dashboard application for the Xynes CMS console. Provides the authenticated workspace UI for content management: directory tree, entry list, editor, and related actions.
+Next.js 16 dashboard application for the Xynes CMS console. Provides:
+
+- The **public landing page** at `/` (LP-CMS) — a one-page marketing splash for first-time visitors hitting `cms.xynes.com/` before they sign in.
+- The **authenticated workspace UI** for content management: directory tree, entry list, editor, and related actions.
+
+## Public routes
+
+- `/` — LP-CMS marketing landing page. Public; renders [`LandingScreen`](src/components/landing/LandingScreen.tsx) using Lumia DS marketing primitives (`@lumia-ui/marketing`). Anonymous visitors see the splash; authenticated visitors are server-side redirected to `/dashboard`. Copy lives in [`docs/marketing-copy.md`](docs/marketing-copy.md); structural data + URLs live in [`src/lib/landing-copy.ts`](src/lib/landing-copy.ts); catalogs live under [`messages/{en-US,en-XA}/cms.landing.json`](messages/en-US/cms.landing.json). Translator metadata: [`messages.meta/cms.landing.json`](messages.meta/cms.landing.json).
+- `/SECURITY.md` — Repo security policy (mirror of the root `SECURITY.md`). Reachable as a static asset.
+- `/logout` — Cross-app logout handshake.
 
 ## Tech Stack
 
