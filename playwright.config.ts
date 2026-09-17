@@ -8,7 +8,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Next.js fixture compilation can exceed the per-test timeout when several
+  // cold routes are requested in parallel. Match CI locally for determinism.
+  workers: 1,
   reporter: process.env.CI ? "html" : "list",
   use: {
     baseURL: e2eBaseUrl,

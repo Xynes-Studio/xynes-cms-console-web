@@ -1310,9 +1310,10 @@ describe("CmsContentListPanel", () => {
     });
 
     it("optimistically toggles favorite for a single row without blocking other actions", async () => {
-      let resolveFavorite:
-        | ((value: { entryId: string; isFavorite: boolean }) => void)
-        | null = null;
+      let resolveFavorite!: (value: {
+        entryId: string;
+        isFavorite: boolean;
+      }) => void;
       mockToggleWorkspaceEntryFavorite.mockImplementationOnce(
         () =>
           new Promise<{ entryId: string; isFavorite: boolean }>((resolve) => {
@@ -1348,7 +1349,7 @@ describe("CmsContentListPanel", () => {
         "/dashboard/xynes-studio-llp/content/entry/entry-action-2/edit",
       );
 
-      resolveFavorite?.({ entryId: "entry-action-1", isFavorite: true });
+      resolveFavorite({ entryId: "entry-action-1", isFavorite: true });
 
       await waitFor(() =>
         expect(
@@ -1416,13 +1417,11 @@ describe("CmsContentListPanel", () => {
     });
 
     it("confirms in Lumia dialog and deletes a single row without blocking other rows", async () => {
-      let resolveDelete:
-        | ((value: {
-            success: boolean;
-            entryId: string;
-            deletedAt: string | null;
-          }) => void)
-        | null = null;
+      let resolveDelete!: (value: {
+        success: boolean;
+        entryId: string;
+        deletedAt: string | null;
+      }) => void;
       mockDeleteWorkspaceContentEntry.mockImplementationOnce(
         () =>
           new Promise<{
@@ -1461,7 +1460,7 @@ describe("CmsContentListPanel", () => {
         "/dashboard/xynes-studio-llp/content/entry/entry-action-2/edit",
       );
 
-      resolveDelete?.({
+      resolveDelete({
         success: true,
         entryId: "entry-action-1",
         deletedAt: "2026-04-20T00:00:00.000Z",

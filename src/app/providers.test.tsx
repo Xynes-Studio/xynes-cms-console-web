@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Providers } from "./providers";
+import { getCmsMessages } from "../i18n/config";
 
 const { getCmsAuthConfigMock } = vi.hoisted(() => ({
   getCmsAuthConfigMock: vi.fn(() => ({
@@ -84,7 +85,7 @@ vi.mock("next-intl", () => ({
 describe("Providers", () => {
   it("composes i18n, AuthProvider, CmsFeatureFlagsProvider, WorkspaceProvider, and ToastProvider at app root", () => {
     render(
-      <Providers locale="en-XA" messages={{ cms: { shell: {} } }}>
+      <Providers locale="en-XA" messages={getCmsMessages("en-XA")}>
         <span data-testid="child">cms</span>
       </Providers>,
     );
