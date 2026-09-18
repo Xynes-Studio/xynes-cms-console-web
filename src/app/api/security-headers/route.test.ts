@@ -3,11 +3,7 @@ import { GET } from './route';
 
 describe('Security Headers API Route', () => {
   it('should return a successful response', async () => {
-    const request = new Request('http://localhost:3000/api/security-headers', {
-      method: 'GET',
-    });
-
-    const response = await GET(request);
+    const response = await GET();
 
     expect(response.status).toBe(200);
 

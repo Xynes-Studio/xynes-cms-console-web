@@ -412,7 +412,7 @@ describe("CmsDashboardShell", () => {
 
     const props = mockDashboardShell.mock.calls[0][0] as DashboardShellProps;
 
-    props.onNavigate("/dashboard/acme/settings");
+    props.onNavigate?.("/dashboard/acme/settings", props.navItems[0]!);
     expect(mockPush).toHaveBeenCalledWith("/dashboard/acme/settings");
 
     props.onWorkspaceSelect("ws-2");

@@ -288,7 +288,7 @@ describe("fetchCmsWorkspaceIntegrationStatus", () => {
     expect(serialized).not.toContain("rawKey");
     expect(serialized).not.toContain("keyHash");
     expect(Object.keys(status)).toEqual(
-      expect.arrayContaining(EXPECTED_STATUS_KEYS),
+      expect.arrayContaining([...EXPECTED_STATUS_KEYS]),
     );
   });
 

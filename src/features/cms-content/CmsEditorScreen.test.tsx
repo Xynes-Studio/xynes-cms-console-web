@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsEditorScreen } from "./CmsEditorScreen";
 import { createEmptyLumiaDocument } from "./cms-editor-body";
 import type { WorkspaceContentEntry } from "../../lib/dashboard/content-entries-client";
+import type { UseCmsEntryAutosaveResult } from "../../lib/dashboard/use-cms-entry-autosave";
 
 // ─── hoisted mocks ───────────────────────────────────────────────────────────
 // vi.fn() refs used as direct property values in vi.mock factories must be
@@ -58,8 +59,10 @@ let mockCurrentWorkspace = {
   name: "Acme Team",
 };
 let mockLumiaEditorMode: MockLumiaEditorMode = "passthrough";
-let mockAutosaveState = {
-  saveState: "idle" as const,
+let mockAutosaveState: UseCmsEntryAutosaveResult<
+  ReturnType<typeof createEmptyLumiaDocument>
+> = {
+  saveState: "idle",
   lastSavedAt: null as string | null,
   error: null,
   pendingSnapshot: null,
@@ -334,7 +337,7 @@ vi.mock("@lumia-ui/editor", () => ({
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-const makeEditorBody = () => ({
+const makeEditorBody = (): ReturnType<typeof createEmptyLumiaDocument> => ({
   root: {
     type: "root",
     version: 1,
