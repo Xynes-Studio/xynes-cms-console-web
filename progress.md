@@ -175,3 +175,11 @@
 - Code-simplifier and local security review found no P0/P1/P2 issue in the
   CMS-REL-1 diff and no behavior-preserving refactor worth taking after the
   complete test evidence. `git diff --check` is clean.
+- The final-image protected-route smoke returned HTTP 307 to the configured
+  auth application, preserving the existing unauthenticated dashboard policy.
+- Created the human handoff at
+  `docs/manual-verification/CMS-REL-1-production-runtime.md`, including the
+  exact validated implementation SHA, image identity, all acceptance evidence,
+  reproducible commands, cleanup/rollback, and the CMS-REL-2 browser follow-up.
+- Trivy 0.66.0 source-context secret scan completed read-only with generated
+  output and dependency directories excluded: no issues detected, exit code 0.
