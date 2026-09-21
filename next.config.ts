@@ -2,9 +2,10 @@ import path from "node:path";
 import type { NextConfig } from "next";
 
 const configuredTurbopackRoot = process.env.TURBOPACK_ROOT?.trim();
+const frontendRoot = path.resolve(__dirname, "..");
 const turbopackRoot = configuredTurbopackRoot
   ? path.resolve(__dirname, configuredTurbopackRoot)
-  : path.resolve(__dirname, "..");
+  : frontendRoot;
 
 const appReactAliases = {
   react: path.resolve(__dirname, "node_modules/react"),
@@ -37,6 +38,8 @@ const turbopackReactAliases = {
 };
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: frontendRoot,
   experimental: {
     externalDir: true,
   },

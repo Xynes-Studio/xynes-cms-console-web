@@ -46,6 +46,8 @@ Environment is loaded via `xynes-front-end/infra/scripts/with-env.mjs`. Required
 | `NEXT_PUBLIC_API_URL` | Gateway base URL (e.g. `http://localhost:4100`) |
 | `NEXT_PUBLIC_AUTH_APP_URL` | Auth app origin for cross-app handoff |
 | `NEXT_PUBLIC_CMS_DEBUG` | Set to `1` to enable verbose `[CMS]` console logs |
+| `NEXT_API_URL` | Server-only gateway base URL used by `/api/health`; required in production and never exposed to the browser |
+| `XYNES_BUILD_VERSION` | Immutable image/version identifier returned by `/api/health`; required for production image builds |
 
 ## Run Scripts
 
@@ -58,6 +60,94 @@ pnpm test:watch   # run Vitest in watch mode
 pnpm test:coverage # run with coverage report (target: ≥80% statements + branches)
 pnpm test:e2e     # run Playwright browser smoke tests
 ```
+
+## Production image and health
+
+The service-local Dockerfile builds from the `xynes-front-end/` parent folder,
+not from this repository directory. That context is required for the linked
+Auth SDK, i18n, and Lumia packages. `Dockerfile.dockerignore` limits the context
+and excludes Git metadata, local environment files, dependency stores, test
+output, coverage, and previous builds.
+
+The following values are non-secret local fixtures. Replace every public value
+with the intended environment configuration in a real release build; never pass
+service tokens, service-role keys, raw API keys, or other server secrets as
+Docker build arguments.
+
+```bash
+cd /Users/archanray/xynes-erp/xynes-front-end
+
+docker buildx build \
+  -f xynes-cms-console-web/Dockerfile \
+  --target prod \
+  --load \
+  --build-arg XYNES_BUILD_VERSION=sha-local \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=https://fixtures.supabase.local \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=fixture-anon-key \
+  --build-arg NEXT_PUBLIC_API_URL=http://127.0.0.1:4100 \
+  --build-arg NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000 \
+  --build-arg NEXT_PUBLIC_AUTH_APP_URL=http://127.0.0.1:3100 \
+  --build-arg NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS=127.0.0.1:3000,127.0.0.1:3100 \
+  -t xynesplatform/xynes-cms-console-web:local-test \
+  .
+```
+
+The final image listens on `0.0.0.0:3000`, runs as UID/GID 1001, and contains
+only Next.js standalone output plus `public` and `.next/static`. Run it with a
+server-only gateway URL and hardened filesystem settings:
+
+```bash
+docker run --rm \
+  --name xynes-cms-console-local \
+  -p 127.0.0.1:3000:3000 \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+  --security-opt no-new-privileges:true \
+  -e NEXT_API_URL=http://host.docker.internal:4100 \
+  xynesplatform/xynes-cms-console-web:local-test
+```
+
+`GET /api/health` is public because Docker must call it without credentials. It
+probes only `${NEXT_API_URL}/health`, with a one-second timeout, one in-flight
+probe shared by concurrent requests, and a 30-second cache for failures. A
+healthy gateway returns HTTP 200; a failed, unavailable, timed-out, or
+misconfigured gateway returns HTTP 503. Both paths use the same closed schema:
+
+```json
+{
+  "ok": true,
+  "service": "xynes-cms-console-web",
+  "version": "sha-local",
+  "uptime_seconds": 42,
+  "checks": { "gateway": "ok" }
+}
+```
+
+The response uses `Cache-Control: no-store` and never includes the gateway URL,
+environment values, upstream response bodies, errors, tokens, request IDs,
+stack traces, or file paths. `NEXT_PUBLIC_API_URL` is accepted as a health-probe
+fallback only outside production. Production requires `NEXT_API_URL` and
+`XYNES_BUILD_VERSION` and otherwise fails closed.
+
+Inspect the image and run the pinned Trivy scan:
+
+```bash
+docker image inspect xynesplatform/xynes-cms-console-web:local-test \
+  --format 'user={{.Config.User}} health={{json .Config.Healthcheck}} size={{.Size}}'
+
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v trivy-cache:/root/.cache \
+  aquasec/trivy:0.66.0 image \
+  --scanners vuln,secret \
+  --severity HIGH,CRITICAL \
+  --exit-code 1 \
+  xynesplatform/xynes-cms-console-web:local-test
+```
+
+The Docker healthcheck uses `/api/health` with interval `30s`, timeout `5s`,
+start period `15s`, and three retries. Deployment and Compose rollout remain
+outside this repository story.
 
 ## Folder Structure
 
