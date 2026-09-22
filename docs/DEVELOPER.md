@@ -22,8 +22,7 @@
 - `docs/*`: standards and implementation notes.
 
 Feature ownership for cross-app auth:
-- `middleware.ts`: protect-all route enforcement and public allowlist policy.  
-  **Next.js 16 deprecation note:** middleware is deprecated in favor of `proxy.ts` for new implementations. `proxy.ts` runs on the `nodejs` runtime, while `middleware.ts` remains `edge`. Prefer `proxy.ts` unless edge runtime behavior is explicitly required. Migration reference: `https://nextjs.org/docs/app/guides/upgrading/version-16`.
+- `proxy.ts`: Next.js 16 protect-all route enforcement and public allowlist policy on the Node.js runtime. The legacy `middleware.ts` convention must not be reintroduced. Migration reference: `https://nextjs.org/docs/app/guides/upgrading/version-16#middleware-to-proxy`.
 - `app/logout/route.ts`: server route that delegates logout to auth-app authority.
 - `src/lib/auth/logout.ts`: Tier 1 pure helper for canonical auth-app logout URL handoff.
 
@@ -53,9 +52,8 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 
 ## Auth Routing Standards (S1-006/S1-007)
 
-- CMS follows protect-all by default through `middleware.ts`.  
-  **Next.js 16 deprecation note:** for any new route interception logic, implement `proxy.ts` by default (node runtime) and keep `middleware.ts` only for edge-specific needs. Migration reference: `https://nextjs.org/docs/app/guides/upgrading/version-16`.
-- Middleware matcher is UI-focused and excludes `/api/*` and Next static/image internals.
+- CMS follows protect-all by default through the named `proxy` export in `proxy.ts`.
+- The Proxy matcher is UI-focused and excludes `/api/*` and Next static/image internals.
 - Public allowlist must stay explicit and minimal:
   - `/` (landing)
   - `/logout` (delegates to auth-app logout even when local cookie is absent)
@@ -95,7 +93,7 @@ Config is validated at bootstrap (`validateAuthConfig`) and fails closed on inva
 - Segregation and low-tech-debt rules:
   - Route files should orchestrate; reusable logic belongs in `src/lib/*`.
   - Add Tier 1 tests for pure helpers (`src/lib/**/*.test.ts`) and Tier 2 tests for route behavior (`app/**/*.test.tsx`).
-  - Reuse existing logout/middleware security helpers instead of introducing alternate redirect-validation code paths.
+  - Reuse existing logout/Proxy security helpers instead of introducing alternate redirect-validation code paths.
 
 ### CMS Content Tree Contract
 
@@ -620,7 +618,7 @@ Verification commands:
 ## Accessibility Standards
 
 - Keep semantic HTML in route files.
-- Ensure auth-gated UI paths preserve keyboard/screen-reader accessibility when adding guards/middleware in future stories.
+- Ensure auth-gated UI paths preserve keyboard/screen-reader accessibility when adding Proxy guards in future stories.
 
 ## Testing Standards (ADR-001)
 
@@ -630,7 +628,7 @@ Reference: `../../lumia-ds/docs/ADR-001-testing-standards.md`
 - Keep global coverage at `>=80%`.
 - Prefer focused tests close to feature ownership:
   - route/layout behavior under `app/*.test.tsx`
-  - middleware policy under `middleware.test.ts`
+  - Proxy policy under `proxy.test.ts`
   - provider/config behavior under `src/app/*.test.tsx` and `src/lib/**/*.test.ts`
   - pure scroll-state logic under `src/features/cms-content/*.test.ts`
   - route-level browser regressions under `e2e/*.spec.ts` with fixture routes in `app/e2e/*`
@@ -640,6 +638,18 @@ Verification commands:
 - `pnpm test:coverage`
 - `pnpm lint`
 - `pnpm test:e2e`
+- `pnpm verify:code` (lint, typecheck, unit tests, coverage, production build)
+- `pnpm verify:release` (all code gates followed by the full browser suite)
+
+### Release-quality browser gate (CMS-REL-2)
+
+- `.github/workflows/quality.yml` is a pull-request and manual quality gate only. It has read-only repository permissions, performs no publication, and checks out the private sibling repositories with `XYNES_REPO_READ_TOKEN`.
+- `pnpm build` selects Next.js's supported Webpack production builder explicitly. This avoids the Next.js 16.3.5 Turbopack CSS worker's environment-sensitive local port binding and keeps the local/CI gate reproducible; revisit the explicit selection only after a future Next.js upgrade proves the Turbopack path in the same hardened runners.
+- `pnpm test:e2e:release` selects the `@release` browser cases. The matrix covers desktop, tablet, and mobile in `en-US` and `en-XA`, plus hostile redirects, protected-route handoff, anonymous security-policy access, and the authenticated dashboard fixture.
+- Playwright uses Chrome, one worker, failure-only traces and screenshots, and safe placeholder configuration. Real credentials and hosted services are prohibited in this suite.
+- `/e2e/*` and `/api/e2e/*` fixtures fail closed unless `NEXT_PUBLIC_ENABLE_E2E_FIXTURES=1`. The flag endpoint returns an unauthenticated empty SDK envelope and sets `Cache-Control: no-store`.
+- `CmsFeatureFlagsProvider` must keep `flagOverrides` referentially stable. Recreating that object during render changes the SDK fetch callback dependency and can cause a continuous `/flags` request loop.
+- Group M runtime integration is outside this local gate and requires its separately approved hosted-service procedure.
 
 ## Lint Strategy
 
@@ -1194,7 +1204,7 @@ Both CTAs are same-origin auth handshake; neither uses `target="_blank"`. The OS
 
 ### Cookie-session helper
 
-`src/lib/auth/cookie-session.ts` was extracted from `middleware.ts` to deduplicate the JWT-shape probe between the middleware (Edge runtime) and the LP-CMS RSC (Node runtime). Both call `hasLikelyAuthenticatedSession({ cookies, headers })` with the request shape they have. Middleware behaviour is preserved byte-for-byte — the `middleware.test.ts` suite is the regression guard.
+`src/lib/auth/cookie-session.ts` is shared by `proxy.ts` and the LP-CMS RSC so both use the same JWT-shape probe. Both call `hasLikelyAuthenticatedSession({ cookies, headers })` with the request shape they have. Proxy behavior is locked by `proxy.test.ts`.
 
 ### Where copy lives
 

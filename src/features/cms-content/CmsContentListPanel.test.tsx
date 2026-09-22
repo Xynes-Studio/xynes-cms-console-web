@@ -1,5 +1,6 @@
 import type React from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -431,9 +432,7 @@ vi.mock("@lumia-ui/components", () => ({
 const mockClipboardWrite = vi.fn();
 const originalApiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
 
-afterEach(() => {
-  cleanup();
-  vi.useRealTimers();
+function resetTestState() {
   push.mockReset();
   replace.mockReset();
   setState.mockReset();
@@ -505,6 +504,18 @@ afterEach(() => {
     isLoading: false,
     error: null,
   };
+}
+
+async function waitForAuthBootstrap() {
+  await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
+  await act(async () => {
+    await mockGetAccessToken.mock.results[0]?.value;
+  });
+}
+
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
   if (typeof originalApiBaseUrl === "string") {
     process.env.NEXT_PUBLIC_API_URL = originalApiBaseUrl;
   } else {
@@ -513,6 +524,7 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  resetTestState();
   vi.useFakeTimers();
   process.env.NEXT_PUBLIC_API_URL = "http://localhost:4100";
   // Provide clipboard stub so handleShare can call navigator.clipboard.writeText
@@ -603,9 +615,7 @@ describe("CmsContentListPanel", () => {
 
     render(<CmsContentListPanel />);
 
-    await waitFor(() => {
-      expect(mockGetAccessToken).toHaveBeenCalledTimes(1);
-    });
+    await waitForAuthBootstrap();
 
     fireEvent.click(screen.getByRole("button", { name: "create content" }));
 
@@ -1322,6 +1332,7 @@ describe("CmsContentListPanel", () => {
       );
 
       render(<CmsContentListPanel />);
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
       const favoriteButton = await screen.findByTestId(
         "list-favorite-entry-action-1",
       );
@@ -1367,6 +1378,7 @@ describe("CmsContentListPanel", () => {
       );
 
       render(<CmsContentListPanel />);
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
       const favoriteButton = await screen.findByTestId(
         "list-favorite-entry-action-1",
       );
@@ -1388,6 +1400,7 @@ describe("CmsContentListPanel", () => {
 
     it("opens a Lumia confirmation dialog and cancels without deleting", async () => {
       render(<CmsContentListPanel />);
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
       const deleteButton = await screen.findByTestId(
         "list-delete-entry-action-1",
       );
@@ -1395,7 +1408,7 @@ describe("CmsContentListPanel", () => {
       fireEvent.click(deleteButton);
 
       expect(
-        screen.getByRole("alertdialog", {
+        await screen.findByRole("alertdialog", {
           name: 'Delete "Action test 1"?',
         }),
       ).toBeInTheDocument();
@@ -1434,12 +1447,15 @@ describe("CmsContentListPanel", () => {
       );
 
       render(<CmsContentListPanel />);
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
       const deleteButton = await screen.findByTestId(
         "list-delete-entry-action-1",
       );
 
       fireEvent.click(deleteButton);
-      fireEvent.click(screen.getByRole("button", { name: "Delete content" }));
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Delete content" }),
+      );
 
       expect(mockDeleteWorkspaceContentEntry).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1487,12 +1503,15 @@ describe("CmsContentListPanel", () => {
       );
 
       render(<CmsContentListPanel />);
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
       const deleteButton = await screen.findByTestId(
         "list-delete-entry-action-1",
       );
 
       fireEvent.click(deleteButton);
-      fireEvent.click(screen.getByRole("button", { name: "Delete content" }));
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Delete content" }),
+      );
 
       await waitFor(() =>
         expect(
@@ -1597,6 +1616,7 @@ describe("CmsContentListPanel", () => {
       });
 
       render(<CmsContentListPanel />);
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
 
       // Both favourites are visible before the toggle.
       expect(
@@ -1636,27 +1656,30 @@ describe("CmsContentListPanel", () => {
       );
 
       render(<CmsContentListPanel />);
+      await waitFor(() => expect(mockGetAccessToken).toHaveBeenCalledTimes(1));
 
       const favoriteButton = await screen.findByTestId(
         "list-favorite-entry-fav-1",
       );
       fireEvent.click(favoriteButton);
 
-      // The override flips back on rejection, so the row re-renders.
+      // The row starts visible, so its presence alone is not a safe signal
+      // that the async rejection and rollback have completed. Wait for the
+      // mutation error side effect first, then verify the restored list.
       await waitFor(() =>
-        expect(
-          screen.getByTestId("list-card-entry-fav-1"),
-        ).toBeInTheDocument(),
+        expect(mockToastShow).toHaveBeenCalledWith({
+          variant: "error",
+          title: "Could not update favourite",
+          description:
+            "Please try again. If the issue persists, contact your workspace owner.",
+        }),
       );
+      expect(
+        screen.getByTestId("list-card-entry-fav-1"),
+      ).toBeInTheDocument();
       expect(
         screen.getByTestId("list-card-entry-fav-3"),
       ).toBeInTheDocument();
-      expect(mockToastShow).toHaveBeenCalledWith({
-        variant: "error",
-        title: "Could not update favourite",
-        description:
-          "Please try again. If the issue persists, contact your workspace owner.",
-      });
     });
 
     it("shows the favourites-empty copy when the chip is on but no favourites exist", () => {
