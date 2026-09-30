@@ -1,7 +1,12 @@
 import { defineConfig } from "@playwright/test";
 
-const e2ePort = 3200;
+const e2ePort = Number(process.env.PLAYWRIGHT_E2E_PORT ?? "3200");
 const e2eBaseUrl = `http://127.0.0.1:${e2ePort}`;
+const chromiumExecutablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim() || undefined;
+const webServerCommand = process.env.CI
+  ? `pnpm exec next dev --hostname 127.0.0.1 --port ${e2ePort}`
+  : `node ../infra/scripts/with-env.mjs next dev --hostname 127.0.0.1 --port ${e2ePort}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -14,31 +19,32 @@ export default defineConfig({
   reporter: process.env.CI ? "html" : "list",
   use: {
     baseURL: e2eBaseUrl,
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: "off",
   },
   projects: [
     {
       name: "chrome",
       use: {
         browserName: "chromium",
-        channel: "chrome",
+        ...(chromiumExecutablePath
+          ? { launchOptions: { executablePath: chromiumExecutablePath } }
+          : { channel: "chrome" }),
       },
     },
   ],
   webServer: {
-    command:
-      "node ../infra/scripts/with-env.mjs next dev --hostname 127.0.0.1 --port 3200",
+    command: webServerCommand,
     env: {
       ...process.env,
       CMS_CONSOLE_PORT: String(e2ePort),
       NEXT_PUBLIC_SUPABASE_URL: "https://fixtures.supabase.local",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "fixture-anon-key",
-      NEXT_PUBLIC_API_URL: `${e2eBaseUrl}/api/unused`,
+      NEXT_PUBLIC_API_URL: `${e2eBaseUrl}/api/e2e`,
       NEXT_PUBLIC_AUTH_APP_URL: "http://127.0.0.1:3100",
       NEXT_PUBLIC_APP_URL: e2eBaseUrl,
-      NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS: "127.0.0.1:3200,localhost:3200",
+      NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS: `127.0.0.1:${e2ePort},localhost:${e2ePort}`,
       NEXT_PUBLIC_ENABLE_E2E_FIXTURES: "1",
     },
     url: e2eBaseUrl,

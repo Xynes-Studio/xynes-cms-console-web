@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { middleware } from "./middleware";
+import { config, proxy as middleware } from "./proxy";
 
 const originalEnv = { ...process.env };
 
@@ -35,10 +35,17 @@ function createJwt({
   return `${header}.${payload}.signature`;
 }
 
-describe("CMS middleware auth protection", () => {
+describe("CMS Proxy auth protection", () => {
   afterEach(() => {
     process.env = { ...originalEnv };
     vi.restoreAllMocks();
+  });
+
+  it("exports the Next.js 16 named Proxy function with the unchanged matcher", () => {
+    expect(middleware.name).toBe("proxy");
+    expect(config).toEqual({
+      matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+    });
   });
 
   it("keeps explicit public routes accessible", () => {

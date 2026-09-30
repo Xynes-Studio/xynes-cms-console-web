@@ -34,7 +34,7 @@
  *
  * Owner plan: `xynes/xynes-infra/docs/plans/2026-05-14-storage-live-provider-rollout.md` §8.
  */
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   FeatureFlagsProvider,
   useAuth,
@@ -64,7 +64,7 @@ export function CmsFeatureFlagsProvider({
 }: CmsFeatureFlagsProviderProps) {
   const { getAccessToken } = useAuth();
   const { currentWorkspace } = useWorkspace();
-  const flagOverrides = getCmsFeatureFlagOverrides();
+  const flagOverrides = useMemo(() => getCmsFeatureFlagOverrides(), []);
 
   return (
     <FeatureFlagsProvider
