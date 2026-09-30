@@ -17,7 +17,7 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     setupFiles: ["./vitest.setup.ts"],
-    include: ["middleware.test.ts", "app/**/*.test.ts", "app/**/*.test.tsx", "src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["proxy.test.ts", "app/**/*.test.ts", "app/**/*.test.tsx", "src/**/*.test.ts", "src/**/*.test.tsx"],
     exclude: ["e2e/**", "playwright.config.ts", "node_modules/**"],
     coverage: {
       provider: "v8",

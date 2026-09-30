@@ -154,6 +154,33 @@ describe("CmsFeatureFlagsProvider", () => {
     );
   });
 
+  it("keeps flag overrides referentially stable across parent re-renders", () => {
+    process.env.NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE = JSON.stringify({
+      cms_editor_storage_uploads: true,
+    });
+
+    const { rerender } = render(
+      <CmsFeatureFlagsProvider apiBaseUrl="http://localhost:4100">
+        <span>first child</span>
+      </CmsFeatureFlagsProvider>,
+    );
+    const firstOverrides = mockFeatureFlagsProvider.mock.calls.at(-1)?.[0]
+      ?.flagOverrides;
+
+    rerender(
+      <CmsFeatureFlagsProvider apiBaseUrl="http://localhost:4100">
+        <span>second child</span>
+      </CmsFeatureFlagsProvider>,
+    );
+    const nextOverrides = mockFeatureFlagsProvider.mock.calls.at(-1)?.[0]
+      ?.flagOverrides;
+
+    // The SDK includes this object in the dependency list for its fetch
+    // callback. A new reference on every render creates a continuous
+    // feature-flag request loop after the first response updates state.
+    expect(nextOverrides).toBe(firstOverrides);
+  });
+
   // BUG-CMS-5: thread the active workspace id into the SDK provider so the
   // gateway can resolve workspace-scoped flag rollouts (e.g.
   // cms_editor_storage_uploads turned ON for a single workspace from the

@@ -4,13 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "node ../infra/scripts/with-env.mjs next dev",
-    "build": "NODE_ENV=production node ../infra/scripts/with-env.mjs next build",
+    "build": "NODE_ENV=production node ../infra/scripts/with-env.mjs next build --webpack",
     "start": "node ../infra/scripts/with-env.mjs next start",
     "lint": "node ../infra/scripts/with-env.mjs eslint .",
+    "typecheck": "node ../infra/scripts/with-env.mjs tsc --noEmit",
     "test": "node ../infra/scripts/with-env.mjs vitest run",
     "test:watch": "node ../infra/scripts/with-env.mjs vitest",
     "test:coverage": "node ../infra/scripts/with-env.mjs vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:release": "pnpm test:e2e -- --grep @release",
+    "verify:code": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage && pnpm build",
+    "verify:release": "pnpm verify:code && pnpm test:e2e"
   },
   "dependencies": {
     "@lumia-ui/components": "link:../lumia-ds/packages/components",
