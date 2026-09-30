@@ -1,7 +1,10 @@
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CmsContentCardGrid } from "./CmsContentCardGrid";
+import {
+  CmsContentCardGrid as ProductionCmsContentCardGrid,
+  type CmsEntryCardGridProps,
+} from "./CmsContentCardGrid";
 
 const i18nState = vi.hoisted(() => ({
   locale: "en-US",
@@ -13,7 +16,15 @@ const i18nState = vi.hoisted(() => ({
     archived: "Archived",
     archivedAriaLabel: "{title} (archived)",
     openAriaLabel: "Open content {title}",
+    actionsAriaLabel: "Actions for content {title}",
     avatarAlt: "{owner} avatar",
+    delete: "Delete",
+    deleting: "Deleting...",
+    share: "Share",
+    favorite: "Favourite",
+    unfavorite: "Unfavourite",
+    favorited: "Favourited",
+    updating: "Updating...",
   },
 }));
 
@@ -59,7 +70,66 @@ vi.mock("@lumia-ui/components", () => ({
   }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => (
     <div {...props}>{children}</div>
   ),
+  Button: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    children?: React.ReactNode;
+  }) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
+  Menu: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  MenuContent: ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  MenuItem: ({
+    children,
+    label,
+    onSelect,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    children?: React.ReactNode;
+    label?: string;
+    onSelect?: () => void;
+  }) => (
+    <button type="button" {...props} onClick={() => onSelect?.()}>
+      {children ?? label}
+    </button>
+  ),
+  MenuTrigger: ({
+    children,
+  }: {
+    children?: React.ReactNode;
+    asChild?: boolean;
+  }) => <>{children}</>,
 }));
+
+vi.mock("@lumia-ui/icons", () => ({
+  Icon: ({ name }: { name: string }) => <span aria-hidden="true">{name}</span>,
+}));
+
+type TestGridProps = Omit<
+  CmsEntryCardGridProps,
+  "isFavorite" | "onDelete" | "onShare" | "onToggleFavorite"
+> &
+  Partial<
+    Pick<
+      CmsEntryCardGridProps,
+      "isFavorite" | "onDelete" | "onShare" | "onToggleFavorite"
+    >
+  >;
+
+const CmsContentCardGrid = (props: TestGridProps) => (
+  <ProductionCmsContentCardGrid
+    isFavorite={false}
+    onDelete={vi.fn()}
+    onShare={vi.fn()}
+    onToggleFavorite={vi.fn()}
+    {...props}
+  />
+);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -72,7 +142,15 @@ afterEach(() => {
     archived: "Archived",
     archivedAriaLabel: "{title} (archived)",
     openAriaLabel: "Open content {title}",
+    actionsAriaLabel: "Actions for content {title}",
     avatarAlt: "{owner} avatar",
+    delete: "Delete",
+    deleting: "Deleting...",
+    share: "Share",
+    favorite: "Favourite",
+    unfavorite: "Unfavourite",
+    favorited: "Favourited",
+    updating: "Updating...",
   };
   cleanup();
 });
@@ -122,7 +200,12 @@ describe("CmsContentCardGrid", () => {
       openAriaLabel: "[OOppeenn ccoonntteenntt {title}]",
       avatarAlt: "[{owner} aavvaattaarr]",
     };
-    const dateTimeFormatSpy = vi.spyOn(Intl, "DateTimeFormat");
+    const NativeDateTimeFormat = Intl.DateTimeFormat;
+    const dateTimeFormatSpy = vi
+      .spyOn(Intl, "DateTimeFormat")
+      .mockImplementation(function DateTimeFormat(locales, options) {
+        return new NativeDateTimeFormat(locales, options);
+      });
 
     render(
       <CmsContentCardGrid
@@ -169,7 +252,7 @@ describe("CmsContentCardGrid", () => {
     expect(screen.getByLabelText("Archan Ray avatar")).toHaveTextContent("AR");
   });
 
-  it("opens content on click and keyboard enter/space", () => {
+  it("opens content once through native button activation", () => {
     const onOpen = vi.fn();
 
     render(
@@ -186,14 +269,97 @@ describe("CmsContentCardGrid", () => {
     const card = screen.getByRole("button", {
       name: /Open content Open Interaction/i,
     });
-    fireEvent.click(card);
     fireEvent.keyDown(card, { key: "Enter" });
     fireEvent.keyDown(card, { key: " " });
+    expect(onOpen).not.toHaveBeenCalled();
 
-    expect(onOpen).toHaveBeenCalledTimes(3);
+    fireEvent.click(card);
+
+    expect(card.tagName).toBe("BUTTON");
+    expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onOpen).toHaveBeenNthCalledWith(1, "entry-4");
-    expect(onOpen).toHaveBeenNthCalledWith(2, "entry-4");
-    expect(onOpen).toHaveBeenNthCalledWith(3, "entry-4");
+  });
+
+  it("BUG-004: exposes delete, share, and favorite actions without opening the entry", () => {
+    const onOpen = vi.fn();
+    const onDelete = vi.fn();
+    const onShare = vi.fn();
+    const onToggleFavorite = vi.fn();
+
+    render(
+      <CmsContentCardGrid
+        entryId="entry-actions"
+        title="Grid Actions"
+        ownerName="Team Owner"
+        createdAt="2026-02-23T10:00:00.000Z"
+        status="published"
+        isFavorite={false}
+        onOpen={onOpen}
+        onDelete={onDelete}
+        onShare={onShare}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Actions for content Grid Actions" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+    fireEvent.click(screen.getByRole("button", { name: "Favourite" }));
+
+    expect(onDelete).toHaveBeenCalledWith("entry-actions");
+    expect(onShare).toHaveBeenCalledWith("entry-actions");
+    expect(onToggleFavorite).toHaveBeenCalledWith("entry-actions");
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("BUG-004: names the active favorite control by the action it performs", () => {
+    const onToggleFavorite = vi.fn();
+
+    render(
+      <CmsContentCardGrid
+        entryId="entry-favorite"
+        title="Favorite Grid Entry"
+        ownerName="Team Owner"
+        status="published"
+        isFavorite
+        onOpen={vi.fn()}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Unfavourite" }));
+    expect(onToggleFavorite).toHaveBeenCalledWith("entry-favorite");
+    expect(
+      screen.queryByRole("button", { name: "Favourited" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("BUG-004: disables pending actions and keeps open/menu controls as siblings", () => {
+    const { container } = render(
+      <CmsContentCardGrid
+        entryId="entry-pending"
+        title="Pending Grid Actions"
+        ownerName="Team Owner"
+        status="draft"
+        isFavorite
+        isDeleting
+        isFavoritePending
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Deleting..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Updating..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Share" })).not.toBeDisabled();
+    expect(container.querySelector("button button")).toBeNull();
+    expect(
+      container.querySelector("button div, button h1, button h2, button h3, button p"),
+    ).toBeNull();
   });
 
   it("BUG-CMS-1: renders no description <p> element", () => {
@@ -325,7 +491,7 @@ describe("CmsContentCardGrid", () => {
     ).toBeNull();
   });
 
-  it("BUG-CMS-7: archived entries still navigate on click + keyboard (un-archive path)", () => {
+  it("BUG-CMS-7: archived entries retain native button activation", () => {
     const onOpen = vi.fn();
 
     render(
@@ -340,11 +506,14 @@ describe("CmsContentCardGrid", () => {
     );
 
     const card = screen.getByRole("button", { name: "Old Brief (archived)" });
-    fireEvent.click(card);
     fireEvent.keyDown(card, { key: "Enter" });
     fireEvent.keyDown(card, { key: " " });
+    expect(onOpen).not.toHaveBeenCalled();
 
-    expect(onOpen).toHaveBeenCalledTimes(3);
+    fireEvent.click(card);
+
+    expect(card.tagName).toBe("BUTTON");
+    expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onOpen).toHaveBeenNthCalledWith(1, "entry-archived-click");
   });
 

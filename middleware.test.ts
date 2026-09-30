@@ -133,6 +133,24 @@ describe("CMS middleware auth protection", () => {
     );
   });
 
+  it("rebuilds the return URL from the configured public app origin behind a port mapping", () => {
+    setMiddlewareEnv({
+      NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3300",
+      NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS:
+        "127.0.0.1:3300,localhost:3100",
+    });
+    const request = new NextRequest(
+      "http://localhost:3000/dashboard?tab=recent",
+    );
+
+    const response = middleware(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3100/login?redirect=http%3A%2F%2F127.0.0.1%3A3300%2Fdashboard%3Ftab%3Drecent",
+    );
+  });
+
   it("redirects unauthenticated protected routes to auth-app login", () => {
     setMiddlewareEnv();
     const request = new NextRequest("http://localhost:3000/acme/content");

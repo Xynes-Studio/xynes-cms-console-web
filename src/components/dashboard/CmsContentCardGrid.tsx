@@ -1,4 +1,13 @@
-import { Avatar, Badge, Card } from "@lumia-ui/components";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuTrigger,
+} from "@lumia-ui/components";
 import { useLocale, useTranslations } from "next-intl";
 import {
   type CmsEntryCardCreator,
@@ -18,7 +27,13 @@ export type CmsEntryCardGridProps = {
   createdAt?: string | null;
   avatarUrl?: string | null;
   status: "draft" | "published" | "archived";
+  isFavorite: boolean;
+  isDeleting?: boolean;
+  isFavoritePending?: boolean;
   onOpen: (entryId: string) => void;
+  onDelete: (entryId: string) => void;
+  onShare: (entryId: string) => void;
+  onToggleFavorite: (entryId: string) => void;
 };
 
 const formatCreatedDate = (
@@ -50,7 +65,13 @@ export function CmsContentCardGrid({
   createdAt,
   avatarUrl,
   status,
+  isFavorite,
+  isDeleting = false,
+  isFavoritePending = false,
   onOpen,
+  onDelete,
+  onShare,
+  onToggleFavorite,
 }: CmsEntryCardGridProps) {
   const locale = useLocale();
   const t = useTranslations("cms.content.card");
@@ -73,53 +94,91 @@ export function CmsContentCardGrid({
 
   return (
     <Card
-      role="button"
-      tabIndex={0}
       data-testid="cms-content-card-grid"
       data-status={status}
-      aria-label={cardAriaLabel}
-      className={`flex h-full cursor-pointer flex-col gap-4 border-border bg-background p-4 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background${
+      className={`flex h-full flex-col gap-4 border-border bg-background p-4 text-left transition-colors hover:bg-muted/20${
         isArchived ? " opacity-60 grayscale" : ""
       }`}
-      onClick={() => onOpen(entryId)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onOpen(entryId);
-        }
-      }}
     >
       <div className="flex items-start gap-3">
-        <Avatar
-          size="md"
-          src={avatarUrl ?? undefined}
-          alt={t("avatarAlt", { owner: resolvedOwner })}
-          fallbackInitials={resolvedOwner}
-        />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-2xl leading-8 font-medium text-foreground">
-            {title}
-          </h3>
-          <p className="truncate text-sm leading-5 text-foreground/90">
-            {metaText}
-          </p>
-        </div>
-        {status === "draft" ? (
-          <Badge
-            variant="outline"
-            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
-          >
-            {t("draft")}
-          </Badge>
-        ) : null}
-        {status === "archived" ? (
-          <Badge
-            variant="subtle"
-            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
-          >
-            {t("archived")}
-          </Badge>
-        ) : null}
+        <button
+          type="button"
+          aria-label={cardAriaLabel}
+          className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          onClick={() => onOpen(entryId)}
+        >
+          <Avatar
+            size="md"
+            src={avatarUrl ?? undefined}
+            alt={t("avatarAlt", { owner: resolvedOwner })}
+            fallbackInitials={resolvedOwner}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-2xl leading-8 font-medium text-foreground">
+              {title}
+            </span>
+            <span className="block truncate text-sm leading-5 text-foreground/90">
+              {metaText}
+            </span>
+          </span>
+          {status === "draft" ? (
+            <Badge
+              variant="outline"
+              className="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
+            >
+              {t("draft")}
+            </Badge>
+          ) : null}
+          {status === "archived" ? (
+            <Badge
+              variant="subtle"
+              className="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
+            >
+              {t("archived")}
+            </Badge>
+          ) : null}
+        </button>
+
+        <Menu>
+          <MenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              aria-label={t("actionsAriaLabel", { title })}
+            >
+              <span aria-hidden="true" className="text-xl leading-none">
+                ⋯
+              </span>
+            </Button>
+          </MenuTrigger>
+          <MenuContent align="end">
+            <MenuItem
+              label={isDeleting ? t("deleting") : t("delete")}
+              icon="delete"
+              variant="destructive"
+              disabled={isDeleting}
+              onSelect={() => onDelete(entryId)}
+            />
+            <MenuItem
+              label={t("share")}
+              icon="external-link"
+              onSelect={() => onShare(entryId)}
+            />
+            <MenuItem
+              label={
+                isFavoritePending
+                  ? t("updating")
+                  : isFavorite
+                    ? t("unfavorite")
+                    : t("favorite")
+              }
+              icon={isFavorite ? "check" : "star"}
+              disabled={isFavoritePending}
+              onSelect={() => onToggleFavorite(entryId)}
+            />
+          </MenuContent>
+        </Menu>
       </div>
     </Card>
   );

@@ -120,6 +120,88 @@ test.describe("CMS dashboard scroll layout fixture", () => {
     expect(sidebarScrollState.scrollTop).toBeGreaterThan(0);
   });
 
+  test("BUG-006: remains stable after five rapid desktop scrolls to the bottom", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/e2e/cms-dashboard-scroll");
+
+    const secondaryRow = page.getByTestId("cms-content-toolbar-secondary-row");
+    const secondaryShell = page.getByTestId(
+      "cms-content-toolbar-secondary-shell",
+    );
+    const resultsScrollRegion = page.getByTestId(
+      "content-results-scroll-region",
+    );
+
+    await expect
+      .poll(async () =>
+        secondaryShell.evaluate(
+          (element) => getComputedStyle(element).transitionProperty,
+        ),
+      )
+      .not.toContain("max-height");
+
+    for (let repetition = 0; repetition < 5; repetition += 1) {
+      await resultsScrollRegion.evaluate((element) => {
+        element.scrollTo({ top: 0, behavior: "instant" });
+        element.dispatchEvent(new Event("scroll", { bubbles: true }));
+      });
+      await expect(secondaryRow).not.toHaveAttribute("aria-hidden", "true");
+
+      const sample = await page.evaluate(async () => {
+        const row = document.querySelector<HTMLElement>(
+          '[data-testid="cms-content-toolbar-secondary-row"]',
+        );
+        const results = document.querySelector<HTMLElement>(
+          '[data-testid="content-results-scroll-region"]',
+        );
+        const shell = document.querySelector<HTMLElement>(
+          '[data-testid="cms-content-toolbar-secondary-shell"]',
+        );
+        if (!row || !results || !shell) {
+          throw new Error("Scroll fixture is incomplete");
+        }
+
+        const ariaHiddenChanges: Array<string | null> = [];
+        const observer = new MutationObserver(() => {
+          ariaHiddenChanges.push(row.getAttribute("aria-hidden"));
+        });
+        observer.observe(row, {
+          attributes: true,
+          attributeFilter: ["aria-hidden"],
+        });
+
+        results.scrollTo({ top: results.scrollHeight, behavior: "instant" });
+        results.dispatchEvent(new Event("scroll", { bubbles: true }));
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        observer.disconnect();
+
+        return {
+          ariaHidden: row.getAttribute("aria-hidden"),
+          ariaHiddenChanges,
+          maxScrollTop: results.scrollHeight - results.clientHeight,
+          scrollTop: results.scrollTop,
+          resultsClientHeight: results.clientHeight,
+          resultsScrollHeight: results.scrollHeight,
+          rowHeight: row.getBoundingClientRect().height,
+          rowScrollHeight: row.scrollHeight,
+          shellHeight: shell.getBoundingClientRect().height,
+          shellInlineMaxHeight: shell.style.maxHeight,
+          shellComputedMaxHeight: getComputedStyle(shell).maxHeight,
+        };
+      });
+
+      expect(sample.maxScrollTop).toBeGreaterThan(0);
+      expect(sample.scrollTop, JSON.stringify(sample)).toBe(
+        sample.maxScrollTop,
+      );
+      expect(sample.ariaHidden).toBe("true");
+      expect(sample.ariaHiddenChanges.filter((value) => value === "true")).toHaveLength(1);
+      expect(sample.ariaHiddenChanges.filter((value) => value !== "true")).toHaveLength(0);
+    }
+  });
+
   test("keeps the zero state visible below the sticky stack", async ({ page }) => {
     await page.goto("/e2e/cms-dashboard-scroll-empty");
 

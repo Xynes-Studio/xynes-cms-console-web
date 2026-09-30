@@ -1716,7 +1716,16 @@ describe("CmsEditorScreen", () => {
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
 
       await waitFor(() => {
-        expect(mockLumiaEditor).toHaveBeenCalled();
+        const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
+          | {
+              media?: {
+                uploadAdapter?: unknown;
+                resolveDownloadUrl?: unknown;
+              };
+            }
+          | undefined;
+        expect(editorProps?.media?.uploadAdapter).toBeUndefined();
+        expect(editorProps?.media?.resolveDownloadUrl).toBeDefined();
       });
 
       const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
@@ -1736,7 +1745,16 @@ describe("CmsEditorScreen", () => {
       render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
 
       await waitFor(() => {
-        expect(mockLumiaEditor).toHaveBeenCalled();
+        const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
+          | {
+              media?: {
+                uploadAdapter?: unknown;
+                resolveDownloadUrl?: unknown;
+              };
+            }
+          | undefined;
+        expect(editorProps?.media?.uploadAdapter).toBeDefined();
+        expect(editorProps?.media?.resolveDownloadUrl).toBeDefined();
       });
 
       const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
@@ -1744,6 +1762,66 @@ describe("CmsEditorScreen", () => {
         | undefined;
       expect(editorProps?.media?.uploadAdapter).toBeDefined();
       expect(editorProps?.media?.resolveDownloadUrl).toBeDefined();
+    });
+
+    it("flag ON: surfaces a safe role-aware message when upload authorization is denied", async () => {
+      mockUseFeatureFlag.mockReturnValue(true);
+
+      render(<CmsEditorScreen entryId="entry-1" workspaceSlug="acme-team" />);
+
+      await waitFor(() => {
+        const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
+          | { media?: { uploadAdapter?: unknown } }
+          | undefined;
+        expect(editorProps?.media?.uploadAdapter).toBeDefined();
+      });
+
+      const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
+        | {
+            media?: {
+              callbacks?: {
+                onUploadStart?: (
+                  file: File,
+                  mediaType: "image" | "video" | "file",
+                  source?: "file-picker" | "drag-drop" | "paste",
+                ) => void;
+                onUploadError?: (file: File, error: Error) => void;
+              };
+            };
+          }
+        | undefined;
+      const onUploadStart = editorProps?.media?.callbacks?.onUploadStart;
+      const onUploadError = editorProps?.media?.callbacks?.onUploadError;
+
+      expect(onUploadStart).toBeTypeOf("function");
+      expect(onUploadError).toBeTypeOf("function");
+
+      const fixture = new File(["fixture"], "private-photo.jpg", {
+        type: "image/jpeg",
+      });
+
+      act(() => {
+        onUploadError?.(
+          fixture,
+          new Error(
+            "HTTP 403 Forbidden (FORBIDDEN_SCOPE_MISS) token=secret-value",
+          ),
+        );
+      });
+
+      const alert = screen.getByTestId("editor-upload-error");
+      expect(alert).toHaveTextContent("Media upload unavailable");
+      expect(alert).toHaveTextContent(
+        "Your workspace role does not allow media uploads.",
+      );
+      expect(alert).not.toHaveTextContent("private-photo.jpg");
+      expect(alert).not.toHaveTextContent("secret-value");
+      expect(alert).not.toHaveTextContent("FORBIDDEN_SCOPE_MISS");
+
+      act(() => {
+        onUploadStart?.(fixture, "image", "file-picker");
+      });
+      expect(screen.queryByTestId("editor-upload-error")).not.toBeInTheDocument();
     });
 
     it("queries the SDK for the exact `cms_editor_storage_uploads` flag key", async () => {

@@ -54,7 +54,10 @@
     "noWorkspaceTitle": "Setting up your workspace…",
     "noWorkspaceDescription": "Redirecting you to create your first workspace.",
     "wrongWorkspaceTitle": "Switching workspace…",
-    "wrongWorkspaceDescription": "We could not find that workspace. Taking you to one you can access."
+    "wrongWorkspaceDescription": "We could not find that workspace. Taking you to one you can access.",
+    "loggingOut": "Signing you out...",
+    "logoutFailedTitle": "Could not sign out",
+    "logoutFailedDescription": "Please try again. Your current session is still active."
   },
   "directory": {
     "ownerOnly": "Only workspace owners can manage directories right now.",

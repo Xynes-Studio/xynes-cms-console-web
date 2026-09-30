@@ -11,6 +11,7 @@ import {
   CmsContentListPanel,
   UNMATCHED_DIRECTORY_ID,
 } from "./CmsContentListPanel";
+import type { CmsContentQueryState } from "../../lib/dashboard/cms-content-query-state";
 
 const {
   mockCreateDraftEntryAndResolveEditPath,
@@ -42,7 +43,8 @@ const mockToastShow = vi.fn();
 const renderGridItem = vi.fn();
 const renderListItem = vi.fn();
 let mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
-let mockedQueryState = {
+let mockedSearch = "";
+let mockedQueryState: CmsContentQueryState = {
   query: "",
   sortBy: "date",
   sortDirection: "desc",
@@ -75,6 +77,7 @@ let mockedEntriesState = {
 vi.mock("next/navigation", () => ({
   usePathname: () => mockedPathname,
   useRouter: () => ({ push, replace }),
+  useSearchParams: () => new URLSearchParams(mockedSearch),
 }));
 
 vi.mock("next-intl", () => ({
@@ -487,6 +490,7 @@ afterEach(() => {
     "Content entry create route is not configured in backend yet. Please contact platform team to map /content/entries to directory-based cms.entry.* actions.",
   );
   mockedPathname = "/dashboard/xynes-studio-llp/content/level-1-2/level-2";
+  mockedSearch = "";
   mockedQueryState = {
     query: "",
     sortBy: "date",
@@ -626,6 +630,30 @@ describe("CmsContentListPanel", () => {
     render(<CmsContentListPanel />);
 
     expect(screen.getByText("Contents / level-2")).toBeInTheDocument();
+  });
+
+  it("preserves validated query state when a content breadcrumb changes path", () => {
+    mockedQueryState = {
+      ...mockedQueryState,
+      query: "release",
+      sortBy: "title",
+      view: "grid",
+      favoritesOnly: true,
+      directoryId: "legacy",
+      offset: 40,
+    };
+    mockedSearch =
+      "view=grid&q=release&sortBy=title&favorites=1&offset=40&directoryId=legacy&next=https%3A%2F%2Fevil.example";
+
+    render(<CmsContentListPanel />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "open root breadcrumb" }),
+    );
+
+    expect(push).toHaveBeenCalledWith(
+      "/dashboard/xynes-studio-llp/content?q=release&sortBy=title&view=grid&favorites=1",
+    );
   });
 
   it("wires query-state values into toolbar props", () => {
@@ -854,6 +882,17 @@ describe("CmsContentListPanel", () => {
       screen.queryByTestId("list-card-entry-grid-1"),
     ).not.toBeInTheDocument();
     expect(renderGridItem).toHaveBeenCalledTimes(1);
+    expect(renderGridItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entryId: "entry-grid-1",
+        isFavorite: false,
+        isDeleting: false,
+        isFavoritePending: false,
+        onDelete: expect.any(Function),
+        onShare: expect.any(Function),
+        onToggleFavorite: expect.any(Function),
+      }),
+    );
     expect(renderListItem).not.toHaveBeenCalled();
   });
 

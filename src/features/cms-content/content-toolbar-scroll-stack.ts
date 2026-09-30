@@ -6,16 +6,22 @@ export const SCROLL_REVEAL_TOP_PX = 16;
 export type ContentToolbarScrollState = {
   isSecondaryToolbarVisible: boolean;
   lastScrollTop: number;
+  lastScrollHeight: number;
+  lastClientHeight: number;
   downwardScrollAccumulator: number;
   upwardScrollAccumulator: number;
 };
 
 export function createContentToolbarScrollState(
   lastScrollTop = 0,
+  lastScrollHeight = 0,
+  lastClientHeight = 0,
 ): ContentToolbarScrollState {
   return {
     isSecondaryToolbarVisible: true,
     lastScrollTop,
+    lastScrollHeight,
+    lastClientHeight,
     downwardScrollAccumulator: 0,
     upwardScrollAccumulator: 0,
   };
@@ -36,17 +42,53 @@ export function resolveContentToolbarScrollState({
   const scrollDelta = nextScrollTop - state.lastScrollTop;
 
   if (scrollHeight <= clientHeight + SCROLL_NOISE_FLOOR_PX) {
-    return createContentToolbarScrollState(nextScrollTop);
+    return createContentToolbarScrollState(
+      nextScrollTop,
+      scrollHeight,
+      clientHeight,
+    );
   }
 
   if (nextScrollTop <= SCROLL_REVEAL_TOP_PX) {
-    return createContentToolbarScrollState(nextScrollTop);
+    return createContentToolbarScrollState(
+      nextScrollTop,
+      scrollHeight,
+      clientHeight,
+    );
   }
 
   if (Math.abs(scrollDelta) < SCROLL_NOISE_FLOOR_PX) {
     return {
       ...state,
       lastScrollTop: nextScrollTop,
+      lastScrollHeight: scrollHeight,
+      lastClientHeight: clientHeight,
+    };
+  }
+
+  const previousMaxScrollTop = Math.max(
+    state.lastScrollHeight - state.lastClientHeight,
+    0,
+  );
+  const nextMaxScrollTop = Math.max(scrollHeight - clientHeight, 0);
+  const isBottomClampFromViewportExpansion =
+    !state.isSecondaryToolbarVisible &&
+    scrollDelta < 0 &&
+    state.lastClientHeight > 0 &&
+    clientHeight > state.lastClientHeight + SCROLL_NOISE_FLOOR_PX &&
+    Math.abs(scrollHeight - state.lastScrollHeight) <= SCROLL_NOISE_FLOOR_PX &&
+    Math.abs(state.lastScrollTop - previousMaxScrollTop) <=
+      SCROLL_NOISE_FLOOR_PX &&
+    Math.abs(nextScrollTop - nextMaxScrollTop) <= SCROLL_NOISE_FLOOR_PX;
+
+  if (isBottomClampFromViewportExpansion) {
+    return {
+      ...state,
+      lastScrollTop: nextScrollTop,
+      lastScrollHeight: scrollHeight,
+      lastClientHeight: clientHeight,
+      downwardScrollAccumulator: 0,
+      upwardScrollAccumulator: 0,
     };
   }
 
@@ -62,6 +104,8 @@ export function resolveContentToolbarScrollState({
         ? false
         : state.isSecondaryToolbarVisible,
       lastScrollTop: nextScrollTop,
+      lastScrollHeight: scrollHeight,
+      lastClientHeight: clientHeight,
       downwardScrollAccumulator: shouldHide ? 0 : downwardScrollAccumulator,
       upwardScrollAccumulator: 0,
     };
@@ -78,6 +122,8 @@ export function resolveContentToolbarScrollState({
       ? true
       : state.isSecondaryToolbarVisible,
     lastScrollTop: nextScrollTop,
+    lastScrollHeight: scrollHeight,
+    lastClientHeight: clientHeight,
     downwardScrollAccumulator: 0,
     upwardScrollAccumulator: shouldReveal ? 0 : upwardScrollAccumulator,
   };

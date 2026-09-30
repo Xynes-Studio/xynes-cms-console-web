@@ -49,7 +49,14 @@ export function useCmsContentToolbarScrollStack({
     }
 
     const updateHeight = () => {
-      setSecondaryToolbarHeight(node.getBoundingClientRect().height);
+      const measuredHeight = Math.max(
+        node.scrollHeight,
+        node.getBoundingClientRect().height,
+      );
+
+      if (measuredHeight > 0) {
+        setSecondaryToolbarHeight(measuredHeight);
+      }
     };
 
     updateHeight();
@@ -73,6 +80,8 @@ export function useCmsContentToolbarScrollStack({
     if (appliedResetToken !== resetToken) {
       scrollStateRef.current = createContentToolbarScrollState(
         Math.max(event.currentTarget.scrollTop, 0),
+        event.currentTarget.scrollHeight,
+        event.currentTarget.clientHeight,
       );
       setAppliedResetToken(resetToken);
 

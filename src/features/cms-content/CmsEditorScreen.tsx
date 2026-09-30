@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useFeatureFlag, useWorkspace } from "@xynes/auth-sdk";
 import { Alert, ConfirmDialog } from "@lumia-ui/components";
-import { LumiaEditor, type LumiaEditorStateJSON } from "@lumia-ui/editor";
+import {
+  LumiaEditor,
+  type LumiaEditorStateJSON,
+  type MediaUploadCallbacks,
+} from "@lumia-ui/editor";
 import { CmsEditorLayout } from "../../components/dashboard/CmsEditorLayout";
 import {
   getWorkspaceContentEntryById,
@@ -62,6 +66,17 @@ function sanitizePublishError(error: unknown): string {
     return "CMS service is temporarily unavailable. Please try again.";
   }
   return "Failed to publish entry. Please try again.";
+}
+
+function sanitizeUploadError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : "";
+  if (EDITOR_PERMISSION_PATTERN.test(raw)) {
+    return "Your workspace role does not allow media uploads.";
+  }
+  if (EDITOR_SERVICE_UNAVAILABLE_PATTERN.test(raw)) {
+    return "Media storage is temporarily unavailable. Please try again.";
+  }
+  return "Media upload failed. Please try again.";
 }
 
 function sanitizeStatusUpdateError(
@@ -194,6 +209,7 @@ export function CmsEditorScreen({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [editorSeedRevision, setEditorSeedRevision] = useState(0);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -300,6 +316,19 @@ export function CmsEditorScreen({
   // `posthog-js` in the browser; no `phc_*` key in the JS bundle.
   const isStorageUploadsEnabled = useFeatureFlag("cms_editor_storage_uploads");
 
+  // These callbacks are local UI state only. They deliberately do not log,
+  // emit telemetry, or retain the File object/error text, so filenames,
+  // provider URLs, and credentials cannot escape through this surface.
+  const storageUploadCallbacks = useMemo<MediaUploadCallbacks>(
+    () => ({
+      onUploadStart: () => setUploadError(null),
+      onUploadError: (_file, error) => {
+        setUploadError(sanitizeUploadError(error));
+      },
+    }),
+    [],
+  );
+
   // STORAGE-LIVE-5: gate the upload affordance behind the feature flag.
   // When OFF, zero out `uploadAdapter` so slash-menu / drag-drop / paste
   // upload paths in Lumia DS short-circuit (they check
@@ -311,13 +340,16 @@ export function CmsEditorScreen({
   // STORAGE-LIVE-4 render-loop fix.
   const storageMedia = useMemo(() => {
     if (isStorageUploadsEnabled) {
-      return rawStorageMedia;
+      return {
+        ...rawStorageMedia,
+        callbacks: storageUploadCallbacks,
+      };
     }
     return {
       uploadAdapter: undefined,
       resolveDownloadUrl: rawStorageMedia.resolveDownloadUrl,
     };
-  }, [isStorageUploadsEnabled, rawStorageMedia]);
+  }, [isStorageUploadsEnabled, rawStorageMedia, storageUploadCallbacks]);
 
   const updateDraft = useCallback(
     (updater: (previous: EditorDraftValue) => EditorDraftValue) => {
@@ -535,6 +567,16 @@ export function CmsEditorScreen({
             title="Publish failed"
             description={publishError}
             data-testid="editor-publish-error"
+          />
+        </div>
+      ) : null}
+      {uploadError ? (
+        <div className="px-4 pt-2">
+          <Alert
+            variant="error"
+            title="Media upload unavailable"
+            description={uploadError}
+            data-testid="editor-upload-error"
           />
         </div>
       ) : null}
