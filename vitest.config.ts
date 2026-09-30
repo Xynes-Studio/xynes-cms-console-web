@@ -1,6 +1,6 @@
-import { defineConfig } from "vitest/config";
+import type { ViteUserConfig } from "vitest/config";
 
-export default defineConfig({
+const config = {
   resolve: {
     // Keep linked packages resolved through node_modules symlinks so peer deps
     // (react/react-dom) are discovered from this app during tests.
@@ -39,4 +39,6 @@ export default defineConfig({
       },
     },
   },
-});
+} satisfies ViteUserConfig;
+
+export default config;

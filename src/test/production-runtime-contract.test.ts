@@ -66,6 +66,30 @@ describe("CMS-REL-1 standalone production runtime contract", () => {
     }
   });
 
+  it("bootstraps every linked package before starting the development image", async () => {
+    const dockerfile = await readRepoFile("Dockerfile");
+    const devStage = dockerfile.slice(
+      dockerfile.indexOf("FROM base AS dev"),
+      dockerfile.indexOf("FROM base AS build"),
+    );
+
+    for (const command of [
+      "pnpm --dir xynes-auth-sdk install --frozen-lockfile",
+      "pnpm --dir xynes-i18n install --frozen-lockfile",
+      "pnpm --dir lumia-ds install --frozen-lockfile",
+      "pnpm --dir xynes-cms-console-web install --frozen-lockfile",
+      "pnpm --dir xynes-i18n build",
+      "pnpm --dir xynes-auth-sdk build",
+      "pnpm --dir lumia-ds/packages/icons build",
+      "pnpm --dir lumia-ds/packages/components build",
+      "pnpm --dir lumia-ds/packages/editor build",
+      "pnpm --dir lumia-ds/packages/layout build",
+      "pnpm --dir lumia-ds/packages/marketing build",
+    ]) {
+      expect(devStage).toContain(command);
+    }
+  });
+
   it("copies only traced runtime assets into the non-root production stage", async () => {
     const dockerfile = await readRepoFile("Dockerfile");
     const prodStage = dockerfile.slice(dockerfile.lastIndexOf(" AS prod"));

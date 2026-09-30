@@ -11,7 +11,18 @@ WORKDIR /app
 
 FROM base AS dev
 COPY . .
-RUN pnpm --dir xynes-cms-console-web install --frozen-lockfile
+RUN pnpm --dir xynes-auth-sdk install --frozen-lockfile && \
+    pnpm --dir xynes-i18n install --frozen-lockfile && \
+    pnpm --dir lumia-ds install --frozen-lockfile && \
+    pnpm --dir xynes-cms-console-web install --frozen-lockfile
+
+RUN pnpm --dir xynes-i18n build && \
+    pnpm --dir xynes-auth-sdk build && \
+    pnpm --dir lumia-ds/packages/icons build && \
+    pnpm --dir lumia-ds/packages/components build && \
+    pnpm --dir lumia-ds/packages/editor build && \
+    pnpm --dir lumia-ds/packages/layout build && \
+    pnpm --dir lumia-ds/packages/marketing build
 WORKDIR /app/xynes-cms-console-web
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
