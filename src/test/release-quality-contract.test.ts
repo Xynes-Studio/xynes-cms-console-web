@@ -76,6 +76,16 @@ describe("CMS-REL-2 release quality contract", () => {
     expect(workflow).not.toMatch(/\btoken:/);
     expect(workflow).toContain("npm install --global corepack@0.34.0");
     expect(workflow).toMatch(/corepack enable/);
+    for (const workingDirectory of ["xynes-auth-sdk", "xynes-i18n"]) {
+      expect(workflow).toMatch(
+        new RegExp(
+          `working-directory: ${workingDirectory}[\\s\\S]*?pnpm install --frozen-lockfile[\\s\\S]*?pnpm build`,
+        ),
+      );
+    }
+    expect(workflow).toMatch(
+      /working-directory: lumia-ds[\s\S]*?pnpm install --frozen-lockfile[\s\S]*?--filter @lumia-ui\/components\.\.\.[\s\S]*?--filter @lumia-ui\/editor\.\.\.[\s\S]*?--filter @lumia-ui\/marketing\.\.\.[\s\S]*?build/,
+    );
     expect(workflow).toMatch(/pnpm install --frozen-lockfile/);
     expect(workflow).toMatch(/pnpm exec eslint \./);
     expect(workflow).toMatch(/pnpm exec tsc --noEmit/);

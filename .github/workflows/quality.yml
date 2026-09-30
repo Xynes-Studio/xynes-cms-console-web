@@ -71,6 +71,29 @@ jobs:
           corepack prepare pnpm@10.33.0 --activate
           pnpm --version
 
+      - name: Build Lumia design system
+        working-directory: lumia-ds
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @lumia-ui/components... \
+            --filter @lumia-ui/editor... \
+            --filter @lumia-ui/icons... \
+            --filter @lumia-ui/layout... \
+            --filter @lumia-ui/marketing... \
+            build
+
+      - name: Build auth SDK
+        working-directory: xynes-auth-sdk
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build locale package
+        working-directory: xynes-i18n
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
       - name: Install CMS dependencies
         working-directory: xynes-cms-console-web
         run: pnpm install --frozen-lockfile
