@@ -4,6 +4,9 @@ const e2ePort = Number(process.env.PLAYWRIGHT_E2E_PORT ?? "3200");
 const e2eBaseUrl = `http://127.0.0.1:${e2ePort}`;
 const chromiumExecutablePath =
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim() || undefined;
+const webServerCommand = process.env.CI
+  ? `pnpm exec next dev --hostname 127.0.0.1 --port ${e2ePort}`
+  : `node ../infra/scripts/with-env.mjs next dev --hostname 127.0.0.1 --port ${e2ePort}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -32,8 +35,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command:
-      `node ../infra/scripts/with-env.mjs next dev --hostname 127.0.0.1 --port ${e2ePort}`,
+    command: webServerCommand,
     env: {
       ...process.env,
       CMS_CONSOLE_PORT: String(e2ePort),

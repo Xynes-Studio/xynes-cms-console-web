@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDirectory, "../..");
-const frontendRoot = resolve(repoRoot, "..");
 
 function readRepoFile(relativePath: string): string {
   return readFileSync(resolve(repoRoot, relativePath), "utf8");
@@ -43,7 +42,7 @@ describe("CMS-REL-2 release quality contract", () => {
     }
   });
 
-  it("defines a least-privilege, non-deploying sibling-checkout workflow", () => {
+  it("defines a least-privilege, non-deploying release workflow", () => {
     const workflowPath = resolve(repoRoot, ".github/workflows/quality.yml");
     expect(existsSync(workflowPath), "quality workflow must exist").toBe(true);
 
@@ -58,7 +57,6 @@ describe("CMS-REL-2 release quality contract", () => {
 
     for (const path of [
       "xynes-cms-console-web",
-      "infra",
       "lumia-ds",
       "xynes-auth-sdk",
       "xynes-i18n",
@@ -67,7 +65,6 @@ describe("CMS-REL-2 release quality contract", () => {
     }
 
     for (const repository of [
-      "Xynes-Studio/xynes-frontend-infra",
       "Xynes-Studio/lumia-ds",
       "Xynes-Studio/xynes-auth-sdk",
       "Xynes-Studio/xynes-i18n",
@@ -75,12 +72,26 @@ describe("CMS-REL-2 release quality contract", () => {
       expect(workflow).toContain(`repository: ${repository}`);
     }
 
-    expect(workflow).toContain("secrets.XYNES_REPO_READ_TOKEN");
+    expect(workflow).not.toContain("Xynes-Studio/xynes-frontend-infra");
+    expect(workflow).not.toMatch(/\btoken:/);
+    expect(workflow).toContain("npm install --global corepack@0.34.0");
     expect(workflow).toMatch(/corepack enable/);
     expect(workflow).toMatch(/pnpm install --frozen-lockfile/);
-    expect(workflow).toMatch(/pnpm verify:release/);
+    expect(workflow).toMatch(/pnpm exec eslint \./);
+    expect(workflow).toMatch(/pnpm exec tsc --noEmit/);
+    expect(workflow).toMatch(/pnpm exec vitest run --coverage/);
+    expect(workflow).toMatch(/NODE_ENV=production pnpm exec next build --webpack/);
+    expect(workflow).toMatch(/pnpm exec playwright test/);
     expect(workflow).toMatch(/if:\s*failure\(\)/);
     expect(workflow).toMatch(/retention-days:\s*[1-7]\b/);
+  });
+
+  it("starts the Playwright server without private infra in CI", () => {
+    const playwrightConfig = readRepoFile("playwright.config.ts");
+
+    expect(playwrightConfig).toMatch(
+      /process\.env\.CI[\s\S]*pnpm exec next dev[\s\S]*node \.\.\/infra\/scripts\/with-env\.mjs next dev/,
+    );
   });
 
   it("uses the Next.js 16 Proxy convention without retaining middleware", () => {
@@ -95,19 +106,5 @@ describe("CMS-REL-2 release quality contract", () => {
     expect(proxySource).not.toMatch(/export function middleware\s*\(/);
     expect(vitestConfig).toContain('"proxy.test.ts"');
     expect(vitestConfig).not.toContain('"middleware.test.ts"');
-  });
-
-  it("mounts proxy.ts into the CMS development container", () => {
-    const compose = readFileSync(
-      resolve(frontendRoot, "infra/docker-compose.dev.yml"),
-      "utf8",
-    );
-
-    expect(compose).toContain(
-      "../xynes-cms-console-web/proxy.ts:/app/proxy.ts:cached",
-    );
-    expect(compose).not.toContain(
-      "../xynes-cms-console-web/middleware.ts:/app/middleware.ts:cached",
-    );
   });
 });

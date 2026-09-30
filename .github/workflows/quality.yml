@@ -35,22 +35,12 @@ jobs:
           path: xynes-cms-console-web
           persist-credentials: false
 
-      - name: Check out frontend infrastructure
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          repository: Xynes-Studio/xynes-frontend-infra
-          ref: develop
-          path: infra
-          token: ${{ secrets.XYNES_REPO_READ_TOKEN }}
-          persist-credentials: false
-
       - name: Check out Lumia design system
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: Xynes-Studio/lumia-ds
           ref: develop
           path: lumia-ds
-          token: ${{ secrets.XYNES_REPO_READ_TOKEN }}
           persist-credentials: false
 
       - name: Check out auth SDK
@@ -59,7 +49,6 @@ jobs:
           repository: Xynes-Studio/xynes-auth-sdk
           ref: develop
           path: xynes-auth-sdk
-          token: ${{ secrets.XYNES_REPO_READ_TOKEN }}
           persist-credentials: false
 
       - name: Check out locale package
@@ -68,7 +57,6 @@ jobs:
           repository: Xynes-Studio/xynes-i18n
           ref: develop
           path: xynes-i18n
-          token: ${{ secrets.XYNES_REPO_READ_TOKEN }}
           persist-credentials: false
 
       - name: Set up Node.js
@@ -93,7 +81,13 @@ jobs:
 
       - name: Run release verification
         working-directory: xynes-cms-console-web
-        run: pnpm verify:release
+        run: |
+          pnpm exec eslint .
+          pnpm exec tsc --noEmit
+          pnpm exec vitest run
+          pnpm exec vitest run --coverage
+          NODE_ENV=production pnpm exec next build --webpack
+          pnpm exec playwright test
 
       - name: Upload failure evidence
         if: failure()
