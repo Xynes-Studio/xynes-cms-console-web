@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCmsContentToolbarScrollStack } from "./useCmsContentToolbarScrollStack";
@@ -18,12 +18,15 @@ const toolbarRect = {
 const observe = vi.fn();
 const disconnect = vi.fn();
 const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+let resizeCallback: ResizeObserverCallback | null = null;
 
 class MockResizeObserver {
   observe = observe;
   disconnect = disconnect;
 
-  constructor() {}
+  constructor(callback: ResizeObserverCallback) {
+    resizeCallback = callback;
+  }
 }
 
 function HookHarness({ resetKeys }: { resetKeys: readonly unknown[] }) {
@@ -52,11 +55,13 @@ describe("useCmsContentToolbarScrollStack", () => {
   beforeEach(() => {
     observe.mockReset();
     disconnect.mockReset();
+    resizeCallback = null;
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     HTMLElement.prototype.getBoundingClientRect = () => toolbarRect;
   });
 
   afterEach(() => {
+    cleanup();
     vi.unstubAllGlobals();
     HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
   });
@@ -71,6 +76,23 @@ describe("useCmsContentToolbarScrollStack", () => {
     view.unmount();
 
     expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the last positive toolbar height when a clipped resize reports zero", () => {
+    render(<HookHarness resetKeys={["initial"]} />);
+
+    expect(screen.getByTestId("max-height")).toHaveTextContent("48px");
+
+    HTMLElement.prototype.getBoundingClientRect = () => ({
+      ...toolbarRect,
+      bottom: 0,
+      height: 0,
+    });
+    act(() => {
+      resizeCallback?.([], {} as ResizeObserver);
+    });
+
+    expect(screen.getByTestId("max-height")).toHaveTextContent("48px");
   });
 
   it("resets the hidden toolbar back to visible when the reset token changes", () => {
@@ -104,6 +126,39 @@ describe("useCmsContentToolbarScrollStack", () => {
     resultsScrollRegion.scrollTop = 30;
     fireEvent.scroll(resultsScrollRegion);
 
+    expect(screen.getByTestId("visible")).toHaveTextContent("true");
+  });
+
+  it("BUG-006: remains hidden when a bottom scroll is clamped by the taller results viewport", () => {
+    render(<HookHarness resetKeys={["initial"]} />);
+    const resultsScrollRegion = screen.getByTestId("results");
+
+    Object.defineProperty(resultsScrollRegion, "scrollHeight", {
+      value: 1600,
+      configurable: true,
+    });
+    Object.defineProperty(resultsScrollRegion, "clientHeight", {
+      value: 600,
+      configurable: true,
+    });
+    Object.defineProperty(resultsScrollRegion, "scrollTop", {
+      value: 1000,
+      writable: true,
+      configurable: true,
+    });
+    fireEvent.scroll(resultsScrollRegion);
+    expect(screen.getByTestId("visible")).toHaveTextContent("false");
+
+    Object.defineProperty(resultsScrollRegion, "clientHeight", {
+      value: 648,
+      configurable: true,
+    });
+    resultsScrollRegion.scrollTop = 952;
+    fireEvent.scroll(resultsScrollRegion);
+    expect(screen.getByTestId("visible")).toHaveTextContent("false");
+
+    resultsScrollRegion.scrollTop = 948;
+    fireEvent.scroll(resultsScrollRegion);
     expect(screen.getByTestId("visible")).toHaveTextContent("true");
   });
 });

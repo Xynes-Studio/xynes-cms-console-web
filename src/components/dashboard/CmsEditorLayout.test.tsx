@@ -396,6 +396,28 @@ describe("CmsEditorLayout", () => {
     expect(screen.getByText("chevron-down")).toBeInTheDocument();
   });
 
+  it("BUG-003: gives every enabled lifecycle menu action a pointer affordance", () => {
+    render(
+      <CmsEditorLayout
+        {...buildProps()}
+        status="published"
+        publicationState="published-with-changes"
+      >
+        <div>Editor Body</div>
+      </CmsEditorLayout>,
+    );
+
+    for (const name of [
+      "Republish now",
+      "Unpublish to draft",
+      "Archive entry",
+    ]) {
+      expect(screen.getByRole("button", { name })).toHaveClass(
+        "cursor-pointer",
+      );
+    }
+  });
+
   it("triggers unpublish and archive status actions from the publication menu", () => {
     const props = buildProps();
 

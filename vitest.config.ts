@@ -1,6 +1,6 @@
-import { defineConfig } from "vitest/config";
+import type { ViteUserConfig } from "vitest/config";
 
-export default defineConfig({
+const config = {
   resolve: {
     // Keep linked packages resolved through node_modules symlinks so peer deps
     // (react/react-dom) are discovered from this app during tests.
@@ -32,11 +32,13 @@ export default defineConfig({
         "src/features/cms-content/CmsContentScrollLayoutFixture.tsx",
       ],
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
+        lines: 85,
+        functions: 85,
+        branches: 85,
+        statements: 85,
       },
     },
   },
-});
+} satisfies ViteUserConfig;
+
+export default config;

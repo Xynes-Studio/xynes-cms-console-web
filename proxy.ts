@@ -38,8 +38,12 @@ export function proxy(request: NextRequest): NextResponse {
   const allowedDomains = allowedRedirectDomains ?? [];
   const effectiveAppUrl = appUrl;
   const fallbackRedirect = new URL("/", effectiveAppUrl).toString();
+  const publicRequestUrl = new URL(
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    effectiveAppUrl,
+  ).toString();
   const safeRedirect = getSafeRedirectUrl(
-    request.nextUrl.toString(),
+    publicRequestUrl,
     fallbackRedirect,
     allowedDomains,
   );

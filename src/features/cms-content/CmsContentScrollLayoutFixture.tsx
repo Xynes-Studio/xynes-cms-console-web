@@ -224,8 +224,8 @@ export function CmsContentScrollLayoutFixture({ mode }: { mode: FixtureMode }) {
             secondaryRowRef={secondaryToolbarRowRef}
             secondaryRowContainerClassName={
               isSecondaryToolbarVisible
-                ? "border-b border-border transition-[max-height,border-color] duration-200 ease-out"
-                : "border-b border-transparent transition-[max-height,border-color] duration-200 ease-out"
+                ? "border-b border-border transition-colors duration-200 ease-out"
+                : "border-b border-transparent transition-colors duration-200 ease-out"
             }
             secondaryRowContainerStyle={secondaryToolbarContainerStyle}
             onCreate={() => undefined}
@@ -278,7 +278,11 @@ export function CmsContentScrollLayoutFixture({ mode }: { mode: FixtureMode }) {
                         createdAt={entry.createdAt}
                         avatarUrl={entry.avatarUrl}
                         status={entry.status}
+                        isFavorite={entry.isFavorite}
                         onOpen={() => undefined}
+                        onDelete={() => undefined}
+                        onShare={() => undefined}
+                        onToggleFavorite={() => undefined}
                       />
                     ) : (
                       <CmsContentCardList

@@ -172,7 +172,12 @@ describe("CmsContentCardList", () => {
       shareAriaLabel: "[SShhaarree ccoonntteenntt {title}]",
       favoriteAriaLabel: "[FFaavvoouurriittee ccoonntteenntt {title}]",
     };
-    const dateTimeFormatSpy = vi.spyOn(Intl, "DateTimeFormat");
+    const NativeDateTimeFormat = Intl.DateTimeFormat;
+    const dateTimeFormatSpy = vi
+      .spyOn(Intl, "DateTimeFormat")
+      .mockImplementation(function DateTimeFormat(locales, options) {
+        return new NativeDateTimeFormat(locales, options);
+      });
 
     render(
       <CmsContentCardList

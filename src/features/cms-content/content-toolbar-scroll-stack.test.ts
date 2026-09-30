@@ -43,6 +43,8 @@ describe("content-toolbar-scroll-stack", () => {
       state: {
         isSecondaryToolbarVisible: false,
         lastScrollTop: 24,
+        lastScrollHeight: 1600,
+        lastClientHeight: 600,
         downwardScrollAccumulator: 0,
         upwardScrollAccumulator: 0,
       },
@@ -60,6 +62,8 @@ describe("content-toolbar-scroll-stack", () => {
       state: {
         isSecondaryToolbarVisible: false,
         lastScrollTop: 64,
+        lastScrollHeight: 1600,
+        lastClientHeight: 600,
         downwardScrollAccumulator: 0,
         upwardScrollAccumulator: 0,
       },
@@ -87,5 +91,31 @@ describe("content-toolbar-scroll-stack", () => {
     expect(nextState.isSecondaryToolbarVisible).toBe(true);
     expect(nextState.downwardScrollAccumulator).toBe(8);
     expect(nextState.lastScrollTop).toBe(24.5);
+  });
+
+  it("BUG-006: ignores bottom clamping caused by the toolbar layout transition", () => {
+    const hiddenAtOldBottom = resolveContentToolbarScrollState({
+      state: createContentToolbarScrollState(),
+      scrollTop: 1000,
+      scrollHeight: 1600,
+      clientHeight: 600,
+    });
+    const clampedAtNewBottom = resolveContentToolbarScrollState({
+      state: hiddenAtOldBottom,
+      scrollTop: 952,
+      scrollHeight: 1600,
+      clientHeight: 648,
+    });
+
+    expect(hiddenAtOldBottom.isSecondaryToolbarVisible).toBe(false);
+    expect(clampedAtNewBottom.isSecondaryToolbarVisible).toBe(false);
+
+    const intentionalUpwardScroll = resolveContentToolbarScrollState({
+      state: clampedAtNewBottom,
+      scrollTop: 948,
+      scrollHeight: 1600,
+      clientHeight: 648,
+    });
+    expect(intentionalUpwardScroll.isSecondaryToolbarVisible).toBe(true);
   });
 });

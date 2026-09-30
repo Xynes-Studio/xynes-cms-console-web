@@ -42,6 +42,17 @@ describe("CMS-REL-2 release quality contract", () => {
     }
   });
 
+  it("loads the Vitest config without a runtime vitest/config dependency", () => {
+    const vitestConfig = readRepoFile("vitest.config.ts");
+
+    expect(vitestConfig).toContain(
+      'import type { ViteUserConfig } from "vitest/config";',
+    );
+    expect(vitestConfig).not.toMatch(
+      /import\s+\{\s*defineConfig\s*\}\s+from\s+["']vitest\/config["']/,
+    );
+  });
+
   it("defines a least-privilege, non-deploying release workflow", () => {
     const workflowPath = resolve(repoRoot, ".github/workflows/quality.yml");
     expect(existsSync(workflowPath), "quality workflow must exist").toBe(true);

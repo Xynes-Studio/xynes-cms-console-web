@@ -24,10 +24,14 @@ const resolveCardStatus = (
 
 export const mapEntryToGridCardProps = ({
   entry,
-  onOpen,
+  handlers,
+  isDeleting = false,
+  isFavoritePending = false,
 }: {
   entry: WorkspaceContentEntry;
-  onOpen: EntryActionHandlers["onOpen"];
+  handlers: EntryActionHandlers;
+  isDeleting?: boolean;
+  isFavoritePending?: boolean;
 }): CmsEntryCardGridProps => ({
   entryId: entry.id,
   title: entry.title,
@@ -39,7 +43,13 @@ export const mapEntryToGridCardProps = ({
   createdAt: entry.createdAt,
   avatarUrl: entry.avatarUrl,
   status: resolveCardStatus(entry.status),
-  onOpen,
+  isFavorite: entry.isFavorite,
+  isDeleting,
+  isFavoritePending,
+  onOpen: handlers.onOpen,
+  onDelete: handlers.onDelete,
+  onShare: handlers.onShare,
+  onToggleFavorite: handlers.onToggleFavorite,
 });
 
 export const mapEntryToListCardProps = ({

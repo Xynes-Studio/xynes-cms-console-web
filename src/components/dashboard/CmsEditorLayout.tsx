@@ -570,6 +570,7 @@ export function CmsEditorLayout({
                     label={item.label}
                     icon={item.icon}
                     disabled={item.disabled}
+                    className="cursor-pointer data-[disabled]:cursor-not-allowed"
                     onSelect={item.onSelect}
                   />
                 ))}

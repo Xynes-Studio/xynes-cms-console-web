@@ -1,5 +1,5 @@
 import type { DashboardShellProps } from "@lumia-ui/layout";
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CmsDashboardShell } from "./CmsDashboardShell";
 
@@ -15,10 +15,12 @@ const mockToastShow = vi.fn();
 const pathnameState = vi.hoisted(() => ({
   value: "/dashboard/acme/plugins",
 }));
+const searchParamsState = vi.hoisted(() => ({ value: "" }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => pathnameState.value,
+  useSearchParams: () => new URLSearchParams(searchParamsState.value),
 }));
 
 vi.mock("@xynes/auth-sdk", () => ({
@@ -50,6 +52,10 @@ vi.mock("next-intl", () => ({
         "cms.shell.status.wrongWorkspaceTitle": "Switching workspace…",
         "cms.shell.status.wrongWorkspaceDescription":
           "We could not find that workspace. Taking you to one you can access.",
+        "cms.shell.status.loggingOut": "Signing you out...",
+        "cms.shell.status.logoutFailedTitle": "Could not sign out",
+        "cms.shell.status.logoutFailedDescription":
+          "Please try again. Your current session is still active.",
         "cms.shell.shell.workspaceCreationDisabledMessage":
           "Workspace creation is unavailable. Check settings or contact admin.",
         "cms.shell.shell.footerNote":
@@ -116,11 +122,14 @@ vi.mock("@lumia-ui/components", () => ({
 describe("CmsDashboardShell", () => {
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_AUTH_APP_URL = "http://localhost:3100";
     pathnameState.value = "/dashboard/acme/plugins";
+    searchParamsState.value = "";
     mockPush.mockReset();
     mockReplace.mockReset();
     mockDashboardShell.mockReset();
@@ -403,7 +412,14 @@ describe("CmsDashboardShell", () => {
     expect(props.directorySection?.nodes).toEqual([]);
   });
 
-  it("routes navigation, workspace selection, and logout actions through next router", () => {
+  it("routes dashboard actions and uses a hard navigation for logout", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+    const logoutReplaceSpy = vi
+      .spyOn(window.location, "replace")
+      .mockImplementation(() => undefined);
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => undefined);
     render(
       <CmsDashboardShell workspaceSlug="acme">
         <div>CMS content</div>
@@ -419,13 +435,12 @@ describe("CmsDashboardShell", () => {
     expect(mockPush).toHaveBeenCalledWith("/dashboard/beta-workspace/plugins");
 
     props.onLogout();
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(logoutReplaceSpy).toHaveBeenCalledWith(
       "/logout?redirect=%2Fdashboard%2Facme%2Fplugins",
     );
-
-    const assignSpy = vi
-      .spyOn(window.location, "assign")
-      .mockImplementation(() => undefined);
+    expect(mockPush).not.toHaveBeenCalledWith(
+      "/logout?redirect=%2Fdashboard%2Facme%2Fplugins",
+    );
 
     props.onCreateWorkspace?.();
     // WSA-FIX-2 (2026-05-12): CMS Console appends `?redirect=<encoded CMS
@@ -440,7 +455,125 @@ describe("CmsDashboardShell", () => {
     );
     expect(mockPush).not.toHaveBeenCalledWith("/onboarding");
 
+    logoutReplaceSpy.mockRestore();
     assignSpy.mockRestore();
+  });
+
+  it("BUG-005: immediately blocks dashboard interaction while logout navigation is pending", () => {
+    const logoutReplaceSpy = vi
+      .spyOn(window.location, "replace")
+      .mockImplementation(() => undefined);
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <button type="button">Protected action</button>
+      </CmsDashboardShell>,
+    );
+
+    const props = mockDashboardShell.mock.calls[0][0] as DashboardShellProps;
+    act(() => props.onLogout());
+
+    expect(logoutReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(logoutReplaceSpy).toHaveBeenCalledWith(
+      "/logout?redirect=%2Fdashboard%2Facme%2Fplugins",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Signing you out...");
+    expect(
+      screen.getByTestId("cms-dashboard-interaction-boundary"),
+    ).toHaveAttribute("inert");
+    expect(
+      screen.getByTestId("cms-dashboard-interaction-boundary"),
+    ).toHaveAttribute("aria-hidden", "true");
+
+    const latestProps = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
+    act(() => latestProps.onLogout());
+    expect(logoutReplaceSpy).toHaveBeenCalledTimes(1);
+    logoutReplaceSpy.mockRestore();
+  });
+
+  it("BUG-005: clears the blocker and reports a logout navigation failure", () => {
+    const logoutReplaceSpy = vi
+      .spyOn(window.location, "replace")
+      .mockImplementationOnce(() => {
+        throw new Error("navigation unavailable");
+      });
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>Protected content</div>
+      </CmsDashboardShell>,
+    );
+
+    const props = mockDashboardShell.mock.calls[0][0] as DashboardShellProps;
+    expect(() => act(() => props.onLogout())).not.toThrow();
+
+    expect(screen.queryByText("Signing you out...")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("cms-dashboard-interaction-boundary"),
+    ).not.toHaveAttribute("inert");
+    expect(mockToastShow).toHaveBeenCalledWith({
+      variant: "error",
+      title: "Could not sign out",
+      description: "Please try again. Your current session is still active.",
+    });
+    logoutReplaceSpy.mockRestore();
+  });
+
+  it("BUG-005: recovers when logout navigation does not leave the page", () => {
+    vi.useFakeTimers();
+    const logoutReplaceSpy = vi
+      .spyOn(window.location, "replace")
+      .mockImplementation(() => undefined);
+
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>Protected content</div>
+      </CmsDashboardShell>,
+    );
+
+    const props = mockDashboardShell.mock.calls[0][0] as DashboardShellProps;
+    act(() => props.onLogout());
+    expect(screen.getByRole("status")).toHaveTextContent("Signing you out...");
+
+    act(() => vi.advanceTimersByTime(10_000));
+
+    expect(screen.queryByText("Signing you out...")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("cms-dashboard-interaction-boundary"),
+    ).not.toHaveAttribute("inert");
+    expect(mockToastShow).toHaveBeenCalledWith({
+      variant: "error",
+      title: "Could not sign out",
+      description: "Please try again. Your current session is still active.",
+    });
+
+    logoutReplaceSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it("preserves validated content query state when navigating directories", () => {
+    pathnameState.value = "/dashboard/acme/content/articles";
+    searchParamsState.value =
+      "view=grid&q=release&sortBy=title&favorites=1&offset=40&directoryId=legacy&next=https%3A%2F%2Fevil.example";
+
+    render(
+      <CmsDashboardShell workspaceSlug="acme">
+        <div>CMS content</div>
+      </CmsDashboardShell>,
+    );
+
+    const props = mockDashboardShell.mock.calls.at(
+      -1,
+    )?.[0] as DashboardShellProps;
+
+    props.onNavigate?.(
+      "/dashboard/acme/content/guides",
+      props.navItems[0]!,
+    );
+
+    expect(mockPush).toHaveBeenCalledWith(
+      "/dashboard/acme/content/guides?q=release&sortBy=title&view=grid&favorites=1",
+    );
   });
 
   it("preserves nested content path when switching workspace", () => {

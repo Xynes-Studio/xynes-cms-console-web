@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth, useWorkspace } from "@xynes/auth-sdk";
 import type { BreadcrumbItem } from "@lumia-ui/components";
@@ -13,6 +13,7 @@ import {
   toggleWorkspaceEntryFavorite,
 } from "../../lib/dashboard/content-entries-client";
 import { useCmsContentQueryState } from "../../lib/dashboard/use-cms-content-query-state";
+import { buildCmsContentNavigationUrl } from "../../lib/dashboard/cms-content-query-state";
 import { useCmsContentEntries } from "../../lib/dashboard/use-cms-content-entries";
 import { CmsContentToolbar } from "../../components/dashboard/CmsContentToolbar";
 import {
@@ -54,6 +55,7 @@ export function CmsContentListPanel() {
   const t = useTranslations("cms.content");
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     getAccessToken,
     isAuthenticated,
@@ -227,7 +229,10 @@ export function CmsContentListPanel() {
   const breadcrumbItems: BreadcrumbItem[] = [
     {
       label: "Contents",
-      onClick: () => router.push(contentBasePath),
+      onClick: () =>
+        router.push(
+          buildCmsContentNavigationUrl(contentBasePath, searchParams),
+        ),
     },
   ];
 
@@ -239,7 +244,8 @@ export function CmsContentListPanel() {
 
     breadcrumbItems.push({
       label: segment,
-      onClick: () => router.push(to),
+      onClick: () =>
+        router.push(buildCmsContentNavigationUrl(to, searchParams)),
     });
   });
 
@@ -567,7 +573,7 @@ export function CmsContentListPanel() {
           secondaryRowHidden={!isSecondaryToolbarVisible}
           secondaryRowRef={secondaryToolbarRowRef}
           secondaryRowContainerClassName={cx(
-            "transition-[max-height,border-color] duration-200 ease-out",
+            "transition-colors duration-200 ease-out",
             isSecondaryToolbarVisible
               ? "border-b border-border"
               : "border-b border-transparent",
@@ -699,7 +705,9 @@ export function CmsContentListPanel() {
                     <CmsContentCardGrid
                       {...mapEntryToGridCardProps({
                         entry: item,
-                        onOpen: handleOpen,
+                        handlers: listHandlers,
+                        isDeleting: Boolean(pendingDeleteIds[item.id]),
+                        isFavoritePending: Boolean(pendingFavoriteIds[item.id]),
                       })}
                     />
                   ) : (

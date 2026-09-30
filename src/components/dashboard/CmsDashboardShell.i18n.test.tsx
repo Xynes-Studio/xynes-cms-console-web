@@ -32,6 +32,7 @@ const mockGetAccessToken = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
   usePathname: () => "/dashboard/acme/content",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@xynes/auth-sdk", () => ({

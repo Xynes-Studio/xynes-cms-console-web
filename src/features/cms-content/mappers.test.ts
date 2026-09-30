@@ -26,24 +26,31 @@ const makeEntry = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("cms-content mappers", () => {
+  const makeHandlers = () => ({
+    onOpen: vi.fn(),
+    onDelete: vi.fn(),
+    onShare: vi.fn(),
+    onToggleFavorite: vi.fn(),
+  });
+
   it("maps grid card props and preserves archived status (BUG-CMS-7)", () => {
-    const onOpen = vi.fn();
+    const handlers = makeHandlers();
 
     const mapped = mapEntryToGridCardProps({
       entry: makeEntry({ status: "archived" }),
-      onOpen,
+      handlers,
     });
 
     expect(mapped.entryId).toBe("entry-1");
     expect(mapped.status).toBe("archived");
     mapped.onOpen("entry-1");
-    expect(onOpen).toHaveBeenCalledWith("entry-1");
+    expect(handlers.onOpen).toHaveBeenCalledWith("entry-1");
   });
 
   it("maps grid card props and falls back to draft for unknown status", () => {
     const mapped = mapEntryToGridCardProps({
       entry: makeEntry({ status: "draft" }),
-      onOpen: vi.fn(),
+      handlers: makeHandlers(),
     });
 
     expect(mapped.status).toBe("draft");
@@ -91,7 +98,7 @@ describe("cms-content mappers", () => {
       entry: makeEntry({
         creator: { id: "user-7", displayName: "Aiyana Patel" },
       }),
-      onOpen: vi.fn(),
+      handlers: makeHandlers(),
     });
 
     expect(mapped.creator).toEqual({
@@ -103,10 +110,30 @@ describe("cms-content mappers", () => {
   it("forwards a null creator (api_key actor) from the entry to the grid card props", () => {
     const mapped = mapEntryToGridCardProps({
       entry: makeEntry({ creator: null }),
-      onOpen: vi.fn(),
+      handlers: makeHandlers(),
     });
 
     expect(mapped.creator).toBeNull();
+  });
+
+  it("BUG-004: forwards grid action handlers, favorite state, and pending state", () => {
+    const handlers = makeHandlers();
+    const mapped = mapEntryToGridCardProps({
+      entry: makeEntry({ isFavorite: true }),
+      handlers,
+      isDeleting: true,
+      isFavoritePending: true,
+    });
+
+    expect(mapped.isFavorite).toBe(true);
+    expect(mapped.isDeleting).toBe(true);
+    expect(mapped.isFavoritePending).toBe(true);
+    mapped.onDelete("entry-1");
+    mapped.onShare("entry-1");
+    mapped.onToggleFavorite("entry-1");
+    expect(handlers.onDelete).toHaveBeenCalledWith("entry-1");
+    expect(handlers.onShare).toHaveBeenCalledWith("entry-1");
+    expect(handlers.onToggleFavorite).toHaveBeenCalledWith("entry-1");
   });
 
   it("forwards a non-null creator from the entry to the list card props", () => {

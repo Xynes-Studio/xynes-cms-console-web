@@ -1,8 +1,8 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@lumia-ui/components";
 import {
   DashboardShell,
@@ -21,6 +21,7 @@ import {
   updateContentDirectoryName,
   type ContentDirectoryNode,
 } from "../../lib/dashboard/content-directory-tree";
+import { buildCmsContentNavigationUrl } from "../../lib/dashboard/cms-content-query-state";
 import {
   createWorkspaceContentDirectory,
   deleteWorkspaceContentDirectory,
@@ -42,6 +43,7 @@ type CmsDashboardShellProps = {
 
 type LumiaDashboardChildren = ComponentProps<typeof DashboardShell>["children"];
 const authWorkspaceCreationPath = "/onboarding";
+const LOGOUT_NAVIGATION_RECOVERY_TIMEOUT_MS = 10_000;
 
 /**
  * WSA-FIX-2 (2026-05-12): When CMS Console links to the auth app's
@@ -209,6 +211,7 @@ export function CmsDashboardShell({
   const tStatus = useTranslations("cms.shell.status");
   const router = useRouter();
   const activePath = usePathname();
+  const searchParams = useSearchParams();
   const {
     user,
     workspaces,
@@ -261,6 +264,9 @@ export function CmsDashboardShell({
   const [contentDirectories, setContentDirectories] =
     useState<ContentDirectoryNode[]>(initialDirectoryTree);
   const [directoryDataRevision, setDirectoryDataRevision] = useState(0);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const logoutPendingRef = useRef(false);
+  const logoutRecoveryTimerRef = useRef<number | null>(null);
   const [expandedDirectoryIds, setExpandedDirectoryIds] = useState<string[]>(
     getContentDirectoryPathIds({
       nodes: initialDirectoryTree,
@@ -274,6 +280,51 @@ export function CmsDashboardShell({
       description: t("directory.mutationErrorDescription"),
     });
   };
+  const handleLogout = () => {
+    if (logoutPendingRef.current) {
+      return;
+    }
+
+    logoutPendingRef.current = true;
+    setIsLoggingOut(true);
+
+    const recoverFromLogoutNavigationFailure = () => {
+      if (logoutRecoveryTimerRef.current !== null) {
+        window.clearTimeout(logoutRecoveryTimerRef.current);
+        logoutRecoveryTimerRef.current = null;
+      }
+      logoutPendingRef.current = false;
+      setIsLoggingOut(false);
+      showToast({
+        variant: "error",
+        title: tStatus("logoutFailedTitle"),
+        description: tStatus("logoutFailedDescription"),
+      });
+    };
+
+    logoutRecoveryTimerRef.current = window.setTimeout(() => {
+      if (logoutPendingRef.current) {
+        recoverFromLogoutNavigationFailure();
+      }
+    }, LOGOUT_NAVIGATION_RECOVERY_TIMEOUT_MS);
+
+    try {
+      window.location.replace(
+        `/logout?redirect=${encodeURIComponent(currentDashboardPath)}`,
+      );
+    } catch {
+      recoverFromLogoutNavigationFailure();
+    }
+  };
+
+  useEffect(
+    () => () => {
+      if (logoutRecoveryTimerRef.current !== null) {
+        window.clearTimeout(logoutRecoveryTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (isAuthLoading || isAuthenticated) {
@@ -770,6 +821,20 @@ export function CmsDashboardShell({
     router.push(nextPath);
   };
 
+  const handleNavigate = (href: string) => {
+    const target = parseDashboardSectionPath(href);
+    const isContentDirectoryNavigation =
+      parsedActivePath?.section === "content" &&
+      target?.section === "content" &&
+      target.workspaceSlug === parsedActivePath.workspaceSlug;
+
+    router.push(
+      isContentDirectoryNavigation
+        ? buildCmsContentNavigationUrl(href, searchParams)
+        : href,
+    );
+  };
+
   // Build the Lumia DashboardShell label bundle from the cms.shell catalog
   // (UXR-6). Each branch is a thin map: this is the single seam where CMS
   // Console owns translated product copy and the design-system stays
@@ -897,68 +962,91 @@ export function CmsDashboardShell({
   ) as LumiaDashboardChildren;
 
   return (
-    <DashboardShell
-      activePath={safeActivePath}
-      navItems={navItems}
-      onNavigate={(href) => router.push(href)}
-      workspace={
-        currentWorkspace
-          ? {
-              id: currentWorkspace.id,
-              name: currentWorkspace.name,
-              slug: currentWorkspace.slug,
+    <>
+      <div
+        data-testid="cms-dashboard-interaction-boundary"
+        inert={isLoggingOut ? true : undefined}
+        aria-hidden={isLoggingOut ? true : undefined}
+      >
+        <DashboardShell
+          activePath={safeActivePath}
+          navItems={navItems}
+          onNavigate={handleNavigate}
+          workspace={
+            currentWorkspace
+              ? {
+                  id: currentWorkspace.id,
+                  name: currentWorkspace.name,
+                  slug: currentWorkspace.slug,
+                }
+              : null
+          }
+          workspaceOptions={workspaces.map((workspace) => ({
+            id: workspace.id,
+            name: workspace.name,
+            slug: workspace.slug,
+          }))}
+          onWorkspaceSelect={handleWorkspaceSelect}
+          onCreateWorkspace={() => {
+            const target = buildAuthWorkspaceCreationUrl();
+            if (/^https?:\/\//i.test(target)) {
+              window.location.assign(target);
+              return;
             }
-          : null
-      }
-      workspaceOptions={workspaces.map((workspace) => ({
-        id: workspace.id,
-        name: workspace.name,
-        slug: workspace.slug,
-      }))}
-      onWorkspaceSelect={handleWorkspaceSelect}
-      onCreateWorkspace={() => {
-        const target = buildAuthWorkspaceCreationUrl();
-        if (/^https?:\/\//i.test(target)) {
-          window.location.assign(target);
-          return;
-        }
 
-        router.push(target);
-      }}
-      enableWorkspaceCreation={true}
-      workspaceCreationDisabledMessage={tShell(
-        "workspaceCreationDisabledMessage",
-      )}
-      userMenu={{
-        name:
-          user?.displayName || user?.email || tShellUserMenu("fallbackName"),
-        email: user?.email || tShellUserMenu("fallbackEmail"),
-        avatarSrc: user?.avatarUrl || undefined,
-      }}
-      onLogout={() =>
-        router.push(
-          `/logout?redirect=${encodeURIComponent(currentDashboardPath)}`,
-        )
-      }
-      notifications={[]}
-      sidebarFooterNote={tShell("footerNote")}
-      labels={shellLabels}
-      directorySection={{
-        navItemId: "contents",
-        rootHref: contentsHref,
-        activeHref: activeDirectoryHref,
-        nodes: directoryNodes,
-        expandedIds: effectiveExpandedDirectoryIds,
-        onExpandedIdsChange: setExpandedDirectoryIds,
-        onCreateDirectory: handleCreateDirectory,
-        onRenameDirectory: handleRenameDirectory,
-        onDeleteDirectory: handleDeleteDirectory,
-        canManageDirectories,
-        directoryActionDisabledReason,
-        maxNameLength: maxContentDirectoryNameLength,
-      }}
-    >
-      {shellChildren}
-    </DashboardShell>
+            router.push(target);
+          }}
+          enableWorkspaceCreation={true}
+          workspaceCreationDisabledMessage={tShell(
+            "workspaceCreationDisabledMessage",
+          )}
+          userMenu={{
+            name:
+              user?.displayName ||
+              user?.email ||
+              tShellUserMenu("fallbackName"),
+            email: user?.email || tShellUserMenu("fallbackEmail"),
+            avatarSrc: user?.avatarUrl || undefined,
+          }}
+          onLogout={handleLogout}
+          notifications={[]}
+          sidebarFooterNote={tShell("footerNote")}
+          labels={shellLabels}
+          directorySection={{
+            navItemId: "contents",
+            rootHref: contentsHref,
+            activeHref: activeDirectoryHref,
+            nodes: directoryNodes,
+            expandedIds: effectiveExpandedDirectoryIds,
+            onExpandedIdsChange: setExpandedDirectoryIds,
+            onCreateDirectory: handleCreateDirectory,
+            onRenameDirectory: handleRenameDirectory,
+            onDeleteDirectory: handleDeleteDirectory,
+            canManageDirectories,
+            directoryActionDisabledReason,
+            maxNameLength: maxContentDirectoryNameLength,
+          }}
+        >
+          {shellChildren}
+        </DashboardShell>
+      </div>
+      {isLoggingOut ? (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          data-testid="cms-logout-blocker"
+          className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-background/90 px-6 backdrop-blur-sm"
+        >
+          <div className="flex flex-col items-center gap-3 text-center text-foreground">
+            <span
+              aria-hidden="true"
+              className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary-500"
+            />
+            <p className="text-sm font-medium">{tStatus("loggingOut")}</p>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

@@ -54,7 +54,10 @@
     "noWorkspaceTitle": "[SSeettttiinngg uupp yyoouurr wwoorrkkssppaaccee……]",
     "noWorkspaceDescription": "[RReeddiirreeccttiinngg yyoouu ttoo ccrreeaattee yyoouurr ffiirrsstt wwoorrkkssppaaccee.]",
     "wrongWorkspaceTitle": "[SSwwiittcchhiinngg wwoorrkkssppaaccee……]",
-    "wrongWorkspaceDescription": "[WWee ccoouulldd nnoott ffiinndd tthhaatt wwoorrkkssppaaccee. TTaakkiinngg yyoouu ttoo oonnee yyoouu ccaann aacccceessss.]"
+    "wrongWorkspaceDescription": "[WWee ccoouulldd nnoott ffiinndd tthhaatt wwoorrkkssppaaccee. TTaakkiinngg yyoouu ttoo oonnee yyoouu ccaann aacccceessss.]",
+    "loggingOut": "[SSiiggnniinngg yyoouu oouutt...]",
+    "logoutFailedTitle": "[CCoouulldd nnoott ssiiggnn oouutt]",
+    "logoutFailedDescription": "[PPlleeaassee ttrryy aaggaaiinn. YYoouurr ccuurrrreenntt sseessssiioonn iiss ssttiillll aaccttiivvee.]"
   },
   "directory": {
     "ownerOnly": "[OOnnllyy wwoorrkkssppaaccee oowwnneerrss ccaann mmaannaaggee ddiirreeccttoorriieess rriigghhtt nnooww.]",
