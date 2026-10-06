@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "fields": { "id": "string", "title": "string", "description": "string", "tags": "string[]", "publishedAt": "string", "body": "object|null" },
+  "entries": [
+    { "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "title": "Example published entry", "description": "Static response example", "tags": ["example"], "publishedAt": "2026-10-01T12:00:00.000Z", "body": { "type": "doc", "content": [] } },
+    { "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "title": "Another published entry", "description": "Static response example", "tags": [], "publishedAt": "2026-09-30T12:00:00.000Z", "body": null }
+  ]
+}

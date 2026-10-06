@@ -315,3 +315,10 @@ Set `localStorage["cms.debug"] = "1"` in browser console to enable verbose `[CMS
 - [infra/ENV_GUIDE](../infra/README.md) — frontend stack environment guide
 - [Auth SDK](../xynes-auth-sdk/README.md)
 - [Lumia DS](../lumia-ds/README.md)
+
+## Content integration request engine
+
+CMS-INT-B1 adds reusable pure helpers under `src/features/content-integrations`:
+validated folder/entry URLs, placeholder-only cURL/server-side REST examples and
+static projected response fixtures. There is no new UI or rollout flag enabled
+in B1. See [developer usage, security policy and A5 handoff](docs/DEVELOPER.md#cms-content-integration-request-engine-cms-int-b1).
