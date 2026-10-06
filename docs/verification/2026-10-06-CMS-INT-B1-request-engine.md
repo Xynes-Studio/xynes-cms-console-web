@@ -154,3 +154,38 @@ The user subsequently authorized raising the B1 PR and continuing A5. The
 implementation/test evidence above describes the reviewed pre-publication state.
 Publication adds no UI/backend behavior; A5 will pin the resulting frontend commit
 and consume these actual engine exports. No current-stack rollout is authorized.
+
+## PR52 projected-response guard repair (2026-10-06)
+
+**PASS WITH FIXES.** [Review comment4191751444](https://github.com/Xynes-Studio/xynes-cms-console-web/pull/52#discussion_r4191751444)
+correctly identified that copied fetch code accepted malformed selected fields
+after checking only the ID. Regression tests reproduced numeric titles being
+accepted for both entry and directory requests before the fix.
+
+The generator now uses the existing getResponseFields metadata to check every
+selected string, string-array and object-or-null field. Missing selected fields,
+numeric titles, mixed-type tags and array/primitive bodies fail with the static
+Invalid CMS delivery data error. Nullable body and ID-only projections remain
+accepted. Request URLs, headers, cURL quoting and credential handling are unchanged.
+The checks enforce the advertised field types; they do not replace backend snapshot
+semantic/budget validation. No UI/component/locale/DS or API/schema change exists.
+
+Focused copied-code tests:9 pass, including successful projections, wrong types,
+missing fields, null body and omitted unselected fields. The actual Node artifact
+executes against owned mocked fetch with scenario data passed via environment JSON;
+no payload or label is interpolated into executable code. Independent read-only
+security review found no blockers and reproduced the9 passing snippet tests.
+
+Fresh full coverage run:891 tests across72 files pass. Configured85% coverage gates
+pass: statements91.81%, branches85.70%, functions97.26%, lines92.40%.
+Changed snippets.ts has100% statements (15/15), branches (8/8), functions (4/4)
+and lines. Focused all-engine run:103 tests pass. Lint, strict typecheck and Next
+production build pass; git diff check is clean. Build trace dependency output was
+removed only after confirming it contained no tracked/product files.
+
+Developer documentation describes selected-field checks. Existing pre-publication
+sections above remain historical evidence. A5's separate local API report is pinned
+to bae1ba0 and is not relabelled as verification of this later revision. Browser/
+clipboard/rollout validation remains with B2/B3. No dependency, database, deployment
+or current-stack change was performed for this repair. Changes are scoped to the
+snippet generator/tests and the developer/verification documents for existing PR52.

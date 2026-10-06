@@ -6,16 +6,17 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildIntegrationRequest } from "./build-request";
 import { buildRequestSnippets } from "./snippets";
+import type { DeliveryField } from "./types";
 const context = {
   workspaceId: "11111111-1111-4111-8111-111111111111",
   workspaceSlug: "fixture",
   apiBaseUrl: "https://api.example.com/a'b",
   target: { kind: "entry", entryId: "33333333-3333-4333-8333-333333333333", label: "title" },
 };
-function snippets(label = context.target.label) {
+function snippets(label = context.target.label, fields: readonly DeliveryField[] = ["body"]) {
   const result = buildIntegrationRequest(
     { ...context, target: { ...context.target, label } },
-    { fields: ["body"] },
+    { fields },
   );
   if (!result.ok) throw new Error("Expected request");
   return { request: result.request, output: buildRequestSnippets(result.request) };
@@ -74,18 +75,26 @@ it("copies executable cURL quoting and substitutes only the runtime key", () => 
 });
 
 type Scenario = { ok: boolean; status: number; payload: unknown; badJson?: boolean };
-function executeFetch(scenario: Scenario, missingKey = false, directoryRequest = false) {
-  let { request, output } = snippets();
+function executeFetch(
+  scenario: Scenario,
+  missingKey = false,
+  directoryRequest = false,
+  fields?: readonly DeliveryField[],
+) {
+  let { request, output } = snippets(undefined, fields);
   if (directoryRequest) {
-    const result = buildIntegrationRequest({
-      ...context,
-      target: {
-        kind: "directory",
-        directoryId: context.target.entryId,
-        label: "Folder",
-        breadcrumb: "Contents",
+    const result = buildIntegrationRequest(
+      {
+        ...context,
+        target: {
+          kind: "directory",
+          directoryId: context.target.entryId,
+          label: "Folder",
+          breadcrumb: "Contents",
+        },
       },
-    });
+      fields ? { fields } : {},
+    );
     if (!result.ok) throw new Error("Expected directory request");
     request = result.request;
     output = buildRequestSnippets(request);
@@ -157,7 +166,13 @@ it("checks the directory response envelope in copied fetch code", () => {
       payload: {
         ok: true,
         data: {
-          items: [{ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }],
+          items: [{
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            title: "Published",
+            description: "",
+            tags: [],
+            publishedAt: "2026-10-06T00:00:00Z",
+          }],
           page: { limit: 20, offset: 0, hasMore: false },
         },
       },
@@ -175,5 +190,63 @@ it("checks the directory response envelope in copied fetch code", () => {
     expect(
       executeFetch({ ok: true, status: 200, payload: { ok: true, data } }, false, true).status,
     ).not.toBe(0);
+  }
+});
+
+const projectedEntry = {
+  id: context.target.entryId,
+  title: "Published title",
+  description: "",
+  tags: ["docs"],
+  publishedAt: "2026-10-06T00:00:00Z",
+  body: { root: { type: "root", version: 1, children: [] } },
+};
+const projectedFields: readonly DeliveryField[] = [
+  "id", "title", "description", "tags", "publishedAt", "body",
+];
+it.each([false, true])(
+  "validates every selected field in copied fetch (directory=%s)",
+  (directoryRequest) => {
+    const fields = directoryRequest
+      ? projectedFields.filter(field => field !== "body")
+      : projectedFields;
+    function run(entry: unknown) {
+      const data = directoryRequest
+        ? { items: [entry], page: { limit: 20, offset: 0, hasMore: false } }
+        : { entry };
+      return executeFetch(
+        { ok: true, status: 200, payload: { ok: true, data } },
+        false, directoryRequest, fields,
+      );
+    }
+    expect(run(projectedEntry).status).toBe(0);
+    for (const field of fields) {
+      const wrongValues: unknown[] = field === "tags"
+        ? ["docs", ["docs", 123], null]
+        : field === "body"
+          ? [[], "not-object", 123]
+          : [123, [], {}, null];
+      for (const value of wrongValues) {
+        const response = run({ ...projectedEntry, [field]: value });
+        expect(response.status, `wrong ${field} type`).not.toBe(0);
+        expect(response.stderr).toContain("Invalid CMS delivery data");
+      }
+      const missing = { ...projectedEntry };
+      Reflect.deleteProperty(missing, field);
+      expect(run(missing).status, `missing selected ${field}`).not.toBe(0);
+    }
+    if (!directoryRequest) expect(run({ ...projectedEntry, body: null }).status).toBe(0);
+  },
+);
+it("allows omitted unselected fields for ID-only copied requests", () => {
+  const entry = { id: context.target.entryId };
+  for (const directoryRequest of [false, true]) {
+    const data = directoryRequest
+      ? { items: [entry], page: { limit: 20, offset: 0, hasMore: false } }
+      : { entry };
+    expect(executeFetch(
+      { ok: true, status: 200, payload: { ok: true, data } },
+      false, directoryRequest, [],
+    ).status).toBe(0);
   }
 });

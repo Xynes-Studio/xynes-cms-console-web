@@ -1281,6 +1281,12 @@ and malformed success envelopes/data without logging response bodies or keys.
 These are code strings only: opening/configuring integrations executes nothing.
 No script tag, SDK import, HTML renderer or key-lifecycle UI is provided.
 
+The fetch guard validates every selected entry/item field against the same
+field-type metadata shown in the response definitions: strings, arrays of strings,
+and a non-array body object or null. Missing selected fields fail; unselected
+fields may be omitted. Malformed data produces a static error without echoing the
+payload or credential.
+
 `buildExampleResponse(request)` wraps its projected contract fixture with
 `kind: "static-example"`; it is not live/editor data and does not assert an entry
 exists. `getResponseFields(request)` returns selected technical names, data types
