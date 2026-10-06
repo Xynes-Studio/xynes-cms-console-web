@@ -90,7 +90,7 @@ jobs:
           pnpm build
         working-directory: "xynes-i18n"
       -
-        run: "pnpm install --frozen-lockfile"
+        run: "pnpm install --frozen-lockfile --ignore-workspace"
         working-directory: "xynes-cms-console-web"
       -
         run: |
