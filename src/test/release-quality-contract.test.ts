@@ -62,7 +62,7 @@ describe("CMS-REL-2 release quality contract", () => {
     expect(workflow).toMatch(/pull_request:[\s\S]*develop[\s\S]*main[\s\S]*release\/\*/);
     expect(workflow).toMatch(/workflow_dispatch:/);
     expect(workflow).toMatch(/cancel-in-progress:\s*true/);
-    expect(workflow).not.toMatch(/^\s*push:\s*$/m);
+    expect(workflow).toMatch(/push:\s*\n\s+branches: \[main, develop, "release\/\*"\]/);
     expect(workflow).not.toMatch(/packages:\s*write|id-token:\s*write|environment:/);
     expect(workflow).not.toMatch(/docker\s+(login|build|push)|\bdeploy\b|\bssh\b/i);
 
@@ -85,8 +85,12 @@ describe("CMS-REL-2 release quality contract", () => {
 
     expect(workflow).not.toContain("Xynes-Studio/xynes-frontend-infra");
     expect(workflow).not.toMatch(/\btoken:/);
-    expect(workflow).toContain("npm install --global corepack@0.34.0");
-    expect(workflow).toMatch(/corepack enable/);
+    expect(workflow).toContain(
+      "pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1",
+    );
+    expect(workflow).toMatch(/version:\s*10\.33\.0/);
+    expect(workflow).not.toMatch(/\bnpm install|@v[0-9]\b|ref:\s*develop\b/);
+    expect(workflow.match(/persist-credentials:\s*false/g)).toHaveLength(4);
     for (const workingDirectory of ["xynes-auth-sdk", "xynes-i18n"]) {
       expect(workflow).toMatch(
         new RegExp(
