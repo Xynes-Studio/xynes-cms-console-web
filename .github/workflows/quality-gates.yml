@@ -51,7 +51,7 @@ jobs:
           persist-credentials: false
           path: "lumia-ds"
           repository: "Xynes-Studio/lumia-ds"
-          ref: "c70136d56750ee7ade0bd5dedbd1e39803aa622e"
+          ref: "104865556b3f4b1169884943e3f71547cf42847f"
       -
         uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:

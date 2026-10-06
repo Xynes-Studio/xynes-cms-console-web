@@ -1,0 +1,87 @@
+{
+  "title": "Content integrations",
+  "description": "Build a request for published content.",
+  "close": "Close integrations",
+  "workspace": "Workspace",
+  "folder": "Folder",
+  "entry": "Content",
+  "format": "Response format",
+  "json": "JSON",
+  "tabs": {
+    "customize": "Customize",
+    "rest": "REST API",
+    "scripts": "Scripts",
+    "sdk": "SDK"
+  },
+  "controls": {
+    "order": "Order by",
+    "direction": "Direction",
+    "newest": "Newest first",
+    "oldest": "Oldest first",
+    "az": "A–Z",
+    "za": "Z–A",
+    "limit": "Items per request",
+    "fields": "Fields to return",
+    "id": "ID — always returned",
+    "advanced": "Advanced",
+    "offset": "Skip items",
+    "search": "Search title"
+  },
+  "fields": {
+    "id": "ID",
+    "title": "Title",
+    "description": "Description",
+    "tags": "Tags",
+    "publishedAt": "Published date",
+    "body": "Body"
+  },
+  "errors": {
+    "INVALID_API_BASE_URL": "Public API address is missing or invalid. Ask your administrator to configure the public gateway URL.",
+    "INVALID_CONTEXT": "The workspace or content target is missing or invalid. Reopen integrations from your workspace.",
+    "INVALID_OPTIONS": "Use whole numbers within the limits shown and keep search within its character limit."
+  },
+  "bounds": {
+    "limit": "{min, number}–{max, number} items",
+    "offset": "{min, number}–{max, number} items skipped",
+    "search": "Up to {max, number} characters"
+  },
+  "availability": {
+    "unknown": "Availability has not been checked. Delivery requires published content and an authorized workspace API key.",
+    "unpublished": "Publish this content before it can be delivered. You can copy the request for later use.",
+    "archived": "Republish this archived content to restore delivery. You can copy the request for later use.",
+    "changes": "Saved edits are excluded until you republish. Delivery serves the last published version.",
+    "legacy": "Republish this legacy content to create a validated delivery snapshot.",
+    "published": "Delivery serves the last published version. The example below does not verify availability or access."
+  },
+  "adminLink": "Get a read-only API key in Workspace Admin",
+  "externalHint": "(opens in new tab)",
+  "preview": {
+    "url": "Request URL",
+    "auth": "Authentication",
+    "authHint": "A read-only API key for this workspace is required. Keep it on your server; examples use an environment variable.",
+    "format": "Code format",
+    "formats": {
+      "url": "URL only",
+      "curl": "cURL",
+      "serverFetch": "Server-side JavaScript (fetch)"
+    },
+    "code": "Code example",
+    "copy": "Copy example",
+    "pending": "Copying…",
+    "copied": "Copied",
+    "manual": "Copy manually: select the code and copy it with your keyboard or device menu.",
+    "fields": "Selected response fields",
+    "name": "Field",
+    "type": "Type",
+    "required": "Always returned",
+    "yes": "Yes",
+    "no": "No",
+    "example": "Static example — not live content",
+    "response": "Example response"
+  },
+  "comingSoon": {
+    "title": "Coming soon",
+    "description": "Scripts and SDKs are planned. Use the REST API to integrate published content today.",
+    "rest": "Use REST API"
+  }
+}

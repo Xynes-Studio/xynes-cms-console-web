@@ -1,4 +1,6 @@
 import { negotiateLocale, normalizeLocale, type Locale } from "@xynes/i18n";
+import enUsContentIntegrations from "../../messages/en-US/cms.content-integrations.json";
+import enXaContentIntegrations from "../../messages/en-XA/cms.content-integrations.json";
 import enUsContent from "../../messages/en-US/cms.content.json";
 import enUsIntegrations from "../../messages/en-US/cms.integrations.json";
 import enUsLanding from "../../messages/en-US/cms.landing.json";
@@ -14,6 +16,7 @@ export type CmsMessages = {
   cms: {
     shell: typeof enUsShell;
     content: typeof enUsContent;
+    contentIntegrations: typeof enUsContentIntegrations;
     integrations: typeof enUsIntegrations;
     landing: typeof enUsLanding;
   };
@@ -30,6 +33,7 @@ const CMS_MESSAGES_BY_LOCALE: Record<Locale, CmsMessages> = {
     cms: {
       shell: enUsShell,
       content: enUsContent,
+      contentIntegrations: enUsContentIntegrations,
       integrations: enUsIntegrations,
       landing: enUsLanding,
     },
@@ -38,6 +42,7 @@ const CMS_MESSAGES_BY_LOCALE: Record<Locale, CmsMessages> = {
     cms: {
       shell: enXaShell,
       content: enXaContent,
+      contentIntegrations: enXaContentIntegrations,
       integrations: enXaIntegrations,
       landing: enXaLanding,
     },

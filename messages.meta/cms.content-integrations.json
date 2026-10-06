@@ -1,0 +1,28 @@
+{
+  "namespace": "cms.contentIntegrations",
+  "owner": "xynes-cms-console-web",
+  "audience": "CMS authors copying published-content REST requests",
+  "context": {
+    "availability": "Publication metadata is informational; never promise a request was executed or access verified. Legacy snapshots require republish.",
+    "fields": "Labels are translated; JSON field names, GET, JSON and executable code remain protocol syntax.",
+    "comingSoon": "No dates, scripts or SDK imports. REST works through the API."
+  },
+  "placeholders": {
+    "bounds.limit": [
+      "min",
+      "max"
+    ],
+    "bounds.offset": [
+      "min",
+      "max"
+    ],
+    "bounds.search": [
+      "max"
+    ]
+  },
+  "security": {
+    "secretPolicy": "Never interpolate credentials, raw errors or URLs into translated messages.",
+    "htmlPolicy": "Plain text only; no HTML.",
+    "linkPolicy": "Workspace Admin URL is built from the existing safe origin allowlist."
+  }
+}

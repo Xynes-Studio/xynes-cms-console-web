@@ -322,3 +322,29 @@ CMS-INT-B1 adds reusable pure helpers under `src/features/content-integrations`:
 validated folder/entry URLs, placeholder-only cURL/server-side REST examples and
 static projected response fixtures. There is no new UI or rollout flag enabled
 in B1. See [developer usage, security policy and A5 handoff](docs/DEVELOPER.md#cms-content-integration-request-engine-cms-int-b1).
+
+## Content integrations workbench (CMS-INT-B2)
+
+`src/features/content-integrations/ContentIntegrationDialog.tsx` accepts a validated
+B1 `IntegrationContext`, controlled `open`/`onOpenChange` and an optional host
+button via `trigger`. `IntegrationWorkbench.tsx` also renders independently for
+a future editor panel. Customize, REST API, Scripts and SDK share the same
+contract-driven request engine. Requests serve published snapshots; examples are
+static and no request is executed when the UI opens or changes.
+
+Product host buttons and rollout belong to B3. B2 has a development-only fixture
+at `/e2e/content-integrations` with `NEXT_PUBLIC_ENABLE_E2E_FIXTURES=1`; production
+builds return not found. The dialog requires Lumia's additive `closeLabel` prop
+from the companion CMS-INT-B2 DS change. Build linked components before checking
+the app. No new dependency, runtime configuration or migration is required.
+
+```sh
+pnpm exec vitest run src/features/content-integrations
+pnpm exec playwright test e2e/content-integrations.spec.ts
+pnpm lint
+pnpm typecheck
+pnpm test:coverage
+pnpm build
+```
+
+See `docs/DEVELOPER.md` for ownership, state/copy behavior and localization.
