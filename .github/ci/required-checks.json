@@ -1,0 +1,9 @@
+[
+  "lint",
+  "test",
+  "coverage",
+  "build",
+  "typecheck",
+  "security",
+  "Code and browser gates"
+]

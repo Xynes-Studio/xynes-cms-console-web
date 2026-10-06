@@ -1,6 +1,8 @@
 name: CMS quality
 
 on:
+  push:
+    branches: [main, develop, "release/*"]
   pull_request:
     branches:
       - develop
@@ -30,46 +32,45 @@ jobs:
       NEXT_PUBLIC_ENABLE_E2E_FIXTURES: "1"
     steps:
       - name: Check out CMS
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # verified upstream actions/checkout
         with:
-          path: xynes-cms-console-web
           persist-credentials: false
+          path: xynes-cms-console-web
 
       - name: Check out Lumia design system
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # verified upstream actions/checkout
         with:
-          repository: Xynes-Studio/lumia-ds
-          ref: develop
-          path: lumia-ds
           persist-credentials: false
+          repository: Xynes-Studio/lumia-ds
+          ref: c70136d56750ee7ade0bd5dedbd1e39803aa622e
+          path: lumia-ds
 
       - name: Check out auth SDK
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # verified upstream actions/checkout
         with:
-          repository: Xynes-Studio/xynes-auth-sdk
-          ref: develop
-          path: xynes-auth-sdk
           persist-credentials: false
+          repository: Xynes-Studio/xynes-auth-sdk
+          ref: 7003ea39d18f0335cd5cb0f1e948aa1cb4e1a131
+          path: xynes-auth-sdk
 
       - name: Check out locale package
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # verified upstream actions/checkout
         with:
-          repository: Xynes-Studio/xynes-i18n
-          ref: develop
-          path: xynes-i18n
           persist-credentials: false
+          repository: Xynes-Studio/xynes-i18n
+          ref: cd0f0c2e367974bad69392dd8976c9b7a27830c8
+          path: xynes-i18n
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # verified upstream actions/setup-node
         with:
-          node-version: 20.15.0
+          node-version: 22.22.0
 
       - name: Enable the pinned package manager
-        run: |
-          npm install --global corepack@0.34.0
-          corepack enable
-          corepack prepare pnpm@10.33.0 --activate
-          pnpm --version
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # verified upstream v4
+        with:
+          version: 10.33.0
+
 
       - name: Build Lumia design system
         working-directory: lumia-ds
@@ -114,7 +115,7 @@ jobs:
 
       - name: Upload failure evidence
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # verified upstream actions/upload-artifact
         with:
           name: cms-quality-failure-${{ github.run_id }}
           path: |
