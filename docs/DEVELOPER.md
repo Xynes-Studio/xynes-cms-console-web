@@ -1237,3 +1237,81 @@ Catalog parity is enforced by `src/lib/landing-copy.test.ts`. Translators MUST N
 ### Docker dev-stack note
 
 `@lumia-ui/marketing` is a new `link:` dependency. After this branch lands, operators rebuilding the CMS console container must also pull `xynes-front-end/infra`'s sibling branch (`feature/LP-CMS-docker-mounts-marketing`) which adds the `marketing` package build step to `scripts/start-cms-dev.sh` plus a dedicated `node_modules_lumia_marketing` volume. The container mounts the whole `lumia-ds/` workspace, so marketing src+dist+package.json are already reachable; only the build step and the cache volume needed adding. Same trap as the `drizzle-orm` / `@lumia-ui/layout` precedents (STORAGE-LIVE-3 §11, BUG-LDS-1).
+
+## CMS Content Integration Request Engine (CMS-INT-B1)
+
+`src/features/content-integrations` is a pure, framework-independent delivery
+request subsystem. Hosts provide an `IntegrationContext` with the public gateway
+base, workspace UUID/slug and a directory or entry target. Use
+`buildIntegrationRequest(context, options)`; do not assemble URLs in host views.
+The discriminated result is `{ok:true, request}` or `{ok:false, error:{code}}`.
+Errors are closed, localization-ready codes: `INVALID_CONTEXT`, `INVALID_OPTIONS`
+and `INVALID_API_BASE_URL`, with no original value or validator detail returned.
+
+The successful immutable model contains `kind`, `method`, `url`, `headers`,
+`contextKey`, `fields` and normalized `options`. `contextKey` is
+`<workspaceId>:<kind>:<resourceId>` for later host state resets. Labels, editor
+content, session JWTs and keys never enter URLs or examples. Publication and
+delivery-state context are informational; request generation is not a permission
+or deployment-readiness check.
+
+Two metadata-backed adapters use the frozen A1 JSON export. Directory controls
+are publishedAt/title sort, asc/desc, limit1–100, offset0–10000, optional trimmed
+search1–200 and the five summary fields. Entry options contain only fields, with
+body allowed. Unknown controls, inherited/prototype contexts, duplicate/unknown
+fields and invalid supplied filters fail closed. ID is always included; an empty
+optional-field selection means ID only. Selected fields use canonical artifact
+order, not checkbox-click order. User search text is URLSearchParams-encoded once.
+
+Gateway configuration preserves a legitimate path prefix. Hosted gateways use
+HTTPS; plaintext HTTP permits only the documented raw hosts `localhost`,
+`127.0.0.1`, `[::1]` with an optional port. Shorthand/numeric HTTP aliases,
+credentials (including empty userinfo), query/fragment markers, control characters,
+private/service host forms and common private IPv4 ranges are rejected. IPv6
+literals conservatively permit 2000::/3 global-unicast space plus explicit
+loopback. Public DNS names and configured .com/.in gateway hosts remain supported.
+Validation is lexical: no DNS lookup or network-access/SSRF guarantee is implied.
+The configured public gateway must remain operator-controlled.
+
+`buildRequestSnippets(request)` returns `url`, `curl` and `serverFetch` from that
+same model. cURL quotes its URL and references `${XYNES_API_KEY}` in Authorization;
+fetch is a labelled server-side Node.js/ES-module example using
+`process.env.XYNES_API_KEY`. It rejects missing keys, HTTP failures, invalid JSON
+and malformed success envelopes/data without logging response bodies or keys.
+These are code strings only: opening/configuring integrations executes nothing.
+No script tag, SDK import, HTML renderer or key-lifecycle UI is provided.
+
+`buildExampleResponse(request)` wraps its projected contract fixture with
+`kind: "static-example"`; it is not live/editor data and does not assert an entry
+exists. `getResponseFields(request)` returns selected technical names, data types
+and the ID-required indicator. B2 owns translated labels, feedback and copy UI;
+B3 owns Lumia dialog/card/editor hosts and the default-off rollout gate. B1 adds
+no rendered control, new catalog or client/server component boundary.
+
+### Reproducible contract mirror
+
+The actual A1 source is pinned at
+`141e32a21deccfbb6711c2cbc770bffaf983b791`. `fixtures/cms-delivery.v1.json` is copied
+byte-for-byte; its source revision/version/SHA-256 are recorded in
+`fixtures/cms-delivery.v1.source.json`. `delivery-contract.generated.ts` provides
+literal-derived types/enums and is generated, not hand maintained.
+
+```sh
+pnpm integrations:generate --source /absolute/path/to/xynes-platform-contracts/contracts/cms-delivery.v1.json --revision 141e32a21deccfbb6711c2cbc770bffaf983b791
+pnpm integrations:check --source /absolute/path/to/xynes-platform-contracts/contracts/cms-delivery.v1.json --revision 141e32a21deccfbb6711c2cbc770bffaf983b791
+pnpm exec vitest run src/features/content-integrations
+pnpm typecheck
+```
+
+Generation uses Node stdlib, requires the source to match its immutable Git blob,
+canonicalizes filesystem aliases, and emits safe diagnostics. Check mode never
+writes. No new dependency is required. Local fixture/digest tests establish
+consumer consistency; A5 must compare the actual cross-repository inputs and run
+these generated URL/header structures against issued fixture keys and registered
+APIs before rollout. Publication requires explicit authorization; A5 must pin the
+committed frontend revision.
+
+For A5, call the public engine exports from `index.ts`. The mirror path above is
+the one already expected by infra's parity entrypoint. Take the frontend commit
+revision only after B1 is committed; do not label mutable working files as pinned
+API-integration evidence. Bodies here are JSON only and never sign/fetch storage.
