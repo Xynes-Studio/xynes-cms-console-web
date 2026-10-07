@@ -377,3 +377,14 @@ Labels and announcements use the existing en-US/en-XA integration catalogs.
 The localized metadata drawer requires Lumia's additive `closeLabel`/`ariaLabel`
 API from the companion B4 DS change. See the developer guide for test and release
 ordering. Rollout remains off pending B5 live API acceptance.
+
+### CMS-INT-B5 provisioned acceptance
+
+The exact browser Copy callback is joined to actual isolated gateway/CMS delivery
+and issued read-only keys by `scripts/e2e/run-cms-integrations.py`. It requires
+explicit clean backend paths/full revisions and installed PostgreSQL tooling;
+creates only a fresh owned loopback cluster; preserves the shared stack; and leaves
+rollout off. Run the offline guards with
+`python3 -B scripts/e2e/run-cms-integrations.test.py`.
+See [execution and limitations](docs/manual-verification/CMS-CONTENT-INTEGRATIONS.md)
+for the invocation, source pins, per-file coverage and actual acceptance status.

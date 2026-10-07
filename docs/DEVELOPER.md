@@ -1544,3 +1544,21 @@ Remaining legacy debt is outside these integration controls: editor/header Detai
 copy and en-US date formatters are still hard-coded, and the permissive persisted
 editor-body cast remains. They require an editor-wide localization/document decoder
 story; B4 adds no new casts, skips, credentials or raw error interpolation.
+
+## Provisioned integration browser acceptance (CMS-INT-B5)
+
+`e2e/cms-content-integrations.spec.ts` requires the explicit isolated runner in
+`scripts/e2e/run-cms-integrations.py`. A default unprovisioned skip is not B5
+acceptance evidence. The runner enables the existing feature only for its fixture
+server, uses process-only issued keys and signed production gateway/CMS calls,
+executes captured URL/header placeholders without shell evaluation, and records
+redacted request outcomes. Authoring/issuer-owner permissions are explicit fixture
+seams; delivery and publication storage use actual modules and PostgreSQL.
+
+Both `/e2e/cms-content-integrations` and `/api/e2e/cms-integrations` reject production.
+Public context uses a closed typed schema; only allowlisted, bounded mutation
+commands can cross the server-only control bridge. No key lifecycle UI is added.
+Cleanup attempts frontend, backend, PostgreSQL, streams and owned files independently,
+including already-exited frontend groups. Compilation/pins are checked before DB
+setup. Do not run production and development verification concurrently against the
+same build output. See [B5 evidence](manual-verification/CMS-CONTENT-INTEGRATIONS.md).
