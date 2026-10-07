@@ -1,6 +1,7 @@
 "use client";
 import {
   Dialog,
+  Flex,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -33,13 +34,21 @@ export function ContentIntegrationDialog({
       <DialogContent
         closeLabel={t("close")}
         onCloseAutoFocus={onCloseAutoFocus}
-        className="max-h-[90dvh] max-w-2xl overflow-y-auto p-4 sm:p-6"
+        className="max-h-[90dvh] max-w-2xl grid-rows-[auto_minmax(0,1fr)] overflow-clip p-4 sm:p-6"
       >
-        <DialogHeader className="pr-10">
+        <DialogHeader className="shrink-0 pr-10">
           <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
-        <IntegrationWorkbench context={context} />
+        <Flex
+          direction="col"
+          className="min-h-0 min-w-0 overflow-y-auto overscroll-contain"
+          role="region"
+          aria-label={t("scrollRegion")}
+          tabIndex={0}
+        >
+          <IntegrationWorkbench context={context} />
+        </Flex>
       </DialogContent>
     </Dialog>
   );

@@ -1465,3 +1465,79 @@ casts through `unknown` to `LumiaEditorStateJSON`, and existing Details/header/
 Drawer labels contain English. B3 adds no such casts or labels. A document-schema
 validation story and B4 localization/accessibility polish should address these
 separately; no broad editor or shared primitive rewrite is part of B3.
+
+
+## Integration accessibility and responsive behavior (CMS-INT-B4)
+
+B4 extends B1–B3 without changing the delivery contract, rollout flag, authoring
+persistence, request execution or key ownership. `cms.contentIntegrations` was
+already statically registered in B2; no second namespace or dynamic locale imports
+are added. New validation/scroll-region/metadata labels have en-US/en-XA messages
+and translator metadata. Existing unsupported-locale fallback and catalog/ICU
+parity tests remain authoritative.
+
+`useContentIntegration` derives safe field-invalid flags from the existing
+`DirectoryOptionsSchema`. Numeric text stays visible, including empty/fractional/
+out-of-range input. `IntegrationCustomization` combines Lumia's linked bounds hint
+with a unique linked error and `aria-invalid`; errors name whole-number bounds
+and item/character units with ICU formatting. Schema details/raw errors stay out
+of product copy. Valid edits clear field errors and restore generation.
+
+Warnings retain Lumia Alert styling but use polite status semantics. Coming soon,
+clipboard success and manual-copy recovery are polite statuses. Protocol URLs,
+snippets and static response code are read-only/selectable and `translate="no"`;
+URL/snippet spellcheck is disabled. Code/response areas scroll without adding a
+custom keyboard trap; only the existing modal traps focus. The field-table scroller
+is a named, focusable region with a visible focus outline for native arrow-key
+scrolling. The Workspace Admin anchor is positioned so its absolutely positioned
+screen-reader hint remains within the link; long sidebar content cannot place that
+hint outside the scrolling panel and inflate document height.
+
+`ContentIntegrationDialog` uses Lumia's existing grid with two bounded rows. The
+header and primitive close remain outside the named, focusable scrolling body.
+The outer container uses `overflow-clip`: `overflow-hidden` permits programmatic
+focus scrolling and hid the header in native Chrome at200% zoom. Inner body uses
+`overflow-y-auto` and scroll containment. Tabs wrap their labels in min-width-safe
+spans; metadata tabs and Customize fit the narrow sidebar. Long unbroken resource
+names wrap; response tables/code may scroll within their own bounded areas. No
+shell CSS override, custom Dialog/Tabs primitive or new dependency is introduced.
+
+Integration-enabled mobile metadata composes a localized trigger and named Lumia
+Drawer, using additive `closeLabel`/`ariaLabel` props. The companion DS change owns
+that former hard-coded-label defect, tests it independently and retains default
+English for existing consumers. Flag-off hosts retain their original behavior.
+Both CMS CI workflows pin companion [Lumia PR236](https://github.com/Xynes-Studio/lumia-ds/pull/236)
+commit `16b2f5adc8556c54d2cb1aa35257b588667fa7d6`. Review/merge the companion
+before this consumer. Local development uses its rebuilt linked dist; no npm
+publication is required. B5 still
+owns provisioned read-only-key/copied-request and frozen publication proof before
+production activation. No key lifecycle form or request execution is added.
+
+### Verification
+
+```sh
+pnpm exec vitest run src/features/content-integrations src/i18n/config.test.ts
+PLAYWRIGHT_E2E_PORT=3207 pnpm exec playwright test e2e/content-integration-accessibility.spec.ts e2e/content-integration-hosts.spec.ts e2e/content-integrations.spec.ts
+pnpm lint
+pnpm test:coverage
+pnpm build
+pnpm typecheck
+```
+
+Use non-secret fixture env (as in Playwright config) and the B3 webpack dev path
+for isolated linked checkouts. Keep build/typecheck sequential. A stale shared
+Vitest optimizer cache can retain old linked DS APIs: refresh only an owned cache
+or use an equivalent local config with an owned app-local cacheDir, never delete
+another checkout's cache. No coverage thresholds/exclusions are changed.
+
+Browser coverage includes320px en-US/en-XA with a1200-character unbroken title,
+keyboard tabs/REST recovery/focus containment, selectable code and copy denial,
+translated/named mobile Drawer, desktop pseudo-locale sidebar and a short CSS
+reflow viewport. Native Chrome200% is verified separately; a smaller viewport is
+only a regression surrogate, not a claim of actual browser zoom. Owned native tab
+zoom is restored to100% and the tab closed after verification.
+
+Remaining legacy debt is outside these integration controls: editor/header Details
+copy and en-US date formatters are still hard-coded, and the permissive persisted
+editor-body cast remains. They require an editor-wide localization/document decoder
+story; B4 adds no new casts, skips, credentials or raw error interpolation.

@@ -15,11 +15,14 @@ export function ContentIntegrationPanel({
   const controller = useContentIntegration(context);
   return (
     <Flex direction="col" gap="md" className="min-w-0">
-      <p className="break-words font-medium">{context.target.label}</p>
+      <p className="[overflow-wrap:anywhere] font-medium">
+        {context.target.label}
+      </p>
       <p className="text-sm text-muted-foreground">{t("hosts.panelSummary")}</p>
       <IntegrationAvailabilityNotice context={context} />
       {!controller.result.ok && (
         <Alert
+          role="status"
           variant="warning"
           description={t(`errors.${controller.result.error.code}`)}
         />

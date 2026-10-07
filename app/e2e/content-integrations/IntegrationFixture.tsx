@@ -15,13 +15,19 @@ export function IntegrationFixture({
   legacy,
   draft,
   invalid,
+  long,
 }: {
   entry: boolean;
   legacy: boolean;
   draft: boolean;
   invalid: boolean;
+  long: boolean;
 }) {
-  const ready = useSyncExternalStore(subscribe, () => true, () => false);
+  const ready = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  );
   const [open, setOpen] = useState(false);
   const t = useTranslations("cms.contentIntegrations");
   const context = {
@@ -29,9 +35,23 @@ export function IntegrationFixture({
     ...(legacy ? { deliveryState: "republish_required" as const } : {}),
     ...(draft ? { publicationState: "draft" as const } : {}),
     ...(invalid ? { apiBaseUrl: "" } : {}),
+    ...(long
+      ? {
+          target: {
+            ...(entry ? entryContext.target : folderContext.target),
+            label: "LongResource".repeat(100),
+          },
+        }
+      : {}),
   };
   return (
-    <Flex direction="col" gap="md" className="min-h-screen p-6" data-testid="integration-fixture" data-ready={ready}>
+    <Flex
+      direction="col"
+      gap="md"
+      className="min-h-screen p-6"
+      data-testid="integration-fixture"
+      data-ready={ready}
+    >
       <h1>{t("title")}</h1>
       <ContentIntegrationDialog
         context={context}

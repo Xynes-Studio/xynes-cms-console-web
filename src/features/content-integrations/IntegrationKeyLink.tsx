@@ -20,7 +20,7 @@ export function IntegrationKeyLink({
         buttonStyles.base,
         buttonStyles.variants.outline,
         buttonStyles.sizes.sm,
-        "self-start h-auto whitespace-normal text-left",
+        "relative self-start h-auto whitespace-normal text-left",
       ].join(" ")}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
     >

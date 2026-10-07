@@ -119,7 +119,7 @@ test("B3 mobile drawer hands off to one full modal and restores metadata focus",
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await ready(page, "editor");
-  const metadata = page.getByRole("button", { name: "Open metadata panel" });
+  const metadata = page.getByRole("button", { name: /Open metadata panel|OOppeenn mmeettaaddaattaa ppaanneell/ });
   await metadata.click();
   await page.keyboard.press("Escape");
   await expect(metadata).toBeFocused();
@@ -169,7 +169,7 @@ test("B3 mobile pseudo locale renders the shared panel and dialog without page o
   ]);
   await page.setViewportSize({ width: 390, height: 844 });
   await ready(page, "editor");
-  await page.getByRole("button", { name: "Open metadata panel" }).click();
+  await page.getByRole("button", { name: /Open metadata panel|OOppeenn mmeettaaddaattaa ppaanneell/ }).click();
   await page.getByRole("tab", { name: /IInntteeggrraattiioonnss/ }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en-XA");
   await page
@@ -189,6 +189,6 @@ test("B3 mobile pseudo locale renders the shared panel and dialog without page o
   });
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("button", { name: "Open metadata panel" }),
+    page.getByRole("button", { name: /Open metadata panel|OOppeenn mmeettaaddaattaa ppaanneell/ }),
   ).toBeFocused();
 });

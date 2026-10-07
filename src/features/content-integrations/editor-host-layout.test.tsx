@@ -136,3 +136,30 @@ it("restores mobile metadata or the new desktop Customize after the drawer has u
     screen.getByRole("button", { name: "Customize request" }),
   ).toHaveFocus();
 });
+
+it("localizes the integration metadata trigger and names its drawer/close control in the pseudo locale", async () => {
+  render(
+    <NextIntlClientProvider locale="en-XA" messages={getCmsMessages("en-XA")}>
+      <CmsEditorLayout
+        {...base}
+        integrationIdentity="entry-a"
+        onCustomizeIntegrations={vi.fn()}
+        integrationPanel={<ContentIntegrationPanel context={entryContext} />}
+      >
+        <textarea aria-label="Canvas draft" />
+      </CmsEditorLayout>
+    </NextIntlClientProvider>,
+  );
+  const trigger = screen.getByRole("button", {
+    name: /OOppeenn mmeettaaddaattaa ppaanneell/,
+  });
+  fireEvent.click(trigger);
+  expect(
+    await screen.findByRole("dialog", { name: /CCoonntteenntt ppaanneellss/ }),
+  ).toBeInTheDocument();
+  const close = screen.getByRole("button", {
+    name: /CClloossee mmeettaaddaattaa ppaanneell/,
+  });
+  fireEvent.click(close);
+  expect(trigger).toHaveFocus();
+});

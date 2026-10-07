@@ -32,15 +32,17 @@ export function IntegrationWorkbench({
   return (
     <Flex direction="col" gap="md" className="min-w-0">
       <Flex direction="col" gap="xs" className="min-w-0">
-        <p className="break-words text-sm text-muted-foreground">
+        <p className="[overflow-wrap:anywhere] text-sm text-muted-foreground">
           {t("workspace")}:{" "}
           <span className="font-medium text-foreground">
             {context.workspaceSlug}
           </span>
         </p>
-        <p className="break-words font-semibold">{context.target.label}</p>
+        <p className="[overflow-wrap:anywhere] font-semibold">
+          {context.target.label}
+        </p>
         {context.target.kind === "directory" && (
-          <p className="break-words text-xs text-muted-foreground">
+          <p className="[overflow-wrap:anywhere] text-xs text-muted-foreground">
             {context.target.breadcrumb}
           </p>
         )}
@@ -48,6 +50,7 @@ export function IntegrationWorkbench({
       <IntegrationAvailabilityNotice context={context} />
       {!controller.result.ok && (
         <Alert
+          role="status"
           variant="warning"
           description={t(`errors.${controller.result.error.code}`)}
         />
@@ -66,9 +69,11 @@ export function IntegrationWorkbench({
               key={value}
               value={value}
               ref={value === "rest" ? restTrigger : undefined}
-              className="min-w-0 whitespace-normal break-words px-2"
+              className="min-w-0 whitespace-normal [overflow-wrap:anywhere] px-2"
             >
-              {t(`tabs.${value}`)}
+              <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">
+                {t(`tabs.${value}`)}
+              </span>
             </TabsTrigger>
           ))}
         </TabsList>

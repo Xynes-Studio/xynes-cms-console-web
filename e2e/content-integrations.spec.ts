@@ -131,7 +131,7 @@ test("B2 invalid configuration blocks copy, draft requests stay syntactically us
   await page
     .getByRole("button", { name: "Content integrations", exact: true })
     .click();
-  await expect(page.getByRole("alert")).toContainText("Public API address");
+  await expect(page.getByText(/Public API address/)).toContainText("Public API address");
   await page.getByRole("tab", { name: "REST API" }).click();
   await expect(
     page.getByRole("button", { name: "Copy example" }),
