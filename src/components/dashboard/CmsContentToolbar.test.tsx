@@ -53,7 +53,8 @@ vi.mock("next-intl", () => ({
     },
 }));
 
-vi.mock("@lumia-ui/components", () => ({
+vi.mock("@lumia-ui/components", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@lumia-ui/components")>()),
   Breadcrumbs: ({
     items,
   }: {

@@ -39,7 +39,10 @@ const config = {
     // Bundle linked primitives and their CommonJS peers with the app React aliases.
     deps: {
       optimizer: {
-        client: { enabled: true, include: ["@lumia-ui/components"] },
+        client: {
+          enabled: true,
+          include: ["@lumia-ui/components", "@lumia-ui/icons"],
+        },
       },
     },
     setupFiles: ["./vitest.setup.ts"],

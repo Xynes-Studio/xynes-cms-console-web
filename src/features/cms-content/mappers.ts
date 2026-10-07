@@ -4,6 +4,7 @@ import type { WorkspaceContentEntry } from "../../lib/dashboard/content-entries-
 
 type EntryActionHandlers = {
   onOpen: (entryId: string) => void;
+  onIntegrations?: CmsEntryCardGridProps["onIntegrations"];
   onDelete: (entryId: string) => void;
   onShare: (entryId: string) => void;
   onToggleFavorite: (entryId: string) => void;
@@ -47,6 +48,9 @@ export const mapEntryToGridCardProps = ({
   isDeleting,
   isFavoritePending,
   onOpen: handlers.onOpen,
+  ...(handlers.onIntegrations
+    ? { onIntegrations: handlers.onIntegrations }
+    : {}),
   onDelete: handlers.onDelete,
   onShare: handlers.onShare,
   onToggleFavorite: handlers.onToggleFavorite,
@@ -76,6 +80,9 @@ export const mapEntryToListCardProps = ({
   isDeleting,
   isFavoritePending,
   onOpen: handlers.onOpen,
+  ...(handlers.onIntegrations
+    ? { onIntegrations: handlers.onIntegrations }
+    : {}),
   onDelete: handlers.onDelete,
   onShare: handlers.onShare,
   onToggleFavorite: handlers.onToggleFavorite,

@@ -7,8 +7,10 @@ import type { ContentIntegrationController } from "./useContentIntegration";
 
 export function IntegrationRequestPreview({
   controller,
+  compact = false,
 }: {
   controller: ContentIntegrationController;
+  compact?: boolean;
 }) {
   const t = useTranslations("cms.contentIntegrations");
   const id = useId();
@@ -92,7 +94,7 @@ export function IntegrationRequestPreview({
               : ""}
         </p>
       </Flex>
-      {request && (
+      {request && !compact && (
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">

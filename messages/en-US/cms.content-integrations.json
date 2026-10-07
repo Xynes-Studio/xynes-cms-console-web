@@ -83,5 +83,19 @@
     "title": "Coming soon",
     "description": "Scripts and SDKs are planned. Use the REST API to integrate published content today.",
     "rest": "Use REST API"
+  },
+  "hosts": {
+    "integrations": "Integrations",
+    "folderAction": "Integrations for folder {title}",
+    "entryAction": "Integrations for {title}",
+    "openFolder": "Open a folder first.",
+    "resolving": "Wait for the folder to load.",
+    "folderUnavailable": "This folder is unavailable. Open a saved folder.",
+    "details": "Details",
+    "customize": "Customize request",
+    "panelSummary": "Integrate published content through the REST API.",
+    "drawerLabel": "Open metadata panel",
+    "panels": "Content panels",
+    "configUnavailable": "Public API address is missing. Ask your administrator to configure it."
   }
 }

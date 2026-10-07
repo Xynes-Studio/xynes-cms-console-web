@@ -1,3 +1,5 @@
+import { NextIntlClientProvider } from "next-intl";
+import { getCmsMessages } from "../../i18n/config";
 import React from "react";
 import {
   act,
@@ -126,6 +128,8 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     onDescriptionChange,
     onTagsChange,
     onRetrySave,
+    integrationPanel,
+    onCustomizeIntegrations,
   }: {
     children: React.ReactNode;
     title: string;
@@ -145,6 +149,8 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     onDescriptionChange?: (v: string) => void;
     onTagsChange?: (v: string) => void;
     onRetrySave?: () => void;
+    integrationPanel?: React.ReactNode;
+    onCustomizeIntegrations?: (restoreFocus: () => void) => void;
   }) => (
     <div
       data-testid="cms-editor-layout"
@@ -154,6 +160,17 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
       data-is-publishing={isPublishing ? "true" : "false"}
       data-path-label={pathLabel}
     >
+      {integrationPanel}
+      {integrationPanel && (
+        <button
+          onClick={(event) => {
+            const trigger = event.currentTarget;
+            onCustomizeIntegrations?.(() => trigger.focus());
+          }}
+        >
+          Customize request
+        </button>
+      )}
       <span data-testid="editor-title">{title}</span>
       <span data-testid="editor-description">{description}</span>
       <span data-testid="editor-tags">{tags}</span>
@@ -252,7 +269,8 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
   ),
 }));
 
-vi.mock("@lumia-ui/components", () => ({
+vi.mock("@lumia-ui/components", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@lumia-ui/components")>()),
   Alert: ({
     title,
     description,
@@ -400,6 +418,7 @@ const makeEntry = (
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
   mockIsAuthLoading = false;
   mockIsAuthenticated = true;
   mockLumiaEditorMode = "passthrough";
@@ -1771,8 +1790,7 @@ describe("CmsEditorScreen", () => {
 
       await waitFor(() => {
         const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
-          | { media?: { uploadAdapter?: unknown } }
-          | undefined;
+          { media?: { uploadAdapter?: unknown } } | undefined;
         expect(editorProps?.media?.uploadAdapter).toBeDefined();
       });
 
@@ -1821,7 +1839,9 @@ describe("CmsEditorScreen", () => {
       act(() => {
         onUploadStart?.(fixture, "image", "file-picker");
       });
-      expect(screen.queryByTestId("editor-upload-error")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("editor-upload-error"),
+      ).not.toBeInTheDocument();
     });
 
     it("queries the SDK for the exact `cms_editor_storage_uploads` flag key", async () => {
@@ -1869,8 +1889,7 @@ describe("CmsEditorScreen", () => {
       });
 
       const editorProps = mockLumiaEditor.mock.calls.at(-1)?.[0] as
-        | { media?: { callbacks?: unknown } }
-        | undefined;
+        { media?: { callbacks?: unknown } } | undefined;
       // STORAGE-LIVE-5 gateway architecture: telemetry events are emitted
       // server-side by the gateway, NOT from the browser. So the gated
       // bridge does NOT carry a `callbacks` surface — defense in depth
@@ -1879,4 +1898,178 @@ describe("CmsEditorScreen", () => {
       expect(editorProps?.media?.callbacks).toBeUndefined();
     });
   });
+});
+
+describe("CMS-INT-B3 editor scope and preservation", () => {
+  it("opens an entry integration without flushing, saving, publishing or remounting the editor", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
+    const workspaceId = "11111111-1111-4111-8111-111111111111";
+    const entryId = "33333333-3333-4333-8333-333333333333";
+    mockCurrentWorkspace = {
+      id: workspaceId,
+      slug: "editorial",
+      name: "Editorial",
+    };
+    mockGetAccessToken.mockResolvedValue("fixture-token");
+    mockGetWorkspaceContentEntryById.mockResolvedValue(
+      makeEntry({
+        id: entryId,
+        workspaceId,
+        status: "published",
+        title: "Saved story",
+        body: makeEditorBody(),
+      }),
+    );
+    render(
+      <NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}>
+        <CmsEditorScreen entryId={entryId} workspaceSlug="editorial" />
+      </NextIntlClientProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("editor-title")).toHaveTextContent(
+        "Saved story",
+      ),
+    );
+    fireEvent.change(screen.getByTestId("title-input"), {
+      target: { value: "Unsaved local title" },
+    });
+    expect(screen.getByTestId("editor-title")).toHaveTextContent(
+      "Unsaved local title",
+    );
+    const editor = screen.getByTestId("lumia-editor-mock");
+    const beforeBody = screen.getByTestId("lumia-editor-value").textContent;
+    fireEvent.click(screen.getByRole("button", { name: "Customize request" }));
+    expect(
+      screen.getByRole("dialog", { name: "Content integrations" }),
+    ).toBeVisible();
+    expect(screen.getByTestId("lumia-editor-mock")).toBe(editor);
+    expect(screen.getByTestId("editor-title")).toHaveTextContent(
+      "Unsaved local title",
+    );
+    expect(screen.getByTestId("lumia-editor-value").textContent).toBe(
+      beforeBody,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Close integrations" }));
+    expect(screen.getByTestId("editor-title")).toHaveTextContent(
+      "Unsaved local title",
+    );
+    expect(mockAutosaveFlush).not.toHaveBeenCalled();
+    expect(mockAutosaveRetry).not.toHaveBeenCalled();
+    expect(mockUpdateWorkspaceContentEntry).not.toHaveBeenCalled();
+    expect(mockPublishWorkspaceContentEntry).not.toHaveBeenCalled();
+  });
+});
+it("CMS-INT-B3 closes integrations immediately when authoring authentication is lost", async () => {
+  vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
+  const workspaceId = "11111111-1111-4111-8111-111111111111",
+    entryId = "33333333-3333-4333-8333-333333333333";
+  mockCurrentWorkspace = {
+    id: workspaceId,
+    slug: "editorial",
+    name: "Editorial",
+  };
+  mockGetAccessToken.mockResolvedValue("fixture-token");
+  mockGetWorkspaceContentEntryById.mockResolvedValue(
+    makeEntry({
+      id: entryId,
+      workspaceId,
+      status: "published",
+      title: "Saved story",
+      body: makeEditorBody(),
+    }),
+  );
+  const node = (
+    <NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}>
+      <CmsEditorScreen entryId={entryId} workspaceSlug="editorial" />
+    </NextIntlClientProvider>
+  );
+  const { rerender } = render(node);
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Customize request" }),
+    ).toBeVisible(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Customize request" }));
+  expect(screen.getByRole("dialog")).toBeVisible();
+  mockIsAuthenticated = false;
+  rerender(
+    <NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}>
+      <CmsEditorScreen entryId={entryId} workspaceSlug="editorial" />
+    </NextIntlClientProvider>,
+  );
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Customize request" }),
+  ).toBeNull();
+});
+describe("integration-enabled editor publication failures", () => {
+  it.each([
+    [
+      "draft",
+      "HTTP 403 private-marker",
+      "permission to move this entry back to draft",
+    ],
+    ["archived", "HTTP 403 private-marker", "permission to archive this entry"],
+    ["draft", "HTTP 404 private-marker", "Entry not found"],
+    [
+      "archived",
+      "HTTP 503 private-marker",
+      "CMS service is temporarily unavailable",
+    ],
+    [
+      "draft",
+      "Unexpected private-marker",
+      "Failed to move entry back to draft",
+    ],
+    ["archived", "Unexpected private-marker", "Failed to archive entry"],
+  ] as const)(
+    "keeps %s failure recovery safe with the readonly panel enabled",
+    async (status, error, expected) => {
+      vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
+      const workspaceId = "11111111-1111-4111-8111-111111111111",
+        entryId = "33333333-3333-4333-8333-333333333333";
+      mockCurrentWorkspace = {
+        id: workspaceId,
+        slug: "editorial",
+        name: "Editorial",
+      };
+      mockGetAccessToken.mockResolvedValue("fixture-token");
+      mockGetWorkspaceContentEntryById.mockResolvedValue(
+        makeEntry({
+          id: entryId,
+          workspaceId,
+          status: "published",
+          title: "Saved story",
+          body: makeEditorBody(),
+        }),
+      );
+      mockSetWorkspaceContentEntryStatus.mockRejectedValue(new Error(error));
+      mockAutosaveFlush.mockResolvedValue(undefined);
+      render(
+        <NextIntlClientProvider
+          locale="en-US"
+          messages={getCmsMessages("en-US")}
+        >
+          <CmsEditorScreen entryId={entryId} workspaceSlug="editorial" />
+        </NextIntlClientProvider>,
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Customize request" }),
+        ).toBeVisible(),
+      );
+      fireEvent.click(screen.getByTestId(`status-${status}-btn`));
+      await waitFor(() =>
+        expect(screen.getByTestId("editor-publish-error")).toHaveTextContent(
+          expected,
+        ),
+      );
+      expect(screen.getByTestId("editor-publish-error")).not.toHaveTextContent(
+        "private-marker",
+      );
+      expect(
+        screen.getByRole("button", { name: "Customize request" }),
+      ).toBeVisible();
+    },
+  );
 });

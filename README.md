@@ -332,7 +332,7 @@ a future editor panel. Customize, REST API, Scripts and SDK share the same
 contract-driven request engine. Requests serve published snapshots; examples are
 static and no request is executed when the UI opens or changes.
 
-Product host buttons and rollout belong to B3. B2 has a development-only fixture
+B2 has a development-only fixture
 at `/e2e/content-integrations` with `NEXT_PUBLIC_ENABLE_E2E_FIXTURES=1`; production
 builds return not found. The dialog requires Lumia's additive `closeLabel` prop
 from the companion CMS-INT-B2 DS change. Build linked components before checking
@@ -348,3 +348,21 @@ pnpm build
 ```
 
 See `docs/DEVELOPER.md` for ownership, state/copy behavior and localization.
+
+
+## Contextual integration hosts (CMS-INT-B3)
+
+Folder toolbar, content row/card and editor metadata hosts reuse the workbench.
+Folder requests use the resolved, persisted directory UUID. The root view asks
+for a folder first. Editor Details stays the default tab; Integrations shows a
+compact read-only preview with Customize opening the full dialog. Mobile metadata
+hands off to the dialog and restores logical focus without saving or publishing.
+
+`NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED=1` enables these controls at build
+time for authenticated, ready sessions; unset/`0` stays off. Set it before local
+`pnpm dev`, or pass `--build-arg NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED=1`
+when building the Docker image. This is a visibility gate, not authorization.
+Protected releases remain off until A2–A5 runtime and B5 copied-request acceptance
+are verified; changing a running container's env does not change its built client.
+
+See [B3 ownership and verification](docs/DEVELOPER.md#contextual-integration-hosts-cms-int-b3).
