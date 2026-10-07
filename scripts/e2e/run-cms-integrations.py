@@ -75,6 +75,11 @@ def main():
         actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=path, text=True).strip()
         if actual != revision or subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--'], cwd=path).returncode:
             raise ValueError('Backend source differs from supplied pin: ' + name)
+        # Dependency/output links are not revision-pinned source; runtime inputs are.
+        # Do not apply ignore rules: ignored SQL/modules can also affect the fixture.
+        untracked = subprocess.check_output(['git', 'ls-files', '--others', '-z', '--', 'src', 'drizzle', 'supabase/migrations'], cwd=path, text=True)
+        if untracked:
+            raise ValueError('Untracked backend runtime inputs: ' + name)
         repos[name] = path
     compiler = repos['cms'] / 'node_modules/typescript/bin/tsc'
     if not compiler.is_file():

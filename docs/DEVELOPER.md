@@ -1560,5 +1560,7 @@ Public context uses a closed typed schema; only allowlisted, bounded mutation
 commands can cross the server-only control bridge. No key lifecycle UI is added.
 Cleanup attempts frontend, backend, PostgreSQL, streams and owned files independently,
 including already-exited frontend groups. Compilation/pins are checked before DB
-setup. Do not run production and development verification concurrently against the
+setup. Untracked runtime files in `src`, `drizzle` or `supabase/migrations` are
+rejected even when ignored; dependency/output links are outside the pinned-source
+check. Do not run production and development verification concurrently against the
 same build output. See [B5 evidence](manual-verification/CMS-CONTENT-INTEGRATIONS.md).

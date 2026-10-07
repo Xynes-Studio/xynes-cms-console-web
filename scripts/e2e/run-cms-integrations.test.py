@@ -34,7 +34,7 @@ class PrerequisiteSafety(unittest.TestCase):
 
     def refuse(self, message, head=None, dirty=0):
         with patch.object(argparse.ArgumentParser, 'parse_args', return_value=self.options), \
-                patch.object(runner.subprocess, 'check_output', return_value=head or self.pin), \
+                patch.object(runner.subprocess, 'check_output', side_effect=lambda args, **kwargs: (head or self.pin) if args[1] == 'rev-parse' else ''), \
                 patch.object(runner.subprocess, 'run', return_value=SimpleNamespace(returncode=dirty)) as command, \
                 patch.object(runner.tempfile, 'mkdtemp') as allocate:
             with self.assertRaisesRegex(ValueError, message):
@@ -52,6 +52,16 @@ class PrerequisiteSafety(unittest.TestCase):
     def test_dirty_runtime_refused_before_database_tooling(self):
         self.refuse('differs from supplied pin', dirty=1)
 
+    def test_untracked_migration_refused_before_database_tooling(self):
+        with patch.object(argparse.ArgumentParser, 'parse_args', return_value=self.options), \
+                patch.object(runner.subprocess, 'check_output', side_effect=lambda args, **kwargs: self.pin if args[1] == 'rev-parse' else 'drizzle/0001_untracked.sql\n'), \
+                patch.object(runner.subprocess, 'run', return_value=SimpleNamespace(returncode=0)) as command, \
+                patch.object(runner.tempfile, 'mkdtemp', side_effect=ValueError('Unexpected fixture allocation')) as allocate:
+            with self.assertRaisesRegex(ValueError, 'Untracked backend runtime inputs'):
+                runner.main()
+            allocate.assert_not_called()
+            self.assertTrue(all(call.args[0][0] == 'git' for call in command.call_args_list))
+
     def test_missing_installed_compiler_does_not_download_one(self):
         (self.root / 'cms/node_modules/typescript/bin/tsc').unlink()
         self.refuse('Missing installed backend TypeScript')
@@ -64,6 +74,54 @@ class PrerequisiteSafety(unittest.TestCase):
         (self.root / 'cms/.tmp').symlink_to(self.root / 'gateway', target_is_directory=True)
         self.refuse('parent cannot be a symlink')
 
+
+
+class RealGitInputSafety(unittest.TestCase):
+    def setUp(self):
+        import subprocess
+        self.directory = tempfile.TemporaryDirectory(prefix='b5-real-git-inputs-')
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.options = argparse.Namespace(pg_bin=str(self.root / 'missing-pg'), all_browser=False)
+        for name in ('cms', 'gateway', 'accounts', 'infra'):
+            repo = self.root / name
+            repo.mkdir()
+            subprocess.run(['git', 'init', '-q', str(repo)], check=True, capture_output=True)
+            (repo / 'tracked.txt').write_text('pinned fixture source\n')
+            subprocess.run(['git', 'add', 'tracked.txt'], cwd=repo, check=True, capture_output=True)
+            subprocess.run(['git', '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@fixture.invalid', 'commit', '-qm', 'fixture'], cwd=repo, check=True, capture_output=True)
+            pin = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip()
+            setattr(self.options, name + '_repo', str(repo))
+            setattr(self.options, name + '_revision', pin)
+
+    def check_rejection(self, message):
+        with patch.object(argparse.ArgumentParser, 'parse_args', return_value=self.options), patch.object(runner.tempfile, 'mkdtemp') as allocate:
+            with self.assertRaisesRegex(ValueError, message):
+                runner.main()
+            allocate.assert_not_called()
+
+    def test_ordinary_untracked_migration_is_refused(self):
+        folder = self.root / 'cms/drizzle'
+        folder.mkdir()
+        (folder / '0001_untracked.sql').write_text('SELECT 1;\n')
+        self.check_rejection('Untracked backend runtime inputs')
+
+    def test_ignored_untracked_migration_is_also_refused(self):
+        folder = self.root / 'cms/drizzle'
+        folder.mkdir()
+        (folder / '0001_ignored.sql').write_text('SELECT 1;\n')
+        (self.root / 'cms/.git/info/exclude').write_text('drizzle/*.sql\n')
+        self.check_rejection('Untracked backend runtime inputs')
+
+    def test_untracked_runtime_module_is_refused(self):
+        folder = self.root / 'gateway/src'
+        folder.mkdir()
+        (folder / 'untracked.ts').write_text('export {};\n')
+        self.check_rejection('Untracked backend runtime inputs')
+
+    def test_dependency_link_is_not_treated_as_pinned_source(self):
+        (self.root / 'cms/node_modules').symlink_to(self.root / 'accounts', target_is_directory=True)
+        self.check_rejection('Missing installed backend TypeScript')
 
 
 class CleanupSafety(unittest.TestCase):
