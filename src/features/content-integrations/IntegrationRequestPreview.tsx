@@ -28,6 +28,8 @@ export function IntegrationRequestPreview({
             <textarea
               id={`${id}-url`}
               aria-label={t("preview.url")}
+              translate="no"
+              spellCheck={false}
               readOnly
               value={request.url}
               rows={3}
@@ -63,10 +65,11 @@ export function IntegrationRequestPreview({
             </label>
             <textarea
               id={`${id}-code`}
+              translate="no"
+              spellCheck={false}
               readOnly
               value={snippet}
               rows={format === "serverFetch" ? 12 : 5}
-              spellCheck={false}
               className="w-full resize-y rounded-md border border-border bg-muted/30 p-3 font-mono text-xs leading-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             />
           </Flex>
@@ -74,6 +77,7 @@ export function IntegrationRequestPreview({
       )}
       <Flex direction="col" align="start" gap="xs">
         <Button
+          className="h-auto whitespace-normal text-left"
           type="button"
           disabled={!request || copyPending}
           onClick={() => {
@@ -83,6 +87,7 @@ export function IntegrationRequestPreview({
           {t(copyStatus === "pending" ? "preview.pending" : "preview.copy")}
         </Button>
         <p
+          role="status"
           aria-live="polite"
           aria-atomic="true"
           className="text-sm text-muted-foreground"
@@ -96,7 +101,12 @@ export function IntegrationRequestPreview({
       </Flex>
       {request && !compact && (
         <>
-          <div className="overflow-x-auto">
+          <div
+            className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            role="region"
+            aria-label={t("preview.fields")}
+            tabIndex={0}
+          >
             <table className="w-full text-left text-sm">
               <caption className="pb-2 text-left font-semibold">
                 {t("preview.fields")}
@@ -137,6 +147,7 @@ export function IntegrationRequestPreview({
             <pre
               aria-label={t("preview.response")}
               tabIndex={0}
+              translate="no"
               className="max-h-72 overflow-auto rounded-md border border-border bg-muted/30 p-3 text-xs leading-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             >
               {JSON.stringify(buildExampleResponse(request).response, null, 2)}

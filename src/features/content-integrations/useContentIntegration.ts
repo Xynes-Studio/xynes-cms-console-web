@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { buildIntegrationRequest } from "./build-request";
 import { DELIVERY_CONTRACT } from "./delivery-contract";
 import { buildRequestSnippets } from "./snippets";
+import { DirectoryOptionsSchema } from "./resource-adapters";
 import type {
   DeliveryField,
   IntegrationContext,
@@ -99,6 +100,17 @@ export function useContentIntegration(context: IntegrationContext) {
           ...(controls.search.trim() ? { search: controls.search.trim() } : {}),
         }
       : { fields: controls.fields };
+  const invalidFields = { limit: false, offset: false, search: false };
+  if (target.kind === "directory") {
+    const parsed = DirectoryOptionsSchema.safeParse(options);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0];
+        if (field === "limit" || field === "offset" || field === "search")
+          invalidFields[field] = true;
+      }
+    }
+  }
   const result = buildIntegrationRequest(context, options);
   const snippet = result.ok
     ? buildRequestSnippets(result.request)[format]
@@ -148,7 +160,9 @@ export function useContentIntegration(context: IntegrationContext) {
         complete("manual");
         return;
       }
-      await serializeClipboardWrite(() => navigator.clipboard.writeText(snippet));
+      await serializeClipboardWrite(() =>
+        navigator.clipboard.writeText(snippet),
+      );
       complete("copied");
     } catch {
       complete("manual");
@@ -159,6 +173,7 @@ export function useContentIntegration(context: IntegrationContext) {
   }
   return {
     controls,
+    invalidFields,
     result,
     snippet,
     tab,

@@ -4,7 +4,12 @@ import { IntegrationFixture } from "./IntegrationFixture";
 export default async function ContentIntegrationFixturePage({
   searchParams,
 }: {
-  searchParams: Promise<{ target?: string; state?: string; config?: string }>;
+  searchParams: Promise<{
+    target?: string;
+    state?: string;
+    config?: string;
+    long?: string;
+  }>;
 }) {
   // This request-builder fixture must never be exposed by production builds.
   if (
@@ -19,6 +24,7 @@ export default async function ContentIntegrationFixturePage({
       legacy={query.state === "legacy"}
       draft={query.state === "draft"}
       invalid={query.config === "invalid"}
+      long={query.long === "1"}
     />
   );
 }

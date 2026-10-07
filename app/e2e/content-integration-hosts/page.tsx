@@ -3,7 +3,7 @@ import { IntegrationHostsFixture } from "./IntegrationHostsFixture";
 export default async function IntegrationHostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ host?: string; disabled?: string }>;
+  searchParams: Promise<{ host?: string; disabled?: string; long?: string }>;
 }) {
   if (
     process.env.NODE_ENV === "production" ||
@@ -16,6 +16,10 @@ export default async function IntegrationHostsPage({
       ? query.host
       : "list";
   return (
-    <IntegrationHostsFixture host={host} disabled={query.disabled === "1"} />
+    <IntegrationHostsFixture
+      host={host}
+      disabled={query.disabled === "1"}
+      long={query.long === "1"}
+    />
   );
 }

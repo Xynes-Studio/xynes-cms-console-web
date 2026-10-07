@@ -6,7 +6,8 @@
     "availability": "Publication metadata is informational; never promise a request was executed or access verified. Legacy snapshots require republish.",
     "fields": "Labels are translated; JSON field names, GET, JSON and executable code remain protocol syntax.",
     "comingSoon": "No dates, scripts or SDK imports. REST works through the API.",
-    "hosts": "Folder/card/editor hosts consume the same request engine. Integrations never saves or publishes; root needs a persisted folder. Details is the default editor panel."
+    "hosts": "Folder/card/editor hosts consume the same request engine. Integrations never saves or publishes; root needs a persisted folder. Details is the default editor panel.",
+    "validation": "Inline polite messages tied to their field. Bounds use locale-aware numbers and explicit item/character units; never show validator internals."
   },
   "placeholders": {
     "bounds.limit": [
@@ -25,6 +26,17 @@
     ],
     "hosts.entryAction": [
       "title"
+    ],
+    "validation.limit": [
+      "min",
+      "max"
+    ],
+    "validation.offset": [
+      "min",
+      "max"
+    ],
+    "validation.search": [
+      "max"
     ]
   },
   "security": {

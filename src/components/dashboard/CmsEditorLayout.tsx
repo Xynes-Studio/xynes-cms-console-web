@@ -174,6 +174,54 @@ const formatPublishedAt = (value?: string | null) => {
   }).format(parsed);
 };
 
+function IntegrationMetadataButton({
+  onOpen,
+  buttonRef,
+  disabled,
+}: {
+  onOpen: () => void;
+  buttonRef: React.RefObject<HTMLButtonElement | null>;
+  disabled: boolean;
+}) {
+  const t = useTranslations("cms.contentIntegrations");
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="md:hidden"
+      onClick={onOpen}
+      aria-label={t("hosts.drawerLabel")}
+      ref={buttonRef}
+      disabled={disabled}
+    >
+      <Icon name="edit" size="sm" />
+      {t("hosts.metadata")}
+    </Button>
+  );
+}
+function IntegrationMetadataDrawer({
+  open,
+  onOpenChange,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const t = useTranslations("cms.contentIntegrations");
+  return (
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      side="left"
+      closeLabel={t("hosts.closeMetadata")}
+      ariaLabel={t("hosts.panels")}
+    >
+      <>{children}</>
+    </Drawer>
+  );
+}
+
 function EditorMetadataTabs({
   value,
   onValueChange,
@@ -190,10 +238,25 @@ function EditorMetadataTabs({
   const t = useTranslations("cms.contentIntegrations");
   return (
     <Tabs variant="underline" value={value} onValueChange={onValueChange}>
-      <TabsList aria-label={t("hosts.panels")}>
-        <TabsTrigger value="details">{t("hosts.details")}</TabsTrigger>
-        <TabsTrigger value="integrations">
-          {t("hosts.integrations")}
+      <TabsList
+        aria-label={t("hosts.panels")}
+        className="grid w-full min-w-0 grid-cols-2"
+      >
+        <TabsTrigger
+          value="details"
+          className="min-w-0 whitespace-normal [overflow-wrap:anywhere] px-2"
+        >
+          <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">
+            {t("hosts.details")}
+          </span>
+        </TabsTrigger>
+        <TabsTrigger
+          value="integrations"
+          className="min-w-0 whitespace-normal [overflow-wrap:anywhere] px-2"
+        >
+          <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">
+            {t("hosts.integrations")}
+          </span>
         </TabsTrigger>
       </TabsList>
       <TabsContent value="details">
@@ -204,7 +267,7 @@ function EditorMetadataTabs({
         <Button
           type="button"
           variant="outline"
-          className="mt-4"
+          className="mt-4 h-auto w-full whitespace-normal text-left"
           data-content-integration-customize
           onClick={(event) => onCustomize(event.currentTarget)}
         >
@@ -534,18 +597,26 @@ export function CmsEditorLayout({
               Back
             </Button>
           ) : null}
-          <Button
-            variant="outline"
-            size="sm"
-            className="md:hidden"
-            onClick={() => setIsMetaDrawerOpen(true)}
-            aria-label="Open metadata panel"
-            ref={metadataTrigger}
-            disabled={isPublishing}
-          >
-            <Icon name="edit" size="sm" />
-            Metadata
-          </Button>
+          {hasIntegrations ? (
+            <IntegrationMetadataButton
+              onOpen={() => setIsMetaDrawerOpen(true)}
+              buttonRef={metadataTrigger}
+              disabled={isPublishing}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="md:hidden"
+              onClick={() => setIsMetaDrawerOpen(true)}
+              aria-label="Open metadata panel"
+              ref={metadataTrigger}
+              disabled={isPublishing}
+            >
+              <Icon name="edit" size="sm" />
+              Metadata
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -732,15 +803,24 @@ export function CmsEditorLayout({
         </main>
       </div>
 
-      {!integrationDialogOpen && (!hasIntegrations || isMetaDrawerOpen) && (
-        <Drawer
-          open={isMetaDrawerOpen}
-          onOpenChange={changeMetadataDrawer}
-          side="left"
-        >
-          {metadataPanel}
-        </Drawer>
-      )}
+      {!integrationDialogOpen &&
+        (!hasIntegrations || isMetaDrawerOpen) &&
+        (hasIntegrations ? (
+          <IntegrationMetadataDrawer
+            open={isMetaDrawerOpen}
+            onOpenChange={changeMetadataDrawer}
+          >
+            {metadataPanel}
+          </IntegrationMetadataDrawer>
+        ) : (
+          <Drawer
+            open={isMetaDrawerOpen}
+            onOpenChange={changeMetadataDrawer}
+            side="left"
+          >
+            {metadataPanel}
+          </Drawer>
+        ))}
     </section>
   );
 }

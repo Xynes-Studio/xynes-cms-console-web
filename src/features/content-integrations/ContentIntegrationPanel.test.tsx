@@ -17,7 +17,9 @@ it("shares legacy publication recovery, readonly-key link and compact preview wi
       />
     </NextIntlClientProvider>,
   );
-  expect(screen.getByRole("status")).toHaveTextContent("legacy content");
+  expect(
+    screen.getByText(/legacy content/).closest('[role="status"]'),
+  ).toHaveTextContent("legacy content");
   expect(
     screen.getByRole("link", { name: /Get a read-only API key/ }),
   ).toHaveAttribute(
@@ -50,9 +52,11 @@ it("keeps missing delivery metadata unknown even when the authoring badge is pub
       />
     </NextIntlClientProvider>,
   );
-  expect(screen.getByRole("status")).toHaveTextContent(
-    "Availability has not been checked",
-  );
+  expect(
+    screen
+      .getByText(/Availability has not been checked/)
+      .closest('[role="status"]'),
+  ).toHaveAttribute("role", "status");
 });
 it("blocks unsafe public configuration without exposing it", () => {
   render(

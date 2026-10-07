@@ -366,3 +366,14 @@ Protected releases remain off until A2–A5 runtime and B5 copied-request accept
 are verified; changing a running container's env does not change its built client.
 
 See [B3 ownership and verification](docs/DEVELOPER.md#contextual-integration-hosts-cms-int-b3).
+
+
+## Integration accessibility (CMS-INT-B4)
+
+Inline option errors are associated with their fields and announced politely.
+The dialog keeps its header/Close control fixed while its named body scrolls;
+keyboard-accessible code and wrapped tabs/actions support narrow and zoomed views.
+Labels and announcements use the existing en-US/en-XA integration catalogs.
+The localized metadata drawer requires Lumia's additive `closeLabel`/`ariaLabel`
+API from the companion B4 DS change. See the developer guide for test and release
+ordering. Rollout remains off pending B5 live API acceptance.

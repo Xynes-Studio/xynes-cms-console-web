@@ -96,6 +96,14 @@
     "panelSummary": "Integrate published content through the REST API.",
     "drawerLabel": "Open metadata panel",
     "panels": "Content panels",
-    "configUnavailable": "Public API address is missing. Ask your administrator to configure it."
-  }
+    "configUnavailable": "Public API address is missing. Ask your administrator to configure it.",
+    "metadata": "Metadata",
+    "closeMetadata": "Close metadata panel"
+  },
+  "validation": {
+    "limit": "Enter a whole number from {min, number} to {max, number} items.",
+    "offset": "Enter a whole number from {min, number} to {max, number} items skipped.",
+    "search": "Use no more than {max, number} characters."
+  },
+  "scrollRegion": "Integration options and request"
 }

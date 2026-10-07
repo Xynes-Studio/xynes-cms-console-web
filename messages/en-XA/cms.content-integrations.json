@@ -96,6 +96,14 @@
     "panelSummary": "[IInntteeggrraattee ppuubblliisshheedd ccoonntteenntt tthhrroouugghh tthhee RREESSTT AAPPII.]",
     "drawerLabel": "[OOppeenn mmeettaaddaattaa ppaanneell]",
     "panels": "[CCoonntteenntt ppaanneellss]",
-    "configUnavailable": "[PPuubblliicc AAPPII aaddddrreessss iiss mmiissssiinngg. AAsskk yyoouurr aaddmmiinniissttrraattoorr ttoo ccoonnffiigguurree iitt.]"
-  }
+    "configUnavailable": "[PPuubblliicc AAPPII aaddddrreessss iiss mmiissssiinngg. AAsskk yyoouurr aaddmmiinniissttrraattoorr ttoo ccoonnffiigguurree iitt.]",
+    "metadata": "[MMeettaaddaattaa]",
+    "closeMetadata": "[CClloossee mmeettaaddaattaa ppaanneell]"
+  },
+  "validation": {
+    "limit": "[EEnntteerr aa wwhhoollee nnuummbbeerr ffrroomm {min, number} ttoo {max, number} iitteemmss.]",
+    "offset": "[EEnntteerr aa wwhhoollee nnuummbbeerr ffrroomm {min, number} ttoo {max, number} iitteemmss sskkiippppeedd.]",
+    "search": "[UUssee nnoo mmoorree tthhaann {max, number} cchhaarraacctteerrss.]"
+  },
+  "scrollRegion": "[IInntteeggrraattiioonn ooppttiioonnss aanndd rreeqquueesstt]"
 }

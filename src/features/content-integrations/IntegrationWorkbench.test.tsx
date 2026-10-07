@@ -52,14 +52,15 @@ describe("integration workbench",()=>{
  });
  it("invalid configuration blocks preview/copy and hides the unsafe URL",()=>{
   render(ui({...folderContext,apiBaseUrl:"https://username:private@api.xynes.com"}));rest();
-  expect(screen.getByRole("alert")).toHaveTextContent("Public API address");
+  expect(screen.getByText(/Public API address/).closest('[role="status"]')).toHaveTextContent("Public API address");
   expect(screen.getByRole("button",{name:"Copy example"})).toBeDisabled();expect(screen.queryByLabelText("Request URL")).toBeNull();
   expect(document.body.textContent).not.toContain("private");
  });
  it("invalid option reports feedback; valid input recovers",()=>{
   render(ui());fireEvent.change(screen.getByLabelText("Items per request"),{target:{value:"101"}});
-  expect(screen.getByRole("alert")).toHaveTextContent("whole numbers");
-  fireEvent.change(screen.getByLabelText("Items per request"),{target:{value:"1"}});expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByText(/Use whole numbers/).closest('[role="note"]')).toHaveAttribute("aria-live","off");
+  expect(screen.getByText("Enter a whole number from 1 to 100 items.")).toHaveAttribute("aria-live","polite");
+  fireEvent.change(screen.getByLabelText("Items per request"),{target:{value:"1"}});expect(screen.queryByText(/Use whole numbers/)).toBeNull();
  });
  it.each([
   [{...entryContext,publicationState:"draft" as const},"Publish this content"],

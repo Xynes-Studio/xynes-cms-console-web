@@ -39,16 +39,20 @@ const savedEntry = {
 export function IntegrationHostsFixture({
   host,
   disabled,
+  long = false,
 }: {
   host: "list" | "grid" | "editor" | "root";
   disabled: boolean;
+  long?: boolean;
 }) {
   const ready = useSyncExternalStore(
     subscribe,
     () => true,
     () => false,
   );
-  const [title, setTitle] = useState(savedEntry.title);
+  const [title, setTitle] = useState(
+    long ? "LongResource".repeat(100) : savedEntry.title,
+  );
   const [description, setDescription] = useState("Draft description");
   const [tags, setTags] = useState("news");
   const [saveCalls, setSaveCalls] = useState(0);

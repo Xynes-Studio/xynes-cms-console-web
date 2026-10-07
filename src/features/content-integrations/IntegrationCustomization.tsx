@@ -1,5 +1,6 @@
 "use client";
 import { Checkbox, Flex, Input, Select } from "@lumia-ui/components";
+import { useId } from "react";
 import { useTranslations } from "next-intl";
 import { DELIVERY_CONTRACT } from "./delivery-contract";
 import type { IntegrationContext } from "./types";
@@ -13,7 +14,8 @@ export function IntegrationCustomization({
   controller: ContentIntegrationController;
 }) {
   const t = useTranslations("cms.contentIntegrations");
-  const { controls, updateControls } = controller;
+  const { controls, invalidFields, updateControls } = controller;
+  const id = useId();
   const contract = DELIVERY_CONTRACT.operations.directory;
   const optionalFields = DELIVERY_CONTRACT.operations[
     context.target.kind
@@ -67,6 +69,11 @@ export function IntegrationCustomization({
             <span>{t("controls.limit")}</span>
             <Input
               aria-label={t("controls.limit")}
+              invalid={invalidFields.limit}
+              aria-describedby={
+                invalidFields.limit ? `${id}-limit-error` : undefined
+              }
+              autoComplete="off"
               type="number"
               min={contract.limit.min}
               max={contract.limit.max}
@@ -77,6 +84,15 @@ export function IntegrationCustomization({
                 updateControls({ limit: event.target.value })
               }
             />
+            {invalidFields.limit && (
+              <span
+                id={`${id}-limit-error`}
+                aria-live="polite"
+                className="text-sm text-destructive"
+              >
+                {t("validation.limit", contract.limit)}
+              </span>
+            )}
           </label>
         </>
       )}
@@ -112,6 +128,11 @@ export function IntegrationCustomization({
               <span>{t("controls.offset")}</span>
               <Input
                 aria-label={t("controls.offset")}
+                invalid={invalidFields.offset}
+                aria-describedby={
+                  invalidFields.offset ? `${id}-offset-error` : undefined
+                }
+                autoComplete="off"
                 type="number"
                 min={contract.offset.min}
                 max={contract.offset.max}
@@ -122,11 +143,25 @@ export function IntegrationCustomization({
                   updateControls({ offset: event.target.value })
                 }
               />
+              {invalidFields.offset && (
+                <span
+                  id={`${id}-offset-error`}
+                  aria-live="polite"
+                  className="text-sm text-destructive"
+                >
+                  {t("validation.offset", contract.offset)}
+                </span>
+              )}
             </label>
             <label className="grid gap-2 text-sm font-medium">
               <span>{t("controls.search")}</span>
               <Input
                 aria-label={t("controls.search")}
+                invalid={invalidFields.search}
+                aria-describedby={
+                  invalidFields.search ? `${id}-search-error` : undefined
+                }
+                autoComplete="off"
                 hint={t("bounds.search", { max: contract.searchMaxLength })}
                 maxLength={contract.searchMaxLength}
                 value={controls.search}
@@ -134,6 +169,15 @@ export function IntegrationCustomization({
                   updateControls({ search: event.target.value })
                 }
               />
+              {invalidFields.search && (
+                <span
+                  id={`${id}-search-error`}
+                  aria-live="polite"
+                  className="text-sm text-destructive"
+                >
+                  {t("validation.search", { max: contract.searchMaxLength })}
+                </span>
+              )}
             </label>
           </Flex>
         </details>
