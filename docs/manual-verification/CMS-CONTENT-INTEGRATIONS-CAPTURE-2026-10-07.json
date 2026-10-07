@@ -1,0 +1,1070 @@
+{
+  "transcript": [
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=c817d2ab-aa77-4527-8c1b-a9b9f743b2ec&sortBy=title&sortDirection=asc&limit=1&offset=0&fields=id%2Ctitle",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [
+            {
+              "id": "aa9db692-1300-46b0-945c-86094605536c",
+              "title": "Publication A"
+            }
+          ],
+          "page": {
+            "limit": 1,
+            "offset": 0,
+            "hasMore": true
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmvfa_pyuaavel"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=c817d2ab-aa77-4527-8c1b-a9b9f743b2ec&sortBy=title&sortDirection=desc&limit=1&offset=0&fields=id%2Ctitle",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [
+            {
+              "id": "cade6feb-5e55-41ad-8202-53e46375a933",
+              "title": "Zulu publication"
+            }
+          ],
+          "page": {
+            "limit": 1,
+            "offset": 0,
+            "hasMore": true
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmvmv_8u4ozfa0"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=c817d2ab-aa77-4527-8c1b-a9b9f743b2ec&sortBy=title&sortDirection=asc&limit=1&offset=1&fields=id%2Ctitle&search=Publication",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [
+            {
+              "id": "cade6feb-5e55-41ad-8202-53e46375a933",
+              "title": "Zulu publication"
+            }
+          ],
+          "page": {
+            "limit": 1,
+            "offset": 1,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmvv7_ky43glha"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=c817d2ab-aa77-4527-8c1b-a9b9f743b2ec&sortBy=title&sortDirection=asc&limit=1&offset=0&fields=id%2Ctitle&search=no-match-B5",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [],
+          "page": {
+            "limit": 1,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmw2c_3z95b89p"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=c817d2ab-aa77-4527-8c1b-a9b9f743b2ec&sortBy=title&sortDirection=asc&limit=100&offset=0&fields=id%2Ctitle",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [
+            {
+              "id": "aa9db692-1300-46b0-945c-86094605536c",
+              "title": "Publication A"
+            },
+            {
+              "id": "cade6feb-5e55-41ad-8202-53e46375a933",
+              "title": "Zulu publication"
+            }
+          ],
+          "page": {
+            "limit": 100,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmw9j_8cymuybb"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication A",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:51:31.683Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Publication A body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmx5k_ez20poe9"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication A",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:51:31.683Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Publication A body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmy1k_dpnls14b"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication A",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:51:31.683Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Publication A body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmys3_a124gzc9"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication A",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:51:31.683Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Publication A body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmyzb_8x4lfmmg"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 403,
+      "credential": "old",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "API key missing required scope"
+        },
+        "meta": {
+          "requestId": "req_muxzmz13_02mz378b"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 401,
+      "credential": "wrong",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Invalid or expired API key"
+        },
+        "meta": {
+          "requestId": "req_muxzmz24_i6ppl9va"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 401,
+      "credential": "revoked",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Invalid or expired API key"
+        },
+        "meta": {
+          "requestId": "req_muxzmz2h_0y54fsdp"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 401,
+      "credential": "expired",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Invalid or expired API key"
+        },
+        "meta": {
+          "requestId": "req_muxzmz2w_4nppihkq"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/9301a2ad-1d5a-405f-9f12-0c6f843d33b8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 403,
+      "credential": "current",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "API key not authorized for this workspace"
+        },
+        "meta": {
+          "requestId": "req_muxzmz3b_12jx90kv"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/49927fff-067e-479a-a38a-b414511eeeb2?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 404,
+      "credential": "current",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "ENTRY_NOT_FOUND",
+          "message": "Published content unavailable"
+        },
+        "meta": {
+          "requestId": "req_muxzmz46_yv91sklw"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=89bbee3b-b9bf-47b8-a9d8-8e7e0a9581a8&sortBy=publishedAt&sortDirection=desc&limit=20&offset=0&fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [],
+          "page": {
+            "limit": 20,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzmzsf_jg0up4tn"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication A",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:51:31.683Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Publication A body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn17j_4sfq83w1"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication A",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:51:31.683Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Publication A body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn1xy_66fo11ot"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication A",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:51:31.683Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Publication A body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn20x_6z5wskr9"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=c817d2ab-aa77-4527-8c1b-a9b9f743b2ec&sortBy=publishedAt&sortDirection=desc&limit=20&offset=0&fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [
+            {
+              "id": "cade6feb-5e55-41ad-8202-53e46375a933",
+              "title": "Zulu publication",
+              "description": "Fixture description",
+              "tags": [
+                "news"
+              ],
+              "publishedAt": "2026-10-07T10:51:31.694Z"
+            },
+            {
+              "id": "aa9db692-1300-46b0-945c-86094605536c",
+              "title": "Publication A",
+              "description": "Fixture description",
+              "tags": [
+                "news"
+              ],
+              "publishedAt": "2026-10-07T10:51:31.683Z"
+            }
+          ],
+          "page": {
+            "limit": 20,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn369_aay2p0ex"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=fdc17e96-f009-40f5-952a-163d5c9b9a02&sortBy=publishedAt&sortDirection=desc&limit=20&offset=0&fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [],
+          "page": {
+            "limit": 20,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn3sf_yxqc474v"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication B",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:52:09.690Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Body B from editor",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn4ot_menpl1ps"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=c817d2ab-aa77-4527-8c1b-a9b9f743b2ec&sortBy=publishedAt&sortDirection=desc&limit=20&offset=0&fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [
+            {
+              "id": "cade6feb-5e55-41ad-8202-53e46375a933",
+              "title": "Zulu publication",
+              "description": "Fixture description",
+              "tags": [
+                "news"
+              ],
+              "publishedAt": "2026-10-07T10:51:31.694Z"
+            }
+          ],
+          "page": {
+            "limit": 20,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn4q0_5js6z9um"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=fdc17e96-f009-40f5-952a-163d5c9b9a02&sortBy=publishedAt&sortDirection=desc&limit=20&offset=0&fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [
+            {
+              "id": "aa9db692-1300-46b0-945c-86094605536c",
+              "title": "Publication B",
+              "description": "Fixture description",
+              "tags": [
+                "news"
+              ],
+              "publishedAt": "2026-10-07T10:52:09.690Z"
+            }
+          ],
+          "page": {
+            "limit": 20,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn4r1_qh8ikp0a"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 404,
+      "credential": "current",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "ENTRY_NOT_FOUND",
+          "message": "Published content unavailable"
+        },
+        "meta": {
+          "requestId": "req_muxzn4s6_92jdccsl"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=fdc17e96-f009-40f5-952a-163d5c9b9a02&sortBy=publishedAt&sortDirection=desc&limit=20&offset=0&fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [],
+          "page": {
+            "limit": 20,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn4t7_52fj43xr"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication B",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:52:09.919Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Body B from editor",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn4ud_6v0k9zjp"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 404,
+      "credential": "current",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "ENTRY_NOT_FOUND",
+          "message": "Published content unavailable"
+        },
+        "meta": {
+          "requestId": "req_muxzn4vl_hvp59mpt"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries?directoryId=fdc17e96-f009-40f5-952a-163d5c9b9a02&sortBy=publishedAt&sortDirection=desc&limit=20&offset=0&fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "items": [],
+          "page": {
+            "limit": 20,
+            "offset": 0,
+            "hasMore": false
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn4wn_dsbuhaot"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/aa9db692-1300-46b0-945c-86094605536c?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "aa9db692-1300-46b0-945c-86094605536c",
+            "title": "Publication B",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:52:10.043Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Body B from editor",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn4xv_2sol68je"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/0354f06b-9bf2-4263-8af4-ee204ae36e00?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 404,
+      "credential": "current",
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "ENTRY_NOT_FOUND",
+          "message": "Published content unavailable"
+        },
+        "meta": {
+          "requestId": "req_muxzn6bu_nu405jsn"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/0354f06b-9bf2-4263-8af4-ee204ae36e00?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "0354f06b-9bf2-4263-8af4-ee204ae36e00",
+            "title": "Legacy publication",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:52:11.889Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Legacy publication body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn6d4_xa4mpzlg"
+        }
+      }
+    },
+    {
+      "url": "http://127.0.0.1:53926/workspaces/a2e01bb2-63bf-48de-a456-1077f2b21ac8/delivery/entries/0354f06b-9bf2-4263-8af4-ee204ae36e00?fields=id%2Ctitle%2Cdescription%2Ctags%2CpublishedAt%2Cbody",
+      "status": 200,
+      "credential": "current",
+      "response": {
+        "ok": true,
+        "data": {
+          "entry": {
+            "id": "0354f06b-9bf2-4263-8af4-ee204ae36e00",
+            "title": "Legacy publication",
+            "description": "Fixture description",
+            "tags": [
+              "news"
+            ],
+            "publishedAt": "2026-10-07T10:52:11.889Z",
+            "body": {
+              "root": {
+                "type": "root",
+                "version": 1,
+                "direction": null,
+                "format": "",
+                "indent": 0,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "version": 1,
+                    "direction": null,
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "children": [
+                      {
+                        "type": "text",
+                        "version": 1,
+                        "format": 0,
+                        "text": "Legacy publication body",
+                        "style": "",
+                        "detail": 0,
+                        "mode": "normal"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "requestId": "req_muxzn73r_f1w86u9y"
+        }
+      }
+    }
+  ],
+  "mutations": 8,
+  "contentDigest": "55f343fe1f4b1e15b64f7f78da44f23c",
+  "sortedEntryId": "cade6feb-5e55-41ad-8202-53e46375a933",
+  "draftEntryId": "faacacc4-37bf-4a9e-a7ba-e64578449acd"
+}

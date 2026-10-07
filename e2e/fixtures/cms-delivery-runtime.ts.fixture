@@ -1,0 +1,527 @@
+// Copied only into the owned CMS .tmp fixture; checked with the actual backend compiler.
+import assert from "node:assert/strict";
+import { generateKeyPairSync, randomBytes } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { eq } from "drizzle-orm";
+import { Hono, type Handler } from "hono";
+import postgres from "postgres";
+import { z } from "zod";
+import { db } from "../../src/infra/db";
+import { app } from "../../src/index";
+import {
+  createEntry,
+  findEntryByIdAndWorkspace,
+  publishEntryByIdAndWorkspace,
+  setEntryStatusByIdAndWorkspace,
+  updateEntryByIdAndWorkspaceScoped,
+} from "../../src/infra/db/repositories/content-entry.repository";
+import { contentDirectories, contentTypes } from "../../src/infra/db/schema";
+import { getDeliveryState } from "../../src/actions/publication-snapshot";
+import { runSeed } from "../../src/infra/db/seeders";
+
+const required = (name: string) => z.string().min(1).parse(process.env[name]);
+assert.equal(
+  process.env.RUN_CMS_INTEGRATIONS_BROWSER,
+  "1",
+  "Explicit isolated fixture required",
+);
+const database = new URL(required("DATABASE_URL"));
+assert.equal(database.hostname, "127.0.0.1");
+assert.match(database.pathname, /^\/cms_int_b5_[a-z0-9_]+$/);
+assert.equal(database.search + database.hash, "");
+const gatewayRepo = required("XYNES_GATEWAY_REPO"),
+  accountsRepo = required("XYNES_ACCOUNTS_REPO");
+const output = required("CMS_B5_READY_FILE"),
+  token = required("CMS_INTEGRATIONS_FIXTURE_CONTROL_TOKEN");
+const identity = generateKeyPairSync("ed25519");
+const privateFile = join(import.meta.dir, "gateway-private.pem"),
+  trustFile = join(import.meta.dir, "gateway-trust.json");
+await writeFile(
+  privateFile,
+  identity.privateKey.export({ type: "pkcs8", format: "pem" }),
+  { mode: 0o600 },
+);
+await writeFile(
+  trustFile,
+  JSON.stringify([
+    {
+      issuer: "gateway",
+      keyId: "b5-gateway",
+      publicKey: identity.publicKey.export({ type: "spki", format: "pem" }),
+    },
+  ]),
+  { mode: 0o600 },
+);
+process.env.INTERNAL_REQUEST_PRIVATE_KEY_FILE = privateFile;
+process.env.INTERNAL_REQUEST_KEY_ID = "b5-gateway";
+process.env.INTERNAL_REQUEST_TRUST_FILE = trustFile;
+const sql = postgres(database.href, {
+  max: 2,
+  prepare: false,
+  onnotice: () => {},
+});
+const workspaceId = crypto.randomUUID(),
+  foreignWorkspaceId = crypto.randomUUID(),
+  userId = crypto.randomUUID();
+const directoryId = crypto.randomUUID(),
+  emptyDirectoryId = crypto.randomUUID(),
+  movedDirectoryId = crypto.randomUUID(),
+  childId = crypto.randomUUID(),
+  foreignFolder = crypto.randomUUID();
+await sql`insert into identity.users (id,email) values (${userId},${userId + "@fixture.invalid"})`;
+await sql`insert into platform.workspaces (id) values (${workspaceId}),(${foreignWorkspaceId})`;
+await runSeed(db, workspaceId);
+const [type] = await db
+  .select()
+  .from(contentTypes)
+  .where(eq(contentTypes.workspaceId, workspaceId));
+assert.ok(type);
+await db.insert(contentDirectories).values([
+  { id: directoryId, workspaceId, name: "News", pathSegment: "news" },
+  { id: emptyDirectoryId, workspaceId, name: "Empty", pathSegment: "empty" },
+  { id: movedDirectoryId, workspaceId, name: "Moved", pathSegment: "moved" },
+  {
+    id: childId,
+    workspaceId,
+    parentId: directoryId,
+    name: "Child",
+    pathSegment: "child",
+  },
+  {
+    id: foreignFolder,
+    workspaceId: foreignWorkspaceId,
+    name: "Foreign",
+    pathSegment: "foreign",
+  },
+]);
+function body(text: string) {
+  return {
+    root: {
+      children: [
+        {
+          children: [
+            {
+              detail: 0,
+              format: 0,
+              mode: "normal",
+              style: "",
+              text,
+              type: "text",
+              version: 1,
+            },
+          ],
+          direction: null,
+          format: "",
+          indent: 0,
+          type: "paragraph",
+          version: 1,
+          textFormat: 0,
+          textStyle: "",
+        },
+      ],
+      direction: null,
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+  };
+}
+async function entry(
+  title: string,
+  folder: string,
+  status: "draft" | "published" = "published",
+  ws = workspaceId,
+) {
+  return createEntry({
+    workspaceId: ws,
+    contentTypeId: type.id,
+    directoryId: folder,
+    status,
+    data: {
+      slug: title.toLowerCase().replaceAll(" ", "-"),
+      title,
+      description: "Fixture description",
+      tags: ["news"],
+      body: body(title + " body"),
+    },
+  });
+}
+const main = await entry("Publication A", directoryId);
+const sorted = await entry("Zulu publication", directoryId);
+const draft = await entry("Draft hidden", directoryId, "draft");
+const child = await entry("Child publication", childId);
+const foreign = await entry(
+  "Foreign publication",
+  foreignFolder,
+  "published",
+  foreignWorkspaceId,
+);
+const legacy = await entry("Legacy publication", directoryId);
+await sql`update cms.content_entries set published_snapshot=null,published_snapshot_digest=null where id=${legacy.id}`;
+
+type Issuer = (deps: {
+  authzClient: {
+    checkPermission: (input: {
+      userId: string;
+      workspaceId: string | null;
+      actionKey: string;
+    }) => Promise<boolean>;
+    assignRole: () => Promise<void>;
+    listRolesForWorkspace: () => Promise<[]>;
+  };
+}) => (
+  payload: { name: string; presetKey: string; expiresAt?: string },
+  context: { workspaceId: string; userId: string; requestId: string },
+) => Promise<unknown>;
+const issuedSchema = z.object({
+  id: z.string().uuid(),
+  rawKey: z.string(),
+  scopes: z.array(z.string()),
+});
+const accountModule: unknown = await import(
+  pathToFileURL(
+    join(accountsRepo, "src/actions/handlers/integrations/apiKeys.ts"),
+  ).href
+);
+const issuer = z
+  .object({
+    createCreateApiKeyHandler: z.custom<Issuer>(
+      (value) => typeof value === "function",
+    ),
+  })
+  .parse(accountModule)
+  .createCreateApiKeyHandler({
+    authzClient: {
+      checkPermission: async (input) =>
+        input.userId === userId &&
+        input.workspaceId === workspaceId &&
+        input.actionKey === "platform.api_keys.create",
+      assignRole: async () => {},
+      listRolesForWorkspace: async () => [],
+    },
+  });
+async function issue(
+  name: string,
+  presetKey = "cms_readonly",
+  expiresAt?: string,
+) {
+  return issuedSchema.parse(
+    await issuer(
+      { name, presetKey, ...(expiresAt ? { expiresAt } : {}) },
+      { workspaceId, userId, requestId: crypto.randomUUID() },
+    ),
+  );
+}
+const current = await issue("B5 readonly"),
+  old = await issue("B5 old"),
+  revoked = await issue("B5 revoked"),
+  expired = await issue("B5 expired", "cms_readonly", "2000-01-01T00:00:00Z");
+await sql`delete from platform.workspace_api_key_scopes where api_key_id=${old.id} and action_key in ('cms.delivery.listByDirectory','cms.delivery.getById')`;
+await sql`update platform.workspace_api_keys set status='revoked', revoked_at=now(), revoked_by=${userId} where id=${revoked.id}`;
+const credentials = {
+  current: current.rawKey,
+  old: old.rawKey,
+  revoked: revoked.rawKey,
+  expired: expired.rawKey,
+  wrong: "xynes_live_" + randomBytes(32).toString("hex"),
+};
+function construct(ctor: unknown, args: unknown[]): unknown {
+  if (typeof ctor !== "function")
+    throw new Error("Fixture constructor unavailable");
+  return Reflect.construct(ctor, args);
+}
+const cms = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: app.fetch });
+process.env.CMS_CORE_URL = cms.url.origin;
+const allowedOrigins = new Set([cms.url.origin]);
+const originalFetch = globalThis.fetch;
+globalThis.fetch = Object.assign(
+  async (
+    input: Parameters<typeof fetch>[0],
+    init?: Parameters<typeof fetch>[1],
+  ) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    assert.ok(
+      allowedOrigins.has(url.origin),
+      "Fixture attempted a non-owned service call",
+    );
+    return originalFetch(input, init);
+  },
+  { preconnect: originalFetch.preconnect },
+);
+const routeModule: unknown = await import(
+  pathToFileURL(join(gatewayRepo, "src/data/postgresRouteRepository.ts")).href
+);
+const keyModule: unknown = await import(
+  pathToFileURL(
+    join(gatewayRepo, "src/data/postgresWorkspaceApiKeyRepository.ts"),
+  ).href
+);
+const routerModule: unknown = await import(
+  pathToFileURL(join(gatewayRepo, "src/router/dynamicRouter.ts")).href
+);
+const routesRepository = construct(
+  z.object({ PostgresRouteRepository: z.unknown() }).parse(routeModule)
+    .PostgresRouteRepository,
+  [{ databaseUrl: database.href }],
+);
+const routes = await z
+  .object({
+    getRoutes: z.custom<() => Promise<unknown>>(
+      (value) => typeof value === "function",
+    ),
+  })
+  .parse(routesRepository)
+  .getRoutes.call(routesRepository);
+const keys = construct(
+  z.object({ PostgresWorkspaceApiKeyRepository: z.unknown() }).parse(keyModule)
+    .PostgresWorkspaceApiKeyRepository,
+  [{ databaseUrl: database.href }],
+);
+const router = construct(
+  z.object({ DynamicRouter: z.unknown() }).parse(routerModule).DynamicRouter,
+  [
+    {
+      routes,
+      apiKeyRepository: keys,
+      authzService: {
+        check: async () => {
+          throw new Error("Readonly API keys must not invoke user RBAC");
+        },
+      },
+    },
+  ],
+);
+const handler = z
+  .object({ handle: z.custom<Handler>((value) => typeof value === "function") })
+  .parse(router).handle;
+const boundary = new Hono();
+boundary.all("*", handler);
+const gateway = Bun.serve({
+  hostname: "127.0.0.1",
+  port: 0,
+  fetch: boundary.fetch,
+});
+allowedOrigins.add(gateway.url.origin);
+const context = {
+  gatewayOrigin: gateway.url.origin,
+  workspaceId,
+  directoryId,
+  emptyDirectoryId,
+  movedDirectoryId,
+  entryId: main.id,
+  legacyEntryId: legacy.id,
+  childEntryId: child.id,
+  foreignWorkspaceId,
+  foreignEntryId: foreign.id,
+};
+const executeSchema = z.strictObject({
+  action: z.literal("execute"),
+  url: z.string().max(4096),
+  authorization: z.literal("Bearer ${XYNES_API_KEY}"),
+  credential: z
+    .enum(["current", "old", "revoked", "expired", "wrong"])
+    .default("current"),
+});
+const mutationSchema = z.discriminatedUnion("action", [
+  z.strictObject({
+    action: z.literal("save"),
+    title: z.string().trim().min(1).max(200),
+    body: z.unknown().optional(),
+  }),
+  z.strictObject({
+    action: z.enum([
+      "publish",
+      "archive",
+      "unpublish",
+      "move",
+      "legacyRepublish",
+    ]),
+  }),
+]);
+const transcript: {
+  url: string;
+  status: number;
+  credential: string;
+  response: unknown;
+}[] = [];
+async function state(isLegacy = false) {
+  const row = await findEntryByIdAndWorkspace(
+    isLegacy ? legacy.id : main.id,
+    workspaceId,
+  );
+  assert.ok(row);
+  return {
+    deliveryState: getDeliveryState(row),
+    body: z.object({ body: z.unknown() }).parse(row.data).body,
+    title: z.object({ title: z.string() }).parse(row.data).title,
+    status: row.status,
+    directoryId: row.directoryId,
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+const control = Bun.serve({
+  hostname: "127.0.0.1",
+  port: 0,
+  async fetch(request) {
+    if (
+      request.method !== "POST" ||
+      new URL(request.url).pathname !== "/control" ||
+      request.headers.get("Authorization") !== `Bearer ${token}`
+    )
+      return new Response(null, { status: 403 });
+    try {
+      const raw = await request.text();
+      assert.ok(raw.length <= 1048576);
+      const payload: unknown = JSON.parse(raw);
+      const command = z.object({ action: z.string() }).parse(payload).action;
+      if (command === "execute") {
+        const input = executeSchema.parse(payload),
+          url = new URL(input.url);
+        assert.equal(url.origin, context.gatewayOrigin);
+        assert.equal(url.username + url.password + url.hash, "");
+        assert.ok(
+          /^\/workspaces\/[0-9a-f-]+\/delivery\/entries(?:\/[0-9a-f-]+)?$/.test(
+            url.pathname,
+          ),
+        );
+        const response = await fetch(input.url, {
+          headers: {
+            Authorization: input.authorization.replace(
+              "${XYNES_API_KEY}",
+              credentials[input.credential],
+            ),
+          },
+          redirect: "error",
+          signal: AbortSignal.timeout(10000),
+        });
+        const result: unknown = await response.json();
+        transcript.push({
+          url: input.url,
+          status: response.status,
+          credential: input.credential,
+          response: result,
+        });
+        return Response.json({ status: response.status, response: result });
+      }
+      if (command === "readonlyProbe") {
+        z.strictObject({ action: z.literal("readonlyProbe") }).parse(payload);
+        const response = await fetch(
+          new URL(
+            `/workspaces/${workspaceId}/content/entries/${main.id}`,
+            gateway.url,
+          ),
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${current.rawKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ data: { title: "Unauthorized overwrite" } }),
+            signal: AbortSignal.timeout(10000),
+          },
+        );
+        return Response.json({
+          status: response.status,
+          response: await response.json(),
+        });
+      }
+      if (command === "state") {
+        const input = z
+          .strictObject({
+            action: z.literal("state"),
+            legacy: z.boolean().default(false),
+          })
+          .parse(payload);
+        return Response.json(await state(input.legacy));
+      }
+      if (command === "evidence") {
+        z.strictObject({ action: z.literal("evidence") }).parse(payload);
+        const [digest] =
+          await sql`select md5(string_agg(to_jsonb(e)::text, ',' order by e.id)) as value from cms.content_entries e`;
+        const result = {
+          transcript,
+          mutations: mutationCount,
+          contentDigest: z.string().parse(digest.value),
+          sortedEntryId: sorted.id,
+          draftEntryId: draft.id,
+        };
+        assert.ok(
+          !Object.values(credentials).some((credential) =>
+            JSON.stringify(result).includes(credential),
+          ),
+          "Credential in fixture evidence",
+        );
+        return Response.json(result);
+      }
+      const input = mutationSchema.parse(payload);
+      if (input.action === "save") {
+        const row = await findEntryByIdAndWorkspace(main.id, workspaceId);
+        assert.ok(row);
+        const previous = z
+          .object({
+            slug: z.string(),
+            title: z.string(),
+            description: z.string(),
+            tags: z.array(z.string()),
+            body: z.unknown(),
+          })
+          .parse(row.data);
+        await updateEntryByIdAndWorkspaceScoped({
+          entryId: main.id,
+          workspaceId,
+          data: {
+            ...previous,
+            title: input.title,
+            ...(input.body === undefined ? {} : { body: input.body }),
+          },
+        });
+      } else if (
+        input.action === "publish" ||
+        input.action === "legacyRepublish"
+      )
+        await publishEntryByIdAndWorkspace({
+          entryId: input.action === "publish" ? main.id : legacy.id,
+          workspaceId,
+        });
+      else if (input.action === "move")
+        await updateEntryByIdAndWorkspaceScoped({
+          entryId: main.id,
+          workspaceId,
+          directoryId: movedDirectoryId,
+        });
+      else
+        await setEntryStatusByIdAndWorkspace({
+          entryId: main.id,
+          workspaceId,
+          status: input.action === "archive" ? "archived" : "draft",
+        });
+      mutationCount++;
+      return Response.json(await state());
+    } catch {
+      return Response.json(
+        { error: "Fixture command rejected" },
+        { status: 400 },
+      );
+    }
+  },
+});
+let mutationCount = 0;
+await writeFile(
+  output,
+  JSON.stringify({ context, controlOrigin: control.url.origin }),
+  { mode: 0o600 },
+);
+console.log("B5 owned gateway/CMS fixture ready");
+async function stop() {
+  control.stop(true);
+  gateway.stop(true);
+  cms.stop(true);
+  await sql.end();
+  process.exit(0);
+}
+process.on("SIGTERM", stop);
+process.on("SIGINT", stop);
