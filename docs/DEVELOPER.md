@@ -1483,7 +1483,10 @@ with a unique linked error and `aria-invalid`; errors name whole-number bounds
 and item/character units with ICU formatting. Schema details/raw errors stay out
 of product copy. Valid edits clear field errors and restore generation.
 
-Warnings retain Lumia Alert styling but use polite status semantics. Coming soon,
+Warnings retain Lumia Alert styling. On Customize, an INVALID_OPTIONS summary
+uses a non-live note when a linked field error already supplies the polite
+announcement. Other errors and summaries outside Customize remain polite statuses,
+so REST preview failures still have recovery guidance. Coming soon,
 clipboard success and manual-copy recovery are polite statuses. Protocol URLs,
 snippets and static response code are read-only/selectable and `translate="no"`;
 URL/snippet spellcheck is disabled. Code/response areas scroll without adding a

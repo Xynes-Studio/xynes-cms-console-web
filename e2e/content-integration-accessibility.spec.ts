@@ -257,3 +257,30 @@ test("B4 short CSS viewport after 200% reflow keeps the header fixed when keyboa
     fullPage: true,
   });
 });
+
+test("B4 option validation has one live error on Customize and live REST recovery guidance", async ({ page }) => {
+  await page.goto("/e2e/content-integrations");
+  await expect(page.getByTestId("integration-fixture")).toHaveAttribute("data-ready", "true");
+  await page.getByRole("button", { name: "Content integrations", exact: true }).click();
+  const input = page.getByLabel("Items per request");
+  await input.fill("101");
+  const fieldError = page.getByText("Enter a whole number from 1 to 100 items.", { exact: true });
+  await expect(fieldError).toBeVisible();
+  await expect(fieldError).toHaveAttribute("aria-live", "polite");
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  const summary = page.getByRole("note");
+  await expect(summary).toContainText("Use whole numbers");
+  await expect(summary).toHaveAttribute("aria-live", "off");
+  await page.getByRole("tab", { name: "REST API" }).click();
+  await expect(fieldError).toBeHidden();
+  const restWarning = page.getByRole("status").filter({ hasText: "Use whole numbers" });
+  await expect(restWarning).toHaveAttribute("aria-live", "polite");
+  await expect(page.getByRole("button", { name: "Copy example" })).toBeDisabled();
+  await page.getByRole("tab", { name: "Customize" }).click();
+  await expect(page.getByRole("note")).toHaveAttribute("aria-live", "off");
+  await input.fill("20");
+  await expect(fieldError).toBeHidden();
+  await expect(page.getByRole("note")).toHaveCount(0);
+  await page.getByRole("tab", { name: "REST API" }).click();
+  await expect(page.getByRole("button", { name: "Copy example" })).toBeEnabled();
+});

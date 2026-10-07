@@ -24,6 +24,12 @@ export function IntegrationWorkbench({
 }) {
   const t = useTranslations("cms.contentIntegrations");
   const controller = useContentIntegration(context);
+  // Inline field errors own announcements while their customization tab is active.
+  const hasInlineOptionError =
+    !controller.result.ok &&
+    controller.result.error.code === "INVALID_OPTIONS" &&
+    controller.tab === "customize" &&
+    Object.values(controller.invalidFields).some(Boolean);
   const restTrigger = useRef<HTMLButtonElement>(null);
   const openRest = () => {
     controller.setTab("rest");
@@ -50,7 +56,8 @@ export function IntegrationWorkbench({
       <IntegrationAvailabilityNotice context={context} />
       {!controller.result.ok && (
         <Alert
-          role="status"
+          role={hasInlineOptionError ? "note" : "status"}
+          aria-live={hasInlineOptionError ? "off" : "polite"}
           variant="warning"
           description={t(`errors.${controller.result.error.code}`)}
         />

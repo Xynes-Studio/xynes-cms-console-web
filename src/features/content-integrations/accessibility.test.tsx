@@ -41,6 +41,9 @@ it.each([
     expect(input).toHaveAccessibleDescription(expect.stringContaining(message));
     const error = screen.getByText(message);
     expect(error).toHaveAttribute("aria-live", "polite");
+    const summary = screen.getByText(/Use whole numbers/).closest("[role]");
+    expect(summary).toHaveAttribute("role", "note");
+    expect(summary).toHaveAttribute("aria-live", "off");
     expect(error.id).not.toBe("");
     expect(input.getAttribute("aria-describedby")?.split(" ")).toContain(
       error.id,
@@ -111,6 +114,9 @@ it("links excessive title search to its own polite character error", () => {
   const search = screen.getByLabelText("Search title");
   fireEvent.change(search, { target: { value: "x".repeat(201) } });
   expect(search).toHaveAttribute("aria-invalid", "true");
+  expect(screen.getByText(/Use whole numbers/).closest("[role]")).toHaveAttribute(
+    "aria-live", "off",
+  );
   expect(search).toHaveAccessibleDescription(
     expect.stringContaining("Use no more than 200 characters."),
   );
@@ -136,4 +142,23 @@ it("labels and exposes the horizontal field-table scroller to keyboard users", (
   expect(within(scroller).getByRole("table")).toHaveAccessibleName(
     "Selected response fields",
   );
+});
+
+it("keeps option guidance live when the field error is outside the selected tab", () => {
+  render(ui(<IntegrationWorkbench context={folderContext} />));
+  fireEvent.change(screen.getByLabelText("Items per request"), { target: { value: "101" } });
+  fireEvent.click(screen.getByRole("tab", { name: "REST API" }));
+  expect(screen.getByText("Enter a whole number from 1 to 100 items.")).not.toBeVisible();
+  const summary = screen.getByText(/Use whole numbers/).closest("[role]");
+  expect(summary).toHaveAttribute("role", "status");
+  expect(summary).toHaveAttribute("aria-live", "polite");
+  expect(screen.getByRole("button", { name: "Copy example" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("tab", { name: "Customize" }));
+  expect(screen.getByText(/Use whole numbers/).closest("[role]")).toHaveAttribute("aria-live", "off");
+});
+it("does not silence configuration errors when a field is also invalid", () => {
+  render(ui(<IntegrationWorkbench context={{ ...folderContext, apiBaseUrl: "invalid" }} />));
+  fireEvent.change(screen.getByLabelText("Items per request"), { target: { value: "101" } });
+  expect(screen.getByText(/Public API address/).closest("[role]")).toHaveAttribute("role", "status");
+  expect(screen.getByText(/Public API address/).closest("[role]")).toHaveAttribute("aria-live", "polite");
 });
