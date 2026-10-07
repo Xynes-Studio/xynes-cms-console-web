@@ -1,0 +1,87 @@
+{
+  "title": "[CCoonntteenntt iinntteeggrraattiioonnss]",
+  "description": "[BBuuiilldd aa rreeqquueesstt ffoorr ppuubblliisshheedd ccoonntteenntt.]",
+  "close": "[CClloossee iinntteeggrraattiioonnss]",
+  "workspace": "[WWoorrkkssppaaccee]",
+  "folder": "[FFoollddeerr]",
+  "entry": "[CCoonntteenntt]",
+  "format": "[RReessppoonnssee ffoorrmmaatt]",
+  "json": "[JJSSOONN]",
+  "tabs": {
+    "customize": "[CCuussttoommiizzee]",
+    "rest": "[RREESSTT AAPPII]",
+    "scripts": "[SSccrriippttss]",
+    "sdk": "[SSDDKK]"
+  },
+  "controls": {
+    "order": "[OOrrddeerr bbyy]",
+    "direction": "[DDiirreeccttiioonn]",
+    "newest": "[NNeewweesstt ffiirrsstt]",
+    "oldest": "[OOllddeesstt ffiirrsstt]",
+    "az": "[AA–ZZ]",
+    "za": "[ZZ–AA]",
+    "limit": "[IItteemmss ppeerr rreeqquueesstt]",
+    "fields": "[FFiieellddss ttoo rreettuurrnn]",
+    "id": "[IIDD — aallwwaayyss rreettuurrnneedd]",
+    "advanced": "[AAddvvaanncceedd]",
+    "offset": "[SSkkiipp iitteemmss]",
+    "search": "[SSeeaarrcchh ttiittllee]"
+  },
+  "fields": {
+    "id": "[IIDD]",
+    "title": "[TTiittllee]",
+    "description": "[DDeessccrriippttiioonn]",
+    "tags": "[TTaaggss]",
+    "publishedAt": "[PPuubblliisshheedd ddaattee]",
+    "body": "[BBooddyy]"
+  },
+  "errors": {
+    "INVALID_API_BASE_URL": "[PPuubblliicc AAPPII aaddddrreessss iiss mmiissssiinngg oorr iinnvvaalliidd. AAsskk yyoouurr aaddmmiinniissttrraattoorr ttoo ccoonnffiigguurree tthhee ppuubblliicc ggaatteewwaayy UURRLL.]",
+    "INVALID_CONTEXT": "[TThhee wwoorrkkssppaaccee oorr ccoonntteenntt ttaarrggeett iiss mmiissssiinngg oorr iinnvvaalliidd. RReeooppeenn iinntteeggrraattiioonnss ffrroomm yyoouurr wwoorrkkssppaaccee.]",
+    "INVALID_OPTIONS": "[UUssee wwhhoollee nnuummbbeerrss wwiitthhiinn tthhee lliimmiittss sshhoowwnn aanndd kkeeeepp sseeaarrcchh wwiitthhiinn iittss cchhaarraacctteerr lliimmiitt.]"
+  },
+  "bounds": {
+    "limit": "[{min, number}–{max, number} iitteemmss]",
+    "offset": "[{min, number}–{max, number} iitteemmss sskkiippppeedd]",
+    "search": "[UUpp ttoo {max, number} cchhaarraacctteerrss]"
+  },
+  "availability": {
+    "unknown": "[AAvvaaiillaabbiilliittyy hhaass nnoott bbeeeenn cchheecckkeedd. DDeelliivveerryy rreeqquuiirreess ppuubblliisshheedd ccoonntteenntt aanndd aann aauutthhoorriizzeedd wwoorrkkssppaaccee AAPPII kkeeyy.]",
+    "unpublished": "[PPuubblliisshh tthhiiss ccoonntteenntt bbeeffoorree iitt ccaann bbee ddeelliivveerreedd. YYoouu ccaann ccooppyy tthhee rreeqquueesstt ffoorr llaatteerr uussee.]",
+    "archived": "[RReeppuubblliisshh tthhiiss aarrcchhiivveedd ccoonntteenntt ttoo rreessttoorree ddeelliivveerryy. YYoouu ccaann ccooppyy tthhee rreeqquueesstt ffoorr llaatteerr uussee.]",
+    "changes": "[SSaavveedd eeddiittss aarree eexxcclluuddeedd uunnttiill yyoouu rreeppuubblliisshh. DDeelliivveerryy sseerrvveess tthhee llaasstt ppuubblliisshheedd vveerrssiioonn.]",
+    "legacy": "[RReeppuubblliisshh tthhiiss lleeggaaccyy ccoonntteenntt ttoo ccrreeaattee aa vvaalliiddaatteedd ddeelliivveerryy ssnnaappsshhoott.]",
+    "published": "[DDeelliivveerryy sseerrvveess tthhee llaasstt ppuubblliisshheedd vveerrssiioonn. TThhee eexxaammppllee bbeellooww ddooeess nnoott vveerriiffyy aavvaaiillaabbiilliittyy oorr aacccceessss.]"
+  },
+  "adminLink": "[GGeett aa rreeaadd-oonnllyy AAPPII kkeeyy iinn WWoorrkkssppaaccee AAddmmiinn]",
+  "externalHint": "[(ooppeennss iinn nneeww ttaabb)]",
+  "preview": {
+    "url": "[RReeqquueesstt UURRLL]",
+    "auth": "[AAuutthheennttiiccaattiioonn]",
+    "authHint": "[AA rreeaadd-oonnllyy AAPPII kkeeyy ffoorr tthhiiss wwoorrkkssppaaccee iiss rreeqquuiirreedd. KKeeeepp iitt oonn yyoouurr sseerrvveerr; eexxaammpplleess uussee aann eennvviirroonnmmeenntt vvaarriiaabbllee.]",
+    "format": "[CCooddee ffoorrmmaatt]",
+    "formats": {
+      "url": "[UURRLL oonnllyy]",
+      "curl": "[ccUURRLL]",
+      "serverFetch": "[SSeerrvveerr-ssiiddee JJaavvaaSSccrriipptt (ffeettcchh)]"
+    },
+    "code": "[CCooddee eexxaammppllee]",
+    "copy": "[CCooppyy eexxaammppllee]",
+    "pending": "[CCooppyyiinngg…]",
+    "copied": "[CCooppiieedd]",
+    "manual": "[CCooppyy mmaannuuaallllyy: sseelleecctt tthhee ccooddee aanndd ccooppyy iitt wwiitthh yyoouurr kkeeyybbooaarrdd oorr ddeevviiccee mmeennuu.]",
+    "fields": "[SSeelleecctteedd rreessppoonnssee ffiieellddss]",
+    "name": "[FFiieelldd]",
+    "type": "[TTyyppee]",
+    "required": "[AAllwwaayyss rreettuurrnneedd]",
+    "yes": "[YYeess]",
+    "no": "[NNoo]",
+    "example": "[SSttaattiicc eexxaammppllee — nnoott lliivvee ccoonntteenntt]",
+    "response": "[EExxaammppllee rreessppoonnssee]"
+  },
+  "comingSoon": {
+    "title": "[CCoommiinngg ssoooonn]",
+    "description": "[SSccrriippttss aanndd SSDDKKss aarree ppllaannnneedd. UUssee tthhee RREESSTT AAPPII ttoo iinntteeggrraattee ppuubblliisshheedd ccoonntteenntt ttooddaayy.]",
+    "rest": "[UUssee RREESSTT AAPPII]"
+  }
+}

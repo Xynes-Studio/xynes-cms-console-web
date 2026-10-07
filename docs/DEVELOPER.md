@@ -1321,3 +1321,69 @@ For A5, call the public engine exports from `index.ts`. The mirror path above is
 the one already expected by infra's parity entrypoint. Take the frontend commit
 revision only after B1 is committed; do not label mutable working files as pinned
 API-integration evidence. Bodies here are JSON only and never sign/fetch storage.
+
+## Reusable integration workbench (CMS-INT-B2)
+
+The pure B1 `index.ts` remains framework-independent. UI hosts import
+`ContentIntegrationDialog` or `IntegrationWorkbench` from their named modules;
+no auth SDK dependency, lifecycle form or host persistence is added here.
+
+- `useContentIntegration`: ephemeral control/tab/format/copy state. Reset identity
+  includes workspace UUID, target kind/UUID, workspace slug and public API base.
+  A fresh generation token prevents old clipboard promises from reporting success
+  after A→B→A switches. Writes serialize independently of visible feedback and across workbench
+  unmount/reopen or independently mounted hosts. Rejected writes release the queue.
+- `IntegrationCustomization`: metadata-backed folder sorting/limit/fields plus
+  Advanced offset/title search; entries expose fields only. ID is mandatory,
+  folder bodies are excluded and response format stays JSON. Invalid values
+  remain visible and block generation rather than being silently clamped.
+- `IntegrationRequestPreview`: GET URL, environment-variable authentication,
+  URL/cURL/server fetch formats, selected-field table and projected static JSON.
+  Clipboard success follows promise fulfillment. Denied/missing clipboard gives
+  polite manual-copy guidance with selectable code and safe messages.
+- `IntegrationWorkbench`: four Lumia tabs; Scripts/SDK explain Coming soon and
+  offer REST. The shortcut transfers focus to the REST trigger. Availability
+  metadata supplies guidance, never evidence that a request succeeded. Draft/
+  scheduled content needs publishing, archived content needs republishing, saved
+  changes stay excluded, and legacy republish_required requires a validated snapshot.
+  Missing metadata shows unknown; unavailable content may still produce a stable
+  request for later use. Folder delivery follows the B1 published-directory contract.
+- `ContentIntegrationDialog`: controlled Lumia modal, visible workspace/target
+  context, optional trigger for focus restoration, scrollable mobile layout and
+  translated closeLabel. Hosts without a trigger own close-focus restoration.
+
+Workspace Admin retains API key ownership. The native styled anchor reuses
+`buildWorkspaceAdminIntegrationUrl("cms_readonly_key", workspaceSlug)` with its
+existing safe-origin fallback. External links include safe rel/target and a
+translated screen-reader hint. Credentials are never accepted/stored/rendered;
+configuration error codes map to localized text without raw URLs or validator
+details. Generated code is displayed as text, not HTML or executable scripts.
+
+`cms.contentIntegrations` is statically registered in `src/i18n/config.ts`, using
+`messages/{en-US,en-XA}/cms.content-integrations.json` and a matching metadata
+sidecar. Bounds use ICU number formatting; protocol field names and code retain
+their contract syntax. Catalog tests enforce key/placeholder parity and safe copy.
+
+Real-component Vitest tests use the app's React runtime via aliases/dedupe and
+optimize the linked Lumia package, including CommonJS peers. This matches Next's
+already-configured React aliases and avoids substituting focus/tab primitives.
+Coverage emits JSON for per-file evidence and retains all existing 85% thresholds.
+
+The new `/e2e/content-integrations` fixture is disabled in production even when
+the fixture flag is set. It supports allowlisted query fixtures `target=entry`,
+`state=draft|legacy` and `config=invalid`. Browser tests wait for fixture hydration,
+exercise desktop/mobile en-XA, copy denial, focus containment, tab navigation and
+restoration, static examples and invalid config. No backend is needed. For an
+isolated checkout whose dependency symlinks leave the Turbopack root, start the
+existing webpack dev path on the chosen fixture port, then run Playwright against
+that port (all public fixture origins must match):
+
+```sh
+pnpm dev --webpack --hostname 127.0.0.1 --port 3202
+PLAYWRIGHT_E2E_PORT=3202 pnpm exec playwright test e2e/content-integrations.spec.ts
+```
+
+Build verification uses non-secret fixture env values from the repository's
+Playwright configuration plus `NEXT_API_URL` and `XYNES_BUILD_VERSION`. Product
+folder/card/editor wiring, delivery metadata adapters and rollout gates remain B3
+work. No CMS global key management, API mutation or persistence change is included.
