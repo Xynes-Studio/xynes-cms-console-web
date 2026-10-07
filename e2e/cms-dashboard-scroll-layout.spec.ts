@@ -79,6 +79,7 @@ test.describe("CMS dashboard scroll layout fixture", () => {
 
     const primaryRow = page.getByTestId("cms-content-toolbar-primary-row");
     const secondaryRow = page.getByTestId("cms-content-toolbar-secondary-row");
+    const secondaryShell = page.getByTestId("cms-content-toolbar-secondary-shell");
     const resultsScrollRegion = page.getByTestId("content-results-scroll-region");
     const sidebarScrollRegion = page.getByTestId("dashboard-sidebar-scroll-region");
 
@@ -86,6 +87,16 @@ test.describe("CMS dashboard scroll layout fixture", () => {
     await expect(secondaryRow).toBeVisible();
     await expect(resultsScrollRegion).toBeVisible();
     await expect(sidebarScrollRegion).toBeVisible();
+
+    // Visible server HTML can precede hydration. The layout effect measures the
+    // toolbar after React attaches the scroll handler; wait before emitting events.
+    await expect
+      .poll(() =>
+        secondaryShell.evaluate((element) =>
+          Number.parseFloat(element.style.maxHeight || "0"),
+        ),
+      )
+      .toBeGreaterThan(0);
 
     const primaryTopBefore = (await primaryRow.boundingBox())?.y ?? 0;
     await resultsScrollRegion.evaluate((element) => {
