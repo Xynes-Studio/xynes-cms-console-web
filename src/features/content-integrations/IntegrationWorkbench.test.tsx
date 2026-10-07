@@ -98,7 +98,7 @@ describe("integration workbench",()=>{
   const writeText=vi.fn().mockResolvedValue(undefined);vi.stubGlobal("navigator",{clipboard:{writeText}});render(ui());rest();
   fireEvent.change(screen.getByLabelText("Code format"),{target:{value:"url"}});
   await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Copy example"}));});
-  expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/api.xynes.com/));expect(screen.getByText("Copied")).toBeVisible();
+  expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/api\.xynes\.com\//));expect(screen.getByText("Copied")).toBeVisible();
  });
  it("renders pseudo-locale copy without untranslated keys",()=>{
   render(ui(folderContext,"en-XA"));expect(screen.getByRole("tab",{name:/CCuussttoommiizzee/})).toBeVisible();expect(document.body.textContent).not.toContain("cms.contentIntegrations.");
