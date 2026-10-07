@@ -6,34 +6,17 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  buttonStyles,
 } from "@lumia-ui/components";
 import { useRef } from "react";
 import { useTranslations } from "next-intl";
-import { buildWorkspaceAdminIntegrationUrl } from "../integrations/workspace-admin-links";
+import { IntegrationKeyLink } from "./IntegrationKeyLink";
+import { IntegrationAvailabilityNotice } from "./IntegrationAvailabilityNotice";
 import { ComingSoonPanel } from "./ComingSoonPanel";
 import { IntegrationCustomization } from "./IntegrationCustomization";
 import { IntegrationRequestPreview } from "./IntegrationRequestPreview";
 import { useContentIntegration } from "./useContentIntegration";
 import type { IntegrationContext } from "./types";
 
-function availability(context: IntegrationContext) {
-  if (context.deliveryState === "republish_required") return "legacy";
-  if (context.publicationState === "archived") return "archived";
-  if (
-    context.publicationState === "draft" ||
-    context.publicationState === "scheduled" ||
-    context.deliveryState === "unpublished"
-  )
-    return "unpublished";
-  if (context.publicationState === "published-with-changes") return "changes";
-  if (
-    context.publicationState === "published" ||
-    context.deliveryState === "available"
-  )
-    return "published";
-  return "unknown";
-}
 export function IntegrationWorkbench({
   context,
 }: {
@@ -46,11 +29,6 @@ export function IntegrationWorkbench({
     controller.setTab("rest");
     restTrigger.current?.focus();
   };
-  const href = buildWorkspaceAdminIntegrationUrl(
-    "cms_readonly_key",
-    context.workspaceSlug,
-  );
-  const external = href.startsWith("http://") || href.startsWith("https://");
   return (
     <Flex direction="col" gap="md" className="min-w-0">
       <Flex direction="col" gap="xs" className="min-w-0">
@@ -67,12 +45,7 @@ export function IntegrationWorkbench({
           </p>
         )}
       </Flex>
-      <p
-        role="status"
-        className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm leading-5 text-muted-foreground"
-      >
-        {t(`availability.${availability(context)}`)}
-      </p>
+      <IntegrationAvailabilityNotice context={context} />
       {!controller.result.ok && (
         <Alert
           variant="warning"
@@ -112,19 +85,7 @@ export function IntegrationWorkbench({
           <ComingSoonPanel onRest={openRest} />
         </TabsContent>
       </Tabs>
-      <a
-        href={href}
-        className={[
-          buttonStyles.base,
-          buttonStyles.variants.outline,
-          buttonStyles.sizes.sm,
-          "self-start h-auto whitespace-normal text-left",
-        ].join(" ")}
-        {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      >
-        {t("adminLink")}
-        {external && <span className="sr-only"> {t("externalHint")}</span>}
-      </a>
+      <IntegrationKeyLink workspaceSlug={context.workspaceSlug} />
     </Flex>
   );
 }

@@ -1,7 +1,8 @@
 import type { GENERATED_DELIVERY_CONTRACT } from "./delivery-contract.generated";
 
 type Contract = typeof GENERATED_DELIVERY_CONTRACT;
-export type DirectoryField = Contract["operations"]["directory"]["fields"][number];
+export type DirectoryField =
+  Contract["operations"]["directory"]["fields"][number];
 export type DeliveryField = Contract["operations"]["entry"]["fields"][number];
 export type IntegrationTarget =
   | {
@@ -10,19 +11,20 @@ export type IntegrationTarget =
       readonly label: string;
       readonly breadcrumb: string;
     }
-  | { readonly kind: "entry"; readonly entryId: string; readonly label: string };
+  | {
+      readonly kind: "entry";
+      readonly entryId: string;
+      readonly label: string;
+    };
+export type DeliveryState = Contract["deliveryStates"][number] | "unknown";
 export type IntegrationContext = {
   readonly workspaceId: string;
   readonly workspaceSlug: string;
   readonly apiBaseUrl: string;
   readonly target: IntegrationTarget;
   readonly publicationState?:
-    | "draft"
-    | "scheduled"
-    | "published"
-    | "published-with-changes"
-    | "archived";
-  readonly deliveryState?: Contract["deliveryStates"][number] | "unknown";
+    "draft" | "scheduled" | "published" | "published-with-changes" | "archived";
+  readonly deliveryState?: DeliveryState;
 };
 export type DirectoryIntegrationOptions = {
   readonly sortBy?: Contract["operations"]["directory"]["sortBy"][number];
@@ -32,7 +34,9 @@ export type DirectoryIntegrationOptions = {
   readonly search?: string;
   readonly fields?: readonly DirectoryField[];
 };
-export type EntryIntegrationOptions = { readonly fields?: readonly DeliveryField[] };
+export type EntryIntegrationOptions = {
+  readonly fields?: readonly DeliveryField[];
+};
 export type DirectoryRequestOptions = Required<
   Omit<DirectoryIntegrationOptions, "search" | "fields">
 > & { readonly search?: string; readonly fields: readonly DirectoryField[] };
@@ -55,12 +59,13 @@ export type IntegrationRequest =
       readonly options: Readonly<EntryRequestOptions>;
     });
 export type IntegrationRequestErrorCode =
-  | "INVALID_CONTEXT"
-  | "INVALID_OPTIONS"
-  | "INVALID_API_BASE_URL";
+  "INVALID_CONTEXT" | "INVALID_OPTIONS" | "INVALID_API_BASE_URL";
 export type IntegrationRequestResult =
   | { readonly ok: true; readonly request: IntegrationRequest }
-  | { readonly ok: false; readonly error: { readonly code: IntegrationRequestErrorCode } };
+  | {
+      readonly ok: false;
+      readonly error: { readonly code: IntegrationRequestErrorCode };
+    };
 export type RequestSnippets = {
   readonly url: string;
   readonly curl: string;

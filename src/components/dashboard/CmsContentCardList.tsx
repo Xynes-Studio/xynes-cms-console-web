@@ -24,6 +24,7 @@ export type CmsEntryCardListProps = {
   isDeleting?: boolean;
   isFavoritePending?: boolean;
   onOpen: (entryId: string) => void;
+  onIntegrations?: (entryId: string, trigger: HTMLButtonElement | null) => void;
   onDelete: (entryId: string) => void;
   onShare: (entryId: string) => void;
   onToggleFavorite: (entryId: string) => void;
@@ -77,11 +78,13 @@ export function CmsContentCardList({
   isDeleting = false,
   isFavoritePending = false,
   onOpen,
+  onIntegrations,
   onDelete,
   onShare,
   onToggleFavorite,
 }: CmsEntryCardListProps) {
   const locale = useLocale();
+  const ti = useTranslations("cms.contentIntegrations");
   const t = useTranslations("cms.content.card");
   const resolvedOwner = resolveOwnerLabel({
     creator,
@@ -159,6 +162,21 @@ export function CmsContentCardList({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {onIntegrations && (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={ti("hosts.entryAction", { title })}
+            onClick={(event) => {
+              event.stopPropagation();
+              onIntegrations(entryId, event.currentTarget);
+            }}
+          >
+            <Icon name="external-link" size="sm" aria-hidden="true" />
+            {ti("hosts.integrations")}
+          </Button>
+        )}
+
         <Button
           variant="outline"
           size="sm"

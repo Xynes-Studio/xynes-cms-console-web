@@ -83,5 +83,19 @@
     "title": "[CCoommiinngg ssoooonn]",
     "description": "[SSccrriippttss aanndd SSDDKKss aarree ppllaannnneedd. UUssee tthhee RREESSTT AAPPII ttoo iinntteeggrraattee ppuubblliisshheedd ccoonntteenntt ttooddaayy.]",
     "rest": "[UUssee RREESSTT AAPPII]"
+  },
+  "hosts": {
+    "integrations": "[IInntteeggrraattiioonnss]",
+    "folderAction": "[IInntteeggrraattiioonnss ffoorr ffoollddeerr {title}]",
+    "entryAction": "[IInntteeggrraattiioonnss ffoorr {title}]",
+    "openFolder": "[OOppeenn aa ffoollddeerr ffiirrsstt.]",
+    "resolving": "[WWaaiitt ffoorr tthhee ffoollddeerr ttoo llooaadd.]",
+    "folderUnavailable": "[TThhiiss ffoollddeerr iiss uunnaavvaaiillaabbllee. OOppeenn aa ssaavveedd ffoollddeerr.]",
+    "details": "[DDeettaaiillss]",
+    "customize": "[CCuussttoommiizzee rreeqquueesstt]",
+    "panelSummary": "[IInntteeggrraattee ppuubblliisshheedd ccoonntteenntt tthhrroouugghh tthhee RREESSTT AAPPII.]",
+    "drawerLabel": "[OOppeenn mmeettaaddaattaa ppaanneell]",
+    "panels": "[CCoonntteenntt ppaanneellss]",
+    "configUnavailable": "[PPuubblliicc AAPPII aaddddrreessss iiss mmiissssiinngg. AAsskk yyoouurr aaddmmiinniissttrraattoorr ttoo ccoonnffiigguurree iitt.]"
   }
 }

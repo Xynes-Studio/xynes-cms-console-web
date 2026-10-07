@@ -33,6 +33,13 @@ import {
   getCreateEntryErrorMessage,
 } from "./CmsContentActions";
 import { mapEntryToGridCardProps, mapEntryToListCardProps } from "./mappers";
+import { ContentIntegrationDialog } from "../content-integrations/ContentIntegrationDialog";
+import { useIntegrationDialog } from "../content-integrations/useIntegrationDialog";
+import {
+  buildDirectoryIntegrationContext,
+  buildEntryIntegrationContext,
+  isContentIntegrationsEnabled,
+} from "../content-integrations/host-context";
 
 const QUERY_REPLACE_DEBOUNCE_MS = 300;
 const mutationErrorDescription =
@@ -53,6 +60,7 @@ const safeDecodePathSegment = (segment: string) => {
 export function CmsContentListPanel() {
   const { show: showToast } = useToast();
   const t = useTranslations("cms.content");
+  const ti = useTranslations("cms.contentIntegrations");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -93,6 +101,11 @@ export function CmsContentListPanel() {
     string | null | undefined
   >(undefined);
   const [isDirectoryResolving, setIsDirectoryResolving] = useState(false);
+  const [integrationDirectory, setIntegrationDirectory] = useState<{
+    scope: string;
+    id: string;
+    label: string;
+  } | null>(null);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
   // ── breadcrumb derivation (hoisted so it can be used in effects below) ──
   const pathParts = pathname
@@ -106,6 +119,17 @@ export function CmsContentListPanel() {
     [pathname],
   );
   const breadcrumbKey = breadcrumbParts.join("/");
+  const integrationsEnabled =
+    isContentIntegrationsEnabled() && isAuthenticated && !isAuthLoading;
+  const directoryScope = JSON.stringify([
+    currentWorkspace?.id,
+    breadcrumbKey,
+    apiBaseUrl,
+  ]);
+  const integrationDialog = useIntegrationDialog(
+    JSON.stringify([currentWorkspace?.id, pathname, apiBaseUrl, state]),
+    integrationsEnabled,
+  );
   useEffect(() => {
     let cancelled = false;
 
@@ -175,6 +199,18 @@ export function CmsContentListPanel() {
             ? (pathIds.at(-1) ?? null)
             : UNMATCHED_DIRECTORY_ID;
         setResolvedDirectoryId(leafId);
+        setIntegrationDirectory(
+          leafId && leafId !== UNMATCHED_DIRECTORY_ID
+            ? {
+                scope: directoryScope,
+                id: leafId,
+                label:
+                  dirs.find((directory) => directory.id === leafId)?.name ??
+                  breadcrumbParts.at(-1) ??
+                  "",
+              }
+            : null,
+        );
       } catch {
         if (!cancelled) setResolvedDirectoryId(null);
       } finally {
@@ -187,7 +223,13 @@ export function CmsContentListPanel() {
     };
     // breadcrumbKey is a stable primitive derived from breadcrumbParts
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [breadcrumbKey, currentWorkspace?.id, accessToken, apiBaseUrl]);
+  }, [
+    breadcrumbKey,
+    currentWorkspace?.id,
+    accessToken,
+    apiBaseUrl,
+    directoryScope,
+  ]);
 
   // ── URL query debounce ────────────────────────────────────────────────────
   useEffect(() => {
@@ -225,6 +267,31 @@ export function CmsContentListPanel() {
   const resolvedWorkspaceSlug = currentWorkspace?.slug?.trim() || workspaceSlug;
   const isUnmatchedDirectoryPath =
     resolvedDirectoryId === UNMATCHED_DIRECTORY_ID;
+
+  const folderIntegrationContext = buildDirectoryIntegrationContext({
+    workspaceId: currentWorkspace?.id ?? "",
+    workspaceSlug: resolvedWorkspaceSlug ?? "",
+    apiBaseUrl,
+    directory:
+      integrationDirectory?.scope === directoryScope &&
+      integrationDirectory.id === resolvedDirectoryId &&
+      !isDirectoryResolving
+        ? {
+            id: integrationDirectory.id,
+            label: integrationDirectory.label,
+            breadcrumb: breadcrumbParts.join(" / "),
+          }
+        : null,
+  });
+  const folderIntegrationUnavailable = !breadcrumbParts.length
+    ? ti("hosts.openFolder")
+    : !apiBaseUrl
+      ? ti("hosts.configUnavailable")
+      : isUnmatchedDirectoryPath || resolvedDirectoryId === null
+        ? ti("hosts.folderUnavailable")
+        : !folderIntegrationContext
+          ? ti("hosts.resolving")
+          : undefined;
 
   const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -322,6 +389,47 @@ export function CmsContentListPanel() {
     ? itemsWithOverrides.filter((item) => item.isFavorite)
     : itemsWithOverrides;
   const visibleCount = visibleItems.length;
+
+  const handleEntryIntegrations = useCallback(
+    (entryId: string, trigger: HTMLButtonElement | null) => {
+      const entry = visibleItems.find((item) => item.id === entryId) ?? null;
+      const context = buildEntryIntegrationContext({
+        workspaceId: currentWorkspace?.id ?? "",
+        workspaceSlug: resolvedWorkspaceSlug ?? "",
+        apiBaseUrl,
+        entryId,
+        entry,
+      });
+      if (context) integrationDialog.open(context, trigger);
+    },
+    [
+      apiBaseUrl,
+      currentWorkspace?.id,
+      resolvedWorkspaceSlug,
+      visibleItems,
+      integrationDialog,
+    ],
+  );
+  const selectedIntegration = integrationDialog.context;
+  const selectedContext =
+    selectedIntegration?.target.kind === "directory"
+      ? folderIntegrationContext
+      : selectedIntegration?.target.kind === "entry"
+        ? buildEntryIntegrationContext({
+            workspaceId: currentWorkspace?.id ?? "",
+            workspaceSlug: resolvedWorkspaceSlug ?? "",
+            apiBaseUrl,
+            entryId: selectedIntegration.target.entryId,
+            entry:
+              visibleItems.find(
+                (item) =>
+                  item.id ===
+                  (selectedIntegration.target.kind === "entry"
+                    ? selectedIntegration.target.entryId
+                    : ""),
+              ) ?? null,
+          })
+        : null;
 
   const handleShare = useCallback(
     async (entryId: string) => {
@@ -491,8 +599,18 @@ export function CmsContentListPanel() {
       onDelete: handleDelete,
       onShare: handleShare,
       onToggleFavorite: handleToggleFavorite,
+      ...(integrationsEnabled
+        ? { onIntegrations: handleEntryIntegrations }
+        : {}),
     }),
-    [handleDelete, handleOpen, handleShare, handleToggleFavorite],
+    [
+      handleDelete,
+      handleOpen,
+      handleShare,
+      handleToggleFavorite,
+      integrationsEnabled,
+      handleEntryIntegrations,
+    ],
   );
 
   const listViewState = resolveCmsContentListState({
@@ -579,6 +697,19 @@ export function CmsContentListPanel() {
               : "border-b border-transparent",
           )}
           secondaryRowContainerStyle={secondaryToolbarContainerStyle}
+          onIntegrations={
+            integrationsEnabled
+              ? (trigger) => {
+                  if (folderIntegrationContext)
+                    integrationDialog.open(folderIntegrationContext, trigger);
+                }
+              : undefined
+          }
+          integrationsTargetLabel={folderIntegrationContext?.target.label}
+          integrationsDisabled={!folderIntegrationContext}
+          integrationsUnavailableReason={
+            integrationsEnabled ? folderIntegrationUnavailable : undefined
+          }
           onCreate={() => {
             setCreateError(null);
 
@@ -726,6 +857,19 @@ export function CmsContentListPanel() {
           </div>
         ) : null}
       </div>
+      {selectedContext && (
+        <ContentIntegrationDialog
+          context={selectedContext}
+          open
+          onOpenChange={(open) => {
+            if (!open) integrationDialog.close();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            integrationDialog.restoreFocus();
+          }}
+        />
+      )}
     </section>
   );
 }

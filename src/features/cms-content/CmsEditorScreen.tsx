@@ -10,6 +10,14 @@ import {
   type MediaUploadCallbacks,
 } from "@lumia-ui/editor";
 import { CmsEditorLayout } from "../../components/dashboard/CmsEditorLayout";
+import { ContentIntegrationDialog } from "../content-integrations/ContentIntegrationDialog";
+import { ContentIntegrationPanel } from "../content-integrations/ContentIntegrationPanel";
+import { useIntegrationDialog } from "../content-integrations/useIntegrationDialog";
+import {
+  buildEntryIntegrationContext,
+  isContentIntegrationsEnabled,
+  resolveIntegrationPublicationState,
+} from "../content-integrations/host-context";
 import {
   getWorkspaceContentEntryById,
   setWorkspaceContentEntryStatus,
@@ -124,8 +132,6 @@ type EditorDraftValue = {
   body: ReturnType<typeof normalizeEditorBody>;
 };
 
-const PUBLISH_CHANGE_THRESHOLD_MS = 1000;
-
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function buildDraftFromEntry(entry: WorkspaceContentEntry): EditorDraftValue {
@@ -139,21 +145,6 @@ function buildDraftFromEntry(entry: WorkspaceContentEntry): EditorDraftValue {
 
 function buildBackPath(workspaceSlug: string): string {
   return `/dashboard/${encodeURIComponent(workspaceSlug)}/content`;
-}
-
-function hasSavedChangesSincePublish(entry: WorkspaceContentEntry): boolean {
-  if (entry.status !== "published" || !entry.publishedAt) {
-    return false;
-  }
-
-  const publishedAt = Date.parse(entry.publishedAt);
-  const updatedAt = Date.parse(entry.updatedAt);
-
-  if (Number.isNaN(publishedAt) || Number.isNaN(updatedAt)) {
-    return false;
-  }
-
-  return updatedAt - publishedAt > PUBLISH_CHANGE_THRESHOLD_MS;
 }
 
 // ─── component ───────────────────────────────────────────────────────────────
@@ -177,6 +168,17 @@ export function CmsEditorScreen({
   const router = useRouter();
 
   const resolvedSlug = (currentWorkspace?.slug?.trim() || workspaceSlug).trim();
+  const integrationsEnabled =
+    isContentIntegrationsEnabled() && isAuthenticated && !isAuthLoading;
+  const integrationIdentity = JSON.stringify([
+    currentWorkspace?.id,
+    entryId,
+    API_BASE_URL,
+  ]);
+  const integrationDialog = useIntegrationDialog(
+    integrationIdentity,
+    integrationsEnabled,
+  );
 
   // ── resolve access token ─────────────────────────────────────────────────
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -377,12 +379,19 @@ export function CmsEditorScreen({
       hasEditorDraftChanged(lastSavedDraftRef.current, draft));
 
   const publicationState = entry
-    ? entry.status === "published"
-      ? hasUnsavedChanges || hasSavedChangesSincePublish(entry)
-        ? "published-with-changes"
-        : "published"
-      : entry.status
+    ? resolveIntegrationPublicationState(entry, hasUnsavedChanges)
     : "draft";
+  const integrationContext = buildEntryIntegrationContext({
+    workspaceId: currentWorkspace?.id ?? "",
+    workspaceSlug: resolvedSlug,
+    apiBaseUrl: API_BASE_URL,
+    entryId,
+    entry,
+    label: draft.title,
+    publicationState,
+  });
+  const selectedIntegrationContext =
+    integrationDialog.context && integrationContext ? integrationContext : null;
 
   // ── publish ───────────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
@@ -590,6 +599,17 @@ export function CmsEditorScreen({
         onConfirm={handleConfirmLeave}
       />
       <CmsEditorLayout
+        integrationIdentity={integrationIdentity}
+        integrationDialogOpen={Boolean(selectedIntegrationContext)}
+        integrationPanel={
+          integrationsEnabled && integrationContext ? (
+            <ContentIntegrationPanel context={integrationContext} />
+          ) : undefined
+        }
+        onCustomizeIntegrations={(restoreFocus) => {
+          if (integrationContext)
+            integrationDialog.open(integrationContext, restoreFocus);
+        }}
         pathLabel={pathLabel}
         title={draft.title}
         description={draft.description}
@@ -643,6 +663,19 @@ export function CmsEditorScreen({
           media={storageMedia}
         />
       </CmsEditorLayout>
+      {selectedIntegrationContext && (
+        <ContentIntegrationDialog
+          context={selectedIntegrationContext}
+          open
+          onOpenChange={(open) => {
+            if (!open) integrationDialog.close();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            integrationDialog.restoreFocus();
+          }}
+        />
+      )}
     </>
   );
 }

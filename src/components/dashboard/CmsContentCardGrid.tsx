@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import {
   Avatar,
   Badge,
@@ -31,6 +32,7 @@ export type CmsEntryCardGridProps = {
   isDeleting?: boolean;
   isFavoritePending?: boolean;
   onOpen: (entryId: string) => void;
+  onIntegrations?: (entryId: string, trigger: HTMLButtonElement | null) => void;
   onDelete: (entryId: string) => void;
   onShare: (entryId: string) => void;
   onToggleFavorite: (entryId: string) => void;
@@ -69,11 +71,14 @@ export function CmsContentCardGrid({
   isDeleting = false,
   isFavoritePending = false,
   onOpen,
+  onIntegrations,
   onDelete,
   onShare,
   onToggleFavorite,
 }: CmsEntryCardGridProps) {
   const locale = useLocale();
+  const ti = useTranslations("cms.contentIntegrations");
+  const integrationTrigger = useRef<HTMLButtonElement>(null);
   const t = useTranslations("cms.content.card");
   const resolvedOwner = resolveOwnerLabel({
     creator,
@@ -146,6 +151,7 @@ export function CmsContentCardGrid({
               size="icon"
               className="shrink-0"
               aria-label={t("actionsAriaLabel", { title })}
+              ref={integrationTrigger}
             >
               <span aria-hidden="true" className="text-xl leading-none">
                 ⋯
@@ -153,6 +159,18 @@ export function CmsContentCardGrid({
             </Button>
           </MenuTrigger>
           <MenuContent align="end">
+            {onIntegrations && (
+              <MenuItem
+                label={ti("hosts.integrations")}
+                icon="external-link"
+                aria-label={ti("hosts.entryAction", { title })}
+                onClick={(event) => event.stopPropagation()}
+                onSelect={() =>
+                  onIntegrations(entryId, integrationTrigger.current)
+                }
+              />
+            )}
+
             <MenuItem
               label={isDeleting ? t("deleting") : t("delete")}
               icon="delete"

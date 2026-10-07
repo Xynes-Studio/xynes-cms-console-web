@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Badge,
   Button,
@@ -17,22 +17,20 @@ import {
   PopoverContent,
   PopoverTrigger,
   Textarea,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TimePicker,
 } from "@lumia-ui/components";
+import { useTranslations } from "next-intl";
 import { Icon } from "@lumia-ui/icons";
 
 export type CmsEditorSaveState = "idle" | "saving" | "saved" | "error";
 export type CmsEditorEntryStatus =
-  | "draft"
-  | "scheduled"
-  | "published"
-  | "archived";
+  "draft" | "scheduled" | "published" | "archived";
 export type CmsEditorPublicationState =
-  | "draft"
-  | "scheduled"
-  | "published"
-  | "published-with-changes"
-  | "archived";
+  "draft" | "scheduled" | "published" | "published-with-changes" | "archived";
 
 export type CmsEditorLayoutProps = {
   pathLabel: string;
@@ -55,6 +53,10 @@ export type CmsEditorLayoutProps = {
   onChangeStatus?: (status: "draft" | "archived") => void;
   onSchedule?: (publishAt: string) => void;
   onRetrySave?: () => void;
+  integrationPanel?: React.ReactNode;
+  onCustomizeIntegrations?: (restoreFocus: () => void) => void;
+  integrationDialogOpen?: boolean;
+  integrationIdentity?: string;
   children: React.ReactNode;
 };
 
@@ -172,6 +174,47 @@ const formatPublishedAt = (value?: string | null) => {
   }).format(parsed);
 };
 
+function EditorMetadataTabs({
+  value,
+  onValueChange,
+  details,
+  integration,
+  onCustomize,
+}: {
+  value: "details" | "integrations";
+  onValueChange: (value: string) => void;
+  details: React.ReactNode;
+  integration: React.ReactNode;
+  onCustomize: (trigger: HTMLButtonElement) => void;
+}) {
+  const t = useTranslations("cms.contentIntegrations");
+  return (
+    <Tabs variant="underline" value={value} onValueChange={onValueChange}>
+      <TabsList aria-label={t("hosts.panels")}>
+        <TabsTrigger value="details">{t("hosts.details")}</TabsTrigger>
+        <TabsTrigger value="integrations">
+          {t("hosts.integrations")}
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="details">
+        <>{details}</>
+      </TabsContent>
+      <TabsContent value="integrations">
+        <>{integration}</>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4"
+          data-content-integration-customize
+          onClick={(event) => onCustomize(event.currentTarget)}
+        >
+          {t("hosts.customize")}
+        </Button>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 export function CmsEditorLayout({
   pathLabel,
   title,
@@ -193,6 +236,10 @@ export function CmsEditorLayout({
   onChangeStatus,
   onSchedule,
   onRetrySave,
+  integrationPanel,
+  onCustomizeIntegrations,
+  integrationDialogOpen = false,
+  integrationIdentity,
   children,
 }: CmsEditorLayoutProps) {
   const initialScheduleDefaults = getScheduleFieldDefaults(
@@ -200,6 +247,51 @@ export function CmsEditorLayout({
     lastPublishedAt,
   );
   const [isMetaDrawerOpen, setIsMetaDrawerOpen] = useState(false);
+  const metadataElement = useRef<HTMLElement>(null);
+  const metadataTrigger = useRef<HTMLButtonElement>(null);
+  const hasIntegrations = Boolean(integrationPanel && onCustomizeIntegrations);
+  const metadataScope = JSON.stringify([integrationIdentity, hasIntegrations]);
+  const [metadataSession, setMetadataSession] = useState<{
+    scope: string;
+    tab: "details" | "integrations";
+  }>({ scope: metadataScope, tab: "details" });
+  let metadataTab = metadataSession.tab;
+  if (metadataSession.scope !== metadataScope) {
+    metadataTab = "details";
+    setMetadataSession({ scope: metadataScope, tab: "details" });
+  }
+  const selectMetadataTab = useCallback((tab: string) => {
+    if (tab === "details" || tab === "integrations")
+      setMetadataSession((previous) => ({ ...previous, tab }));
+  }, []);
+  const changeMetadataDrawer = (open: boolean) => {
+    setIsMetaDrawerOpen(open);
+    if (!open && hasIntegrations) metadataTrigger.current?.focus();
+  };
+  const customizeIntegrations = (trigger: HTMLButtonElement) => {
+    const fromDrawer = isMetaDrawerOpen;
+    setIsMetaDrawerOpen(false);
+    onCustomizeIntegrations?.(() => {
+      if (
+        !fromDrawer &&
+        trigger.isConnected &&
+        trigger.getClientRects().length
+      ) {
+        trigger.focus();
+        return;
+      }
+      const mobile = metadataTrigger.current;
+      if (mobile?.isConnected && mobile.getClientRects().length) {
+        mobile.focus();
+        return;
+      }
+      metadataElement.current
+        ?.querySelector<HTMLButtonElement>(
+          "button[data-content-integration-customize]",
+        )
+        ?.focus();
+    });
+  };
   const [isSchedulePopoverOpen, setIsSchedulePopoverOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(
     initialScheduleDefaults.date,
@@ -243,8 +335,7 @@ export function CmsEditorLayout({
         summary: publishedAt
           ? `Changes not live. Last published ${publishedAt}.`
           : "Changes not live. Republish to update the public page.",
-        menuHint:
-          "Your newest saved draft is ahead of the public page.",
+        menuHint: "Your newest saved draft is ahead of the public page.",
         triggerLabel: "Republish",
         primaryMenuActionLabel: "Republish now",
       };
@@ -257,8 +348,7 @@ export function CmsEditorLayout({
         summary: publishedAt
           ? `Public page is up to date. Last published ${publishedAt}.`
           : "Public page is up to date.",
-        menuHint:
-          "The latest saved version is already public.",
+        menuHint: "The latest saved version is already public.",
         triggerLabel: "Manage",
         primaryMenuActionLabel: null,
       };
@@ -282,7 +372,8 @@ export function CmsEditorLayout({
         badgeLabel: "Archived",
         badgeVariant: "outline" as const,
         summary: "Archived and hidden from public view.",
-        menuHint: "Archived entries stay hidden until you restore or publish them.",
+        menuHint:
+          "Archived entries stay hidden until you restore or publish them.",
         triggerLabel: "Manage",
         primaryMenuActionLabel: "Publish now",
       };
@@ -316,10 +407,7 @@ export function CmsEditorLayout({
       });
     }
 
-    if (
-      onChangeStatus &&
-      (status === "published" || status === "scheduled")
-    ) {
+    if (onChangeStatus && (status === "published" || status === "scheduled")) {
       items.push({
         key: "draft",
         label: status === "scheduled" ? "Move to draft" : "Unpublish to draft",
@@ -373,10 +461,12 @@ export function CmsEditorLayout({
     setIsSchedulePopoverOpen(false);
   };
 
-  const metadataPanel = (
-    <aside className="flex h-full flex-col gap-4 border-r border-border bg-background p-4">
+  const metadataDetails = (
+    <>
       <div className="space-y-1">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Path</p>
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Path
+        </p>
         <p className="truncate text-sm text-foreground" title={pathLabel}>
           {pathLabel}
         </p>
@@ -403,6 +493,25 @@ export function CmsEditorLayout({
         disabled={isPublishing}
         onChange={(event) => onTagsChange(event.currentTarget.value)}
       />
+    </>
+  );
+
+  const metadataPanel = (
+    <aside
+      ref={metadataElement}
+      className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto border-r border-border bg-background p-4"
+    >
+      {hasIntegrations ? (
+        <EditorMetadataTabs
+          value={metadataTab}
+          onValueChange={selectMetadataTab}
+          details={metadataDetails}
+          integration={integrationPanel}
+          onCustomize={customizeIntegrations}
+        />
+      ) : (
+        metadataDetails
+      )}
     </aside>
   );
 
@@ -431,6 +540,7 @@ export function CmsEditorLayout({
             className="md:hidden"
             onClick={() => setIsMetaDrawerOpen(true)}
             aria-label="Open metadata panel"
+            ref={metadataTrigger}
             disabled={isPublishing}
           >
             <Icon name="edit" size="sm" />
@@ -475,10 +585,7 @@ export function CmsEditorLayout({
                 </Button>
               </PopoverTrigger>
               {isSchedulePopoverOpen ? (
-                <PopoverContent
-                  align="end"
-                  className="w-[22rem] space-y-3 p-4"
-                >
+                <PopoverContent align="end" className="w-[22rem] space-y-3 p-4">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-foreground">
                       {scheduleDialogTitle}
@@ -496,7 +603,9 @@ export function CmsEditorLayout({
                     label="Publish time"
                     value={scheduleTime}
                     onChange={(value) =>
-                      setScheduleTime(typeof value === "string" ? value : undefined)
+                      setScheduleTime(
+                        typeof value === "string" ? value : undefined,
+                      )
                     }
                     format="24h"
                     intervalMinutes={15}
@@ -548,7 +657,10 @@ export function CmsEditorLayout({
                   disabled={isPublishing}
                 >
                   {publicationMeta.triggerLabel}
-                  <span aria-hidden="true" className="ml-2 inline-flex shrink-0 opacity-90">
+                  <span
+                    aria-hidden="true"
+                    className="ml-2 inline-flex shrink-0 opacity-90"
+                  >
                     <Icon
                       name="chevron-down"
                       size={16}
@@ -609,15 +721,26 @@ export function CmsEditorLayout({
       </div>
 
       <div className="grid h-full min-h-0 grid-cols-1 md:grid-cols-[minmax(240px,20%)_1fr]">
-        <div className="hidden md:block">{metadataPanel}</div>
-        <main className="min-h-0 overflow-auto bg-muted/20 p-4" aria-label="Content editor canvas">
+        {(!hasIntegrations || !isMetaDrawerOpen) && (
+          <div className="hidden min-h-0 md:block">{metadataPanel}</div>
+        )}
+        <main
+          className="min-h-0 overflow-auto bg-muted/20 p-4"
+          aria-label="Content editor canvas"
+        >
           {children}
         </main>
       </div>
 
-      <Drawer open={isMetaDrawerOpen} onOpenChange={setIsMetaDrawerOpen} side="left">
-        {metadataPanel}
-      </Drawer>
+      {!integrationDialogOpen && (!hasIntegrations || isMetaDrawerOpen) && (
+        <Drawer
+          open={isMetaDrawerOpen}
+          onOpenChange={changeMetadataDrawer}
+          side="left"
+        >
+          {metadataPanel}
+        </Drawer>
+      )}
     </section>
   );
 }

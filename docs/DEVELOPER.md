@@ -1385,5 +1385,83 @@ PLAYWRIGHT_E2E_PORT=3202 pnpm exec playwright test e2e/content-integrations.spec
 
 Build verification uses non-secret fixture env values from the repository's
 Playwright configuration plus `NEXT_API_URL` and `XYNES_BUILD_VERSION`. Product
-folder/card/editor wiring, delivery metadata adapters and rollout gates remain B3
-work. No CMS global key management, API mutation or persistence change is included.
+folder/card/editor wiring, delivery metadata adapters and rollout gates are described
+in the B3 section below. No CMS global key management, API mutation or persistence change is included.
+
+
+## Contextual integration hosts (CMS-INT-B3)
+
+The CMS app owns these contextual consumers. Workspace Admin continues to own API
+key lifecycle. No new authoring route, API endpoint, database migration, auth SDK
+flag contract or dependency is introduced.
+
+- `host-context.ts` builds metadata-only contexts and rejects mismatched entry or
+  workspace IDs. Folder context comes from the existing successful directory-path
+  resolver, stamped with workspace/path/API scope and its persisted UUID. Root,
+  unmatched, failed and resolving folders cannot generate a folder request.
+- `useIntegrationDialog` owns ephemeral open context and close-focus restoration.
+  Scope, auth availability and flag changes immediately clear it, including A→B→A
+  navigation. List scope includes current authoring query; editor scope includes
+  workspace/entry/API origin. No integration preferences use URL or local storage.
+- Toolbar and row/grid components expose optional callbacks; orchestration in
+  `CmsContentListPanel` resolves the original DTO and supplies one dialog. Grid
+  actions restore their menu trigger; row actions stop navigation propagation.
+  With rollout disabled, the existing controls remain intact.
+- `CmsEditorLayout` accepts an opaque `integrationPanel`, a Customize callback,
+  identity and dialog visibility. Details defaults selected and resets on target
+  change. The layout owns tabs, the mobile drawer and logical focus; it performs
+  no API/auth work. Enabled mobile drawers mount only while open, and are removed
+  before the full dialog opens. Closing returns to the visible metadata trigger
+  or desktop Customize, including viewport changes.
+- `CmsEditorScreen` injects context/panel/dialog. The Lumia editor key, document
+  state, autosave, uploads, save/publish handlers and dirty-navigation guard are
+  retained. Opening integration views never saves or publishes.
+- `ContentIntegrationPanel` reuses the B2 request hook/preview in compact mode.
+  `IntegrationAvailabilityNotice` and `IntegrationKeyLink` share the exact
+  publication guidance and safe Workspace Admin link with the full workbench.
+  A published badge alone does not prove delivery availability. Missing or
+  unrecognized optional `deliveryState` is unknown; the DTO parser allows only
+  `available`, `unpublished`, `republish_required`, otherwise unknown. Existing
+  responses without the field remain compatible. Last published snapshots are
+  the supported delivery source; draft controls are deferred.
+
+New host labels live in `cms.contentIntegrations.hosts`, with en-US/en-XA catalogs
+and translator metadata. Catalog/ICU parity checks run in the full test suite.
+Product controls use Lumia Buttons/Flex/Tabs/Dialog and escaped text, not HTML.
+Generated examples contain credential placeholders only. They do not fetch content
+or accept authoring tokens; issuing and authorizing API keys remains server-owned.
+
+### Rollout and verification
+
+The strict app-owned build-time flag is
+`NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED=1`. All other values are off, and
+hosts additionally require an authenticated session outside its loading state.
+This is not an authorization boundary. `.env.example` and Docker ARG/ENV default
+it to `0`. Rebuild the client to change it. The current protected release workflow
+has no activation wiring and keeps the default off. Enable release/build wiring
+only after A2–A5 and B5 provisioned-key/frozen-snapshot proof; no deployment was
+performed for this story. PostHog/remote auth-SDK rollout is not implemented.
+
+Use the repository's documented local env or non-secret Playwright fixture env:
+
+```sh
+NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED=1 pnpm dev --webpack --hostname 127.0.0.1 --port 3206
+PLAYWRIGHT_E2E_PORT=3206 pnpm exec playwright test e2e/content-integration-hosts.spec.ts e2e/content-integrations.spec.ts
+pnpm lint
+pnpm typecheck
+pnpm test:coverage
+pnpm build
+```
+
+Run build and typecheck sequentially: both consume Next's generated types. The
+`/e2e/content-integration-hosts` route requires the fixture flag and non-production
+mode, accepts only allowlisted host values and uses harmless metadata. Tests cover
+folder/entry IDs, action isolation, real editor dirty-body preservation, no save/
+publish calls, default-off controls, desktop/mobile focus, one modal, pseudo locale
+and page/console errors. Fixture evidence does not replace B5's live API proof.
+
+Legacy debt in touched editor code remains: the permissive document-body boundary
+casts through `unknown` to `LumiaEditorStateJSON`, and existing Details/header/
+Drawer labels contain English. B3 adds no such casts or labels. A document-schema
+validation story and B4 localization/accessibility polish should address these
+separately; no broad editor or shared primitive rewrite is part of B3.

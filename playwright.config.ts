@@ -46,6 +46,7 @@ export default defineConfig({
       NEXT_PUBLIC_APP_URL: e2eBaseUrl,
       NEXT_PUBLIC_ALLOWED_REDIRECT_DOMAINS: `127.0.0.1:${e2ePort},localhost:${e2ePort}`,
       NEXT_PUBLIC_ENABLE_E2E_FIXTURES: "1",
+      NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED: "1",
     },
     url: e2eBaseUrl,
     reuseExistingServer: !process.env.CI,

@@ -1,6 +1,7 @@
 import type { CSSProperties, FormEvent, Ref } from "react";
 import {
   Breadcrumbs,
+  Flex,
   Button,
   Chip,
   Input,
@@ -31,6 +32,10 @@ export type CmsContentToolbarProps = {
   secondaryRowHidden?: boolean;
   secondaryRowRef?: Ref<HTMLDivElement>;
   onCreate: () => void;
+  onIntegrations?: (trigger: HTMLButtonElement) => void;
+  integrationsTargetLabel?: string;
+  integrationsDisabled?: boolean;
+  integrationsUnavailableReason?: string;
   onQueryChange: (value: string) => void;
   onSearchSubmit: () => void;
   onSortChange: (value: CmsContentSortBy) => void;
@@ -60,6 +65,10 @@ export function CmsContentToolbar({
   secondaryRowHidden = false,
   secondaryRowRef,
   onCreate,
+  onIntegrations,
+  integrationsTargetLabel,
+  integrationsDisabled = false,
+  integrationsUnavailableReason,
   onQueryChange,
   onSearchSubmit,
   onSortChange,
@@ -69,6 +78,7 @@ export function CmsContentToolbar({
   onFilterClick,
 }: CmsContentToolbarProps) {
   const t = useTranslations("cms.content.toolbar");
+  const ti = useTranslations("cms.contentIntegrations");
   const sortOptions: Array<{ label: string; value: CmsContentSortBy }> = [
     { label: t("sort.date"), value: "date" },
     { label: t("sort.title"), value: "title" },
@@ -103,8 +113,12 @@ export function CmsContentToolbar({
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={onCreate} aria-label={t("createAriaLabel")}>
+        <Flex wrap="wrap" align="center" gap="xs">
+          <Button
+            size="sm"
+            onClick={onCreate}
+            aria-label={t("createAriaLabel")}
+          >
             <Icon
               name="add"
               size="sm"
@@ -113,6 +127,30 @@ export function CmsContentToolbar({
             />
             {t("create")}
           </Button>
+          {onIntegrations && (
+            <Flex direction="col" gap="none">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={integrationsDisabled}
+                aria-label={
+                  integrationsTargetLabel
+                    ? ti("hosts.folderAction", {
+                        title: integrationsTargetLabel,
+                      })
+                    : ti("hosts.integrations")
+                }
+                onClick={(event) => onIntegrations(event.currentTarget)}
+              >
+                {ti("hosts.integrations")}
+              </Button>
+              {integrationsUnavailableReason && (
+                <p className="max-w-64 text-xs text-muted-foreground">
+                  {integrationsUnavailableReason}
+                </p>
+              )}
+            </Flex>
+          )}
           <form className="flex items-center gap-2" onSubmit={handleSubmit}>
             <Input
               aria-label={t("searchInputLabel")}
@@ -129,7 +167,7 @@ export function CmsContentToolbar({
               {t("searchButton")}
             </Button>
           </form>
-        </div>
+        </Flex>
       </div>
 
       <div
@@ -146,7 +184,8 @@ export function CmsContentToolbar({
           inert={secondaryRowHidden}
           className={cx(
             "flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-all duration-200 ease-out",
-            secondaryRowHidden && "pointer-events-none -translate-y-2 opacity-0",
+            secondaryRowHidden &&
+              "pointer-events-none -translate-y-2 opacity-0",
             secondaryRowClassName,
           )}
           aria-hidden={secondaryRowHidden || undefined}
@@ -189,9 +228,15 @@ export function CmsContentToolbar({
             <Select
               aria-label={t("sortLabel")}
               value={sortBy}
-              onChange={(event) =>
-                onSortChange(event.currentTarget.value as CmsContentSortBy)
-              }
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                if (
+                  value === "date" ||
+                  value === "title" ||
+                  value === "popularity"
+                )
+                  onSortChange(value);
+              }}
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>

@@ -1,3 +1,4 @@
+import type { DeliveryState } from "../../features/content-integrations/types";
 import {
   isNonEmptyString,
   isRecord,
@@ -8,10 +9,7 @@ import {
 type FetchLike = typeof fetch;
 
 export type WorkspaceContentEntryStatus =
-  | "draft"
-  | "scheduled"
-  | "published"
-  | "archived";
+  "draft" | "scheduled" | "published" | "archived";
 export type WorkspaceContentEntrySortBy = "date" | "title" | "popularity";
 export type WorkspaceContentEntrySortDirection = "asc" | "desc";
 
@@ -31,6 +29,8 @@ export interface WorkspaceContentEntry {
   updatedAt: string;
   collaborators: string[];
   isFavorite: boolean;
+  /** Optional publication snapshot metadata; malformed values fail closed to unknown. */
+  deliveryState?: DeliveryState;
   // BUG-CMS-8: structured creator surface keyed off the CMS Core
   // `creator` field. See cms-core `mapEntry` for the source-of-truth
   // contract.
@@ -260,6 +260,13 @@ const parseWorkspaceContentEntryCreator = (
   return { id, displayName };
 };
 
+const parseDeliveryState = (value: unknown): DeliveryState =>
+  value === "available" ||
+  value === "unpublished" ||
+  value === "republish_required"
+    ? value
+    : "unknown";
+
 const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
   if (!isRecord(value)) {
     throw new Error("Invalid workspace content entry");
@@ -302,6 +309,9 @@ const parseWorkspaceContentEntry = (value: unknown): WorkspaceContentEntry => {
     collaborators: normalizeStringArray(value.collaborators),
     isFavorite: value.isFavorite,
     creator: parseWorkspaceContentEntryCreator(value.creator),
+    ...(Object.hasOwn(value, "deliveryState")
+      ? { deliveryState: parseDeliveryState(value.deliveryState) }
+      : {}),
   };
 };
 

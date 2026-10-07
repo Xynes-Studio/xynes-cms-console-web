@@ -1,7 +1,12 @@
 export { buildIntegrationRequest } from "./build-request";
 export { buildRequestSnippets } from "./snippets";
-export { buildExampleResponse, getResponseFields, DELIVERY_CONTRACT } from "./delivery-contract";
+export {
+  buildExampleResponse,
+  getResponseFields,
+  DELIVERY_CONTRACT,
+} from "./delivery-contract";
 export type {
+  DeliveryState,
   IntegrationContext,
   IntegrationTarget,
   IntegrationRequest,
