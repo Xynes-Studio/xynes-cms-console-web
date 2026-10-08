@@ -358,12 +358,15 @@ for a folder first. Editor Details stays the default tab; Integrations shows a
 compact read-only preview with Customize opening the full dialog. Mobile metadata
 hands off to the dialog and restores logical focus without saving or publishing.
 
-`NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED=1` enables these controls at build
-time for authenticated, ready sessions; unset/`0` stays off. Set it before local
-`pnpm dev`, or pass `--build-arg NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED=1`
-when building the Docker image. This is a visibility gate, not authorization.
-Protected releases remain off until A2–A5 runtime and B5 copied-request acceptance
-are verified; changing a running container's env does not change its built client.
+The PostHog boolean `cms_content_integrations` enables these controls for
+authenticated, ready sessions. The gateway evaluates the active workspace and
+the auth SDK delivers the result through `/flags`; missing flags and unavailable
+evaluation keep the controls hidden. Disable the flag and refresh the page to
+turn the feature off. This is a visibility gate, not authorization.
+For local/CI fixtures only, use
+`NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE='{"cms_content_integrations":true}'`.
+Leave overrides empty when checking real PostHog targeting. The former
+`NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED` environment gate is no longer read.
 
 See [B3 ownership and verification](docs/DEVELOPER.md#contextual-integration-hosts-cms-int-b3).
 

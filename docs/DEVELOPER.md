@@ -1433,25 +1433,46 @@ or accept authoring tokens; issuing and authorizing API keys remains server-owne
 
 ### Rollout and verification
 
-The strict app-owned build-time flag is
-`NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED=1`. All other values are off, and
-hosts additionally require an authenticated session outside its loading state.
-This is not an authorization boundary. `.env.example` and Docker ARG/ENV default
-it to `0`. Rebuild the client to change it. The current protected release workflow
-has no activation wiring and keeps the default off. Enable release/build wiring
-only after A2–A5 and B5 provisioned-key/frozen-snapshot proof; no deployment was
-performed for this story. PostHog/remote auth-SDK rollout is not implemented.
+The runtime PostHog boolean is `cms_content_integrations` (default OFF in both
+`xynes-auth-sdk/src/types/feature-flags.ts` and
+`xynes-gateway/src/featureFlags/types.ts`). All hosts use
+`useContentIntegrationsEnabled`, which reads the existing SDK provider and hides
+controls while flag evaluation is loading or has failed. Hosts additionally
+require an authenticated session outside its loading state. Disabling the flag
+closes any open integration dialog on the next evaluation. The SDK rejects
+obsolete request successes and failures after workspace switches, so a slow
+previous-workspace response cannot overwrite the current rollout result.
 
-Use the repository's documented local env or non-secret Playwright fixture env:
+The existing CMS provider forwards the active workspace UUID and bearer token to
+`GET /flags`. The gateway sends the PostHog `workspace` group plus its `id`
+property. The integration flag is excluded from anonymous public flags. Configure
+a boolean flag with the exact key above and enable the intended workspace only.
+No PostHog secret or browser SDK is added. This remains a visibility gate;
+delivery authentication, scopes and published-snapshot rules do not change.
+
+The provider fetches on mount and workspace changes; it does not poll. Refresh
+an open page after a PostHog flip. Deploy the gateway and SDK contract additions
+alongside the CMS consumer before rollout. No database migration is needed.
+The former `NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED` variable and Docker
+build argument are removed; they cannot override PostHog anymore.
+
+Keep `NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE` empty for real PostHog verification.
+The existing override mechanism still forces values in local/CI builds when
+explicitly configured; it takes precedence over the remote result. Browser
+fixtures use that mechanism without transmitting real credentials:
 
 ```sh
-NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED=1 pnpm dev --webpack --hostname 127.0.0.1 --port 3206
+NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE='{"cms_content_integrations":true}' pnpm dev --webpack --hostname 127.0.0.1 --port 3206
 PLAYWRIGHT_E2E_PORT=3206 pnpm exec playwright test e2e/content-integration-hosts.spec.ts e2e/content-integrations.spec.ts
 pnpm lint
 pnpm typecheck
 pnpm test:coverage
 pnpm build
 ```
+
+For future features, confirm the PostHog key with the owner and ask them to create
+it before implementation and rollout. Add default-off entries to both contracts,
+then test enabled, disabled, malformed/missing and failed evaluation states.
 
 Run build and typecheck sequentially: both consume Next's generated types. The
 `/e2e/content-integration-hosts` route requires the fixture flag and non-production

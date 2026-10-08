@@ -21,6 +21,9 @@ const mocks = vi.hoisted(() => ({
   dirs: vi.fn(),
   delete: vi.fn(),
   favorite: vi.fn(),
+  integrationsEnabled: false,
+  flagsLoading: false,
+  flagsError: null as Error | null,
 }));
 const entry: WorkspaceContentEntry = {
   id: "33333333-3333-4333-8333-333333333333",
@@ -59,6 +62,12 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@xynes/auth-sdk", () => ({
+  useFeatureFlag: (key: string) =>
+    key === "cms_content_integrations" && mocks.integrationsEnabled,
+  useFeatureFlags: () => ({
+    isLoading: mocks.flagsLoading,
+    error: mocks.flagsError,
+  }),
   useAuth: () => ({
     getAccessToken: mocks.token,
     isAuthenticated: true,
@@ -100,6 +109,9 @@ function ui() {
   );
 }
 beforeEach(() => {
+  mocks.integrationsEnabled = false;
+  mocks.flagsLoading = false;
+  mocks.flagsError = null;
   mocks.token.mockResolvedValue("fixture-token");
   mocks.pathname = "/dashboard/editorial/content/news";
   mocks.workspace = { id: entry.workspaceId, slug: "editorial" };
@@ -120,7 +132,8 @@ afterEach(() => {
 });
 describe("CMS-INT-B3 list orchestration", () => {
   it("opens a folder request using its persisted UUID, not URL path", async () => {
-    vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
+    mocks.integrationsEnabled = true;
+    vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "0");
     render(ui());
     const button = await screen.findByRole("button", {
       name: "Integrations for folder News",
@@ -137,7 +150,7 @@ describe("CMS-INT-B3 list orchestration", () => {
     expect(mocks.favorite).not.toHaveBeenCalled();
   });
   it("opens the entry with its delivery metadata and closes on route/workspace change", async () => {
-    vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
+    mocks.integrationsEnabled = true;
     const { rerender } = render(ui());
     await screen.findByRole("button", { name: "Integrations for folder News" });
     fireEvent.click(
@@ -150,8 +163,39 @@ describe("CMS-INT-B3 list orchestration", () => {
     expect(screen.getByText("Open a folder first.")).toBeVisible();
   });
   it("keeps every host action absent while rollout is off", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
     render(ui());
     await screen.findByText("First story");
+    expect(screen.queryByRole("button", { name: /Integrations/ })).toBeNull();
+  });
+  it.each(["loading", "error"])(
+    "keeps integrations hidden while flag evaluation has a %s state",
+    async (state) => {
+      mocks.integrationsEnabled = true;
+      mocks.flagsLoading = state === "loading";
+      mocks.flagsError =
+        state === "error" ? new Error("Flags unavailable") : null;
+      render(ui());
+      await screen.findByText("First story");
+      expect(screen.queryByRole("button", { name: /Integrations/ })).toBeNull();
+    },
+  );
+  it("closes an open dialog immediately when the remote flag is disabled", async () => {
+    mocks.integrationsEnabled = true;
+    const { rerender } = render(ui());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Integrations for folder News" }),
+      ).toBeEnabled(),
+    );
+    await screen.findByRole("button", { name: "Integrations for First story" });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Integrations for First story" }),
+    );
+    expect(screen.getByRole("dialog")).toBeVisible();
+    mocks.integrationsEnabled = false;
+    rerender(ui());
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByRole("button", { name: /Integrations/ })).toBeNull();
   });
 });

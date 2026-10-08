@@ -4,7 +4,6 @@ import {
   buildDirectoryIntegrationContext,
   buildEntryIntegrationContext,
   resolveIntegrationPublicationState,
-  isContentIntegrationsEnabled,
 } from "./host-context";
 import { useIntegrationDialog } from "./useIntegrationDialog";
 import { folderContext, entryContext } from "./workbench-test-fixtures";
@@ -27,19 +26,6 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 describe("integration host boundaries", () => {
-  it.each([undefined, "", "0", "false", "true"])(
-    "defaults rollout off for %s",
-    (value) => {
-      if (value === undefined)
-        vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", undefined);
-      else vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", value);
-      expect(isContentIntegrationsEnabled()).toBe(false);
-    },
-  );
-  it("accepts only explicit enabled rollout", () => {
-    vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
-    expect(isContentIntegrationsEnabled()).toBe(true);
-  });
   it("refuses root or unresolved folder targets", () => {
     expect(
       buildDirectoryIntegrationContext({ ...workspace, directory: null }),

@@ -1,4 +1,5 @@
 "use client";
+import { useContentIntegrationsEnabled } from "../content-integrations/useContentIntegrationsEnabled";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -38,7 +39,6 @@ import { useIntegrationDialog } from "../content-integrations/useIntegrationDial
 import {
   buildDirectoryIntegrationContext,
   buildEntryIntegrationContext,
-  isContentIntegrationsEnabled,
 } from "../content-integrations/host-context";
 
 const QUERY_REPLACE_DEBOUNCE_MS = 300;
@@ -120,7 +120,7 @@ export function CmsContentListPanel() {
   );
   const breadcrumbKey = breadcrumbParts.join("/");
   const integrationsEnabled =
-    isContentIntegrationsEnabled() && isAuthenticated && !isAuthLoading;
+    useContentIntegrationsEnabled() && isAuthenticated && !isAuthLoading;
   const directoryScope = JSON.stringify([
     currentWorkspace?.id,
     breadcrumbKey,

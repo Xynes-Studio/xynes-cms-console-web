@@ -32,7 +32,13 @@ const {
   mockCaptureSaveDraftFn,
   mockLumiaEditor,
   mockUseFeatureFlag,
+  mockIntegrationFlags,
 } = vi.hoisted(() => ({
+  mockIntegrationFlags: {
+    enabled: false,
+    isLoading: false,
+    error: null as Error | null,
+  },
   mockPush: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetWorkspaceContentEntryById: vi.fn(),
@@ -90,7 +96,13 @@ vi.mock("@xynes/auth-sdk", () => ({
   // STORAGE-LIVE-5: route the SDK's useFeatureFlag through the hoisted
   // spy so individual tests can flip the cms_editor_storage_uploads flag
   // without re-mocking the whole sdk surface.
-  useFeatureFlag: (flag: string) => mockUseFeatureFlag(flag),
+  useFeatureFlag: (flag: string) => {
+    const value = mockUseFeatureFlag(flag);
+    return flag === "cms_content_integrations"
+      ? mockIntegrationFlags.enabled
+      : value;
+  },
+  useFeatureFlags: () => mockIntegrationFlags,
 }));
 
 vi.mock("../../lib/dashboard/content-entries-client", () => ({
@@ -419,6 +431,9 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.unstubAllEnvs();
+  mockIntegrationFlags.enabled = false;
+  mockIntegrationFlags.isLoading = false;
+  mockIntegrationFlags.error = null;
   mockIsAuthLoading = false;
   mockIsAuthenticated = true;
   mockLumiaEditorMode = "passthrough";
@@ -1902,7 +1917,7 @@ describe("CmsEditorScreen", () => {
 
 describe("CMS-INT-B3 editor scope and preservation", () => {
   it("opens an entry integration without flushing, saving, publishing or remounting the editor", async () => {
-    vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
+    mockIntegrationFlags.enabled = true;
     const workspaceId = "11111111-1111-4111-8111-111111111111";
     const entryId = "33333333-3333-4333-8333-333333333333";
     mockCurrentWorkspace = {
@@ -1960,7 +1975,7 @@ describe("CMS-INT-B3 editor scope and preservation", () => {
   });
 });
 it("CMS-INT-B3 closes integrations immediately when authoring authentication is lost", async () => {
-  vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
+  mockIntegrationFlags.enabled = true;
   const workspaceId = "11111111-1111-4111-8111-111111111111",
     entryId = "33333333-3333-4333-8333-333333333333";
   mockCurrentWorkspace = {
@@ -2025,7 +2040,7 @@ describe("integration-enabled editor publication failures", () => {
   ] as const)(
     "keeps %s failure recovery safe with the readonly panel enabled",
     async (status, error, expected) => {
-      vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
+      mockIntegrationFlags.enabled = true;
       const workspaceId = "11111111-1111-4111-8111-111111111111",
         entryId = "33333333-3333-4333-8333-333333333333";
       mockCurrentWorkspace = {
