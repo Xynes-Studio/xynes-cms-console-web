@@ -1,4 +1,5 @@
 "use client";
+import { useContentIntegrationsEnabled } from "../content-integrations/useContentIntegrationsEnabled";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,7 +16,6 @@ import { ContentIntegrationPanel } from "../content-integrations/ContentIntegrat
 import { useIntegrationDialog } from "../content-integrations/useIntegrationDialog";
 import {
   buildEntryIntegrationContext,
-  isContentIntegrationsEnabled,
   resolveIntegrationPublicationState,
 } from "../content-integrations/host-context";
 import {
@@ -169,7 +169,7 @@ export function CmsEditorScreen({
 
   const resolvedSlug = (currentWorkspace?.slug?.trim() || workspaceSlug).trim();
   const integrationsEnabled =
-    isContentIntegrationsEnabled() && isAuthenticated && !isAuthLoading;
+    useContentIntegrationsEnabled() && isAuthenticated && !isAuthLoading;
   const integrationIdentity = JSON.stringify([
     currentWorkspace?.id,
     entryId,

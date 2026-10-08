@@ -1,4 +1,5 @@
 "use client";
+import { useContentIntegrationsEnabled } from "../../../src/features/content-integrations/useContentIntegrationsEnabled";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { Flex } from "@lumia-ui/components";
 import { LumiaEditor, type LumiaEditorStateJSON } from "@lumia-ui/editor";
@@ -13,7 +14,6 @@ import { useIntegrationDialog } from "../../../src/features/content-integrations
 import {
   buildDirectoryIntegrationContext,
   buildEntryIntegrationContext,
-  isContentIntegrationsEnabled,
   resolveIntegrationPublicationState,
 } from "../../../src/features/content-integrations/host-context";
 import {
@@ -117,7 +117,7 @@ export function IntegrationHostsFixture({
     lastBody.current = serialized;
   }, [setBodyChanges]);
   const t = useTranslations("cms.contentIntegrations");
-  const enabled = isContentIntegrationsEnabled() && !disabled;
+  const enabled = useContentIntegrationsEnabled() && !disabled;
   const dialog = useIntegrationDialog(host, enabled);
   const publicationState = resolveIntegrationPublicationState(
     storedEntry,

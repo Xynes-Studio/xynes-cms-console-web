@@ -1,8 +1,5 @@
 import type { WorkspaceContentEntry } from "../../lib/dashboard/content-entries-client";
 import type { IntegrationContext } from "./types";
-export function isContentIntegrationsEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED === "1";
-}
 type WorkspaceContext = Pick<
   IntegrationContext,
   "workspaceId" | "workspaceSlug" | "apiBaseUrl"

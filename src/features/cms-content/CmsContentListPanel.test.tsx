@@ -162,6 +162,8 @@ vi.mock("../../lib/dashboard/content-entries-client", async () => {
 });
 
 vi.mock("@xynes/auth-sdk", () => ({
+  useFeatureFlag: () => false,
+  useFeatureFlags: () => ({ isLoading: false, error: null }),
   useAuth: () => ({
     isAuthenticated: true,
     isLoading: false,
