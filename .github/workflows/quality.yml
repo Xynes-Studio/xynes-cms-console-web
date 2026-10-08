@@ -50,7 +50,7 @@ jobs:
         with:
           persist-credentials: false
           repository: Xynes-Studio/xynes-auth-sdk
-          ref: a9e6265863ea31fa14eb991da95615494f2a6822
+          ref: fae49e08898d309fee03c645fd54eb831a8b524c
           path: xynes-auth-sdk
 
       - name: Check out locale package

@@ -2,6 +2,9 @@
 
 **Result: PASS — no blocking issue found in the story scope.**
 
+The PR-review follow-up at the end records subsequent SDK fixes and the CMS CI
+dependency-pin repair; the initial validation snapshot below is preserved.
+
 Fresh validation performed on 2026-10-08 (Asia/Calcutta). This report covers the
 `cms_content_integrations` PostHog rollout change in CMS console, auth SDK, and
 Gateway. It also rechecks the repaired local environment. No implementation fix
@@ -181,3 +184,54 @@ Operational conditions and evidence limits:
 These limits do not block the scoped PostHog change from PR review. Stage only the
 story-owned files, keep the three PR dependencies explicit, and preserve unrelated
 dirty work.
+
+## PR review follow-up — 2026-10-08
+
+Reviewed SDK #24, Gateway #50, and CMS #59. Gateway and CMS had no actionable
+inline comments. SDK had two P2 findings, both fixed in
+`fae49e08898d309fee03c645fd54eb831a8b524c` and resolved with replies:
+
+- Polls previously superseded every pending evaluation when the polling interval
+  was shorter than response time. Poll ticks now skip while the current evaluation
+  is pending, and version-aware finally cleanup releases the polling guard after
+  success or failure without affecting a newer scope/manual request.
+- With `fetchOnMount={false}`, a changed scope invalidated a pending manual request
+  but left loading true. It now clears loading without issuing an automatic
+  replacement; a later explicit refetch evaluates the new workspace.
+
+Four regression cases (success and failure for each finding) failed for the
+expected reasons before the implementation fix and passed afterward. Existing
+out-of-order workspace tests remain passing.
+
+CMS CI failed because all three workflow SDK checkouts pinned
+`a9e6265863ea31fa14eb991da95615494f2a6822`, which lacks the new flag. The quality,
+required-gates, and release-provenance workflows now pin the corrected SDK commit
+above. The provenance build record uses the same SHA. No action pin, credential
+permission, gate, timeout, or assertion was weakened. The canonical infrastructure
+quality-profile JSON contains no SDK dependency SHA requiring a matching edit.
+
+Fresh follow-up validation:
+
+- SDK: **393/393 tests**, **25/25 provider tests**; coverage **93.22% lines**,
+  **87.72% branches**, **89.09% functions**; lint, typecheck, and build pass.
+  Changed provider coverage, rounded from coverage JSON: **97.65% statements/lines**,
+  **92.11% branches**, **100% functions**. Flag types remain at 100%.
+- CMS: **1,056/1,056 tests**, unchanged coverage **93.50% lines**, **87.31% branches**,
+  **97.59% functions**, **92.96% statements**; lint, typecheck, and production build
+  pass against the rebuilt SDK. **Nine browser acceptance tests pass**, zero skips.
+- The first CMS coverage attempt under heavy concurrent load hit a list waiting
+  failure and two existing snippet execution timeouts. The snippet suite passed
+  alone, then the full configured coverage gate passed using
+  `pnpm test:coverage --maxWorkers=2`. No tests, assertions, timeouts, or thresholds
+  were changed to obtain that result.
+- Workflow security policy passes using the official pinned `oven/bun:1.4.2`
+  container with a read-only checkout and no container network. The installed
+  local Bun lacks `Bun.YAML`; its first policy invocation could not parse inputs,
+  so that attempt is not counted as validation success.
+- SDK CI on the fix commit is green. CMS CI will rerun on the workflow-pin push;
+  local validation is not a claim that that future run has completed.
+
+Evidence logs: `/private/tmp/posthog-review-sdk-{red,green,coverage,lint,typecheck,build}.log`,
+`/private/tmp/posthog-review-cms-{coverage,coverage-retry,snippets,lint,typecheck,build,browser}.log`.
+The SDK README documents polling and manual-only scope behavior. Unrelated CMS
+changes and local infrastructure keys remain excluded. Merge SDK before CMS.
