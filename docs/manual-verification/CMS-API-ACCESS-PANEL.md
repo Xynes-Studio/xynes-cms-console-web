@@ -163,6 +163,28 @@ The in-app capture API sometimes reloads the page or captures loading state;
 those images are not treated as behavioral proof. Viewport control initially
 failed, then worked after a reset; actual DOM dimensions were checked each time.
 
+### Inspected Phase 3 image index
+
+Files are outside Git in the workspace `impl-verification` directory. Native
+captures retain original pixels; only the requested sidebar-excluding region is
+cropped, using the preinstalled bundled image runtime. Raw temporary captures
+are deleted after cropping. No dependencies were installed or image content altered.
+
+| Row | Image |
+| --- | --- |
+| 1 | `native-root-1280.jpg` |
+| 2 | `native-folder-1280.jpg` |
+| 3 | `native-copied-1280.jpg` |
+| 4 | `phase3-04-invalid-1280.png` |
+| 5 | `native-folder-1280.jpg` (same capture also proves the fixed status copy) |
+| 6 | `native-draft-1280.jpg`, `native-draft-guidance-1280.jpg` |
+| 7 | `native-legacy-1280.jpg` |
+| 8 | `native-grid-menu-1280.jpg` |
+| 9 | `phase3-09-mobile-editor-375.png` |
+| 10 | `native-editor-card-1280.jpg` |
+| 11 | `phase3-11-restored-api-focus-375.png` |
+| 12 | `phase3-12-no-overflow-320.png` |
+
 Earlier foundation smoke: the Auth app's mobile navigation Drawer is above its
 shell and restores Open menu focus on Escape. The runbook's `/dashboard` route
 was stale; visible navigation led to the working `/dashboard/apps` route.
@@ -180,10 +202,9 @@ was stale; visible navigation led to the working `/dashboard/apps` route.
   pass unchanged; this epic does not claim renewed backend transport acceptance.
 - Root/list/grid/folder/editor checks were repeated at 375×812, 768×1024 and
   1280×800; the safe boolean/focus-name results are in `live-viewport-matrix.json`.
-  A separate valid screenshot for every table row is not available: desktop
-  capture returned loading/background/empty images despite successful DOM checks.
-  Those failed captures were removed from the proof set; inspected captures and the
-  matrix record complement the actual DOM/keyboard/clipboard observations.
+  The native `Tab.getAXStateAndScreenshot` capture path subsequently recovered the
+  desktop evidence. Every Phase 3 row now has an inspected screenshot reference
+  below; the matrix record supplies the actual DOM/keyboard/clipboard observations.
 
 These boundaries keep the runbook's exhaustive live definition of done open;
 green automated gates alone are not a claim that all manual acceptance is finished.
@@ -217,8 +238,6 @@ hooks and GPG signing; no hook bypass is used.
 2. With VoiceOver or NVDA, open the panel by keyboard. Listen for its title,
    description and status; confirm Copy is reachable within four Tabs and Copied
    is announced. Changing options should not repeatedly announce the entry status.
-3. Capture the remaining desktop root/folder/copied/legacy/grid/editor-card states
-   directly in the signed-in browser, cropping out the sidebar user menu.
 
 Do not publish, save content, create a key or run the provisioned B5 matrix for
 these checks. Report these results before treating exhaustive acceptance as done.
