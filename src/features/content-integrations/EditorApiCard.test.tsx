@@ -18,8 +18,8 @@ it("shares legacy publication recovery, readonly-key link and compact preview wi
     </NextIntlClientProvider>,
   );
   expect(
-    screen.getByText(/before API delivery existed/).closest('[role="status"]'),
-  ).toHaveTextContent("before API delivery existed");
+    screen.getByText(/previously published entry/).closest('[role="status"]'),
+  ).toHaveTextContent("previously published entry");
   expect(
     screen.getByText("Use Publish at the top of the editor."),
   ).toBeVisible();
@@ -42,7 +42,7 @@ it("keeps missing delivery metadata unknown even when the authoring badge is pub
   );
   expect(
     screen
-      .getByText(/couldn't confirm whether this is live/)
+      .getByText(/Publication status unavailable/)
       .closest('[role="status"]'),
   ).toHaveAttribute("role", "status");
 });

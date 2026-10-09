@@ -92,7 +92,7 @@ test("B3 desktop editor preserves draft/canvas and restores Customize focus", as
   await customize.click();
   await expect(page.getByRole("dialog")).toContainText("Unsaved local title");
   await expect(page.getByRole("dialog")).toContainText(
-    "Live, but your latest edits aren't.",
+    "Published version available.",
   );
   await page.keyboard.press("Escape");
   await expect(customize).toBeFocused();

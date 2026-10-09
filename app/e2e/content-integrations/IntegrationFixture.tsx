@@ -16,12 +16,14 @@ export function IntegrationFixture({
   draft,
   invalid,
   long,
+  state,
 }: {
   entry: boolean;
   legacy: boolean;
   draft: boolean;
   invalid: boolean;
   long: boolean;
+  state?: string;
 }) {
   const ready = useSyncExternalStore(
     subscribe,
@@ -34,6 +36,17 @@ export function IntegrationFixture({
     ...(entry ? entryContext : folderContext),
     ...(legacy ? { deliveryState: "republish_required" as const } : {}),
     ...(draft ? { publicationState: "draft" as const } : {}),
+    ...(state === "changes"
+      ? { publicationState: "published-with-changes" as const }
+      : {}),
+    ...(state === "scheduled"
+      ? {
+          publicationState: "scheduled" as const,
+          deliveryState: "unpublished" as const,
+        }
+      : {}),
+    ...(state === "archived" ? { publicationState: "archived" as const } : {}),
+    ...(state === "unknown" ? { deliveryState: "unknown" as const } : {}),
     ...(invalid ? { apiBaseUrl: "" } : {}),
     ...(long
       ? {

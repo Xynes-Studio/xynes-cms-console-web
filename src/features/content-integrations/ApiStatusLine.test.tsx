@@ -23,7 +23,7 @@ const states = [
     publicationState: "published",
     deliveryState: "available",
     variant: "success",
-    text: "Live. The API returns the last published version.",
+    text: "Published. The API serves the last published version.",
     iconClass: "lucide-circle-check",
   },
   {
@@ -31,7 +31,7 @@ const states = [
     publicationState: "published-with-changes",
     deliveryState: "available",
     variant: "warning",
-    text: "Live, but your latest edits aren't. Republish to update what the API returns.",
+    text: "Published version available. Republish to include your latest edits.",
     iconClass: "lucide-refresh-cw",
   },
   {
@@ -39,7 +39,7 @@ const states = [
     publicationState: "draft",
     deliveryState: "unpublished",
     variant: "info",
-    text: "Not live yet. Publish this entry and the request starts working. You can copy it now.",
+    text: "Not published. Publish this entry before requesting it. You can copy the request now.",
     iconRef: "#icon-info",
   },
   {
@@ -47,7 +47,7 @@ const states = [
     publicationState: "scheduled",
     deliveryState: "unpublished",
     variant: "info",
-    text: "Not live yet. Publish this entry and the request starts working. You can copy it now.",
+    text: "Not published. Publish this entry before requesting it. You can copy the request now.",
     iconRef: "#icon-info",
   },
   {
@@ -55,7 +55,7 @@ const states = [
     publicationState: "archived",
     deliveryState: "unpublished",
     variant: "warning",
-    text: "Not live. Archived content isn't served. Restore and republish it to go live.",
+    text: "Archived. Restore and republish before requesting this entry.",
     iconRef: "#icon-alert",
   },
   {
@@ -63,7 +63,7 @@ const states = [
     publicationState: "published",
     deliveryState: "republish_required",
     variant: "warning",
-    text: "Not live. This was published before API delivery existed. Republish it once to fix it.",
+    text: "Republish once to make this previously published entry available through the API.",
     iconClass: "lucide-refresh-cw",
   },
   {
@@ -71,7 +71,7 @@ const states = [
     publicationState: "published",
     deliveryState: "unknown",
     variant: "info",
-    text: "We couldn't confirm whether this is live. The request works once it's published.",
+    text: "Publication status unavailable. The API serves published content only.",
     iconRef: "#icon-info",
   },
 ] satisfies ReadonlyArray<{
@@ -144,7 +144,7 @@ describe("API status line", () => {
     );
     expect(
       screen
-        .getByText("Live. The API returns the last published version.")
+        .getByText("Published. The API serves the last published version.")
         .closest("[data-lumia-alert]"),
     ).toHaveAttribute("aria-live", "off");
     expect(screen.queryByRole("status")).toBeNull();

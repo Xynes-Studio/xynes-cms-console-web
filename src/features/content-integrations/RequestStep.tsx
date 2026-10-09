@@ -17,7 +17,7 @@ function highlightPlaceholder(text: string) {
       /^(\$\{?XYNES_API_KEY\}?|XYNES_API_KEY)$/.test(part) ? (
         <mark
           key={index}
-          className="rounded-sm bg-warning/20 px-0.5 text-foreground"
+          className="rounded-sm bg-highlight px-0.5 text-highlight-foreground"
         >
           {part}
         </mark>
@@ -35,7 +35,8 @@ function highlightRequest(text: string, changedParam: ChangedParam | null) {
     part.startsWith(`${changedParam}=`) ? (
       <span
         key={index}
-        className="bg-warning/20 transition-opacity motion-reduce:transition-none"
+        data-changed-param
+        className="bg-highlight text-highlight-foreground transition-opacity motion-reduce:transition-none"
       >
         {highlightPlaceholder(part)}
       </span>
@@ -107,36 +108,41 @@ export function RequestStep({
   }
   return (
     <Flex direction="col" gap="sm" className="min-w-0">
-      <SegmentedControl
-        aria-label={t("steps.copyTitle")}
-        options={(["curl", "serverFetch", "url"] as const).map((value) => ({
-          value,
-          label: t(`formats.${value}`),
-        }))}
-        value={format}
-        onChange={(value) => {
-          if (value === "curl" || value === "serverFetch" || value === "url")
-            controller.setFormat(value);
-        }}
-      />
-      <div className="relative min-w-0">
-        <pre
-          ref={preRef}
-          tabIndex={0}
-          translate="no"
-          role="region"
-          aria-label={t("codeAria", { format: t(`formats.${format}`) })}
-          className={`whitespace-pre-wrap break-all rounded-md border border-border bg-muted/30 p-3 pr-20 font-mono text-xs leading-5${format === "serverFetch" ? " max-h-[28rem] overflow-auto" : ""}`}
+      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30">
+        <Flex
+          wrap="wrap"
+          align="center"
+          justify="between"
+          gap="sm"
+          className="border-b border-border bg-background p-3"
         >
-          <code>
-            {highlightRequest(snippet ?? "", controller.changedParam)}
-          </code>
-        </pre>
-        <div className="absolute right-2 top-2">
+          <SegmentedControl
+            aria-label={t("steps.copyTitle")}
+            className="max-w-full flex-wrap rounded-md"
+            buttonProps={{
+              className:
+                "border border-transparent data-[state=active]:border-foreground",
+            }}
+            options={(["curl", "serverFetch", "url"] as const).map((value) => ({
+              value,
+              label: t(`formats.${value}`),
+            }))}
+            value={format}
+            onChange={(value) => {
+              if (
+                value === "curl" ||
+                value === "serverFetch" ||
+                value === "url"
+              )
+                controller.setFormat(value);
+            }}
+          />
           <Button
             type="button"
             variant="primary"
             size="sm"
+            className="disabled:bg-secondary disabled:text-muted-foreground"
+            style={copyPending ? { opacity: 1 } : undefined}
             disabled={copyPending}
             aria-busy={copyPending}
             onClick={() => {
@@ -145,12 +151,25 @@ export function RequestStep({
           >
             <Icon
               name={copyStatus === "copied" ? "check" : "copy"}
+              color="currentColor"
               size={16}
               aria-hidden="true"
             />
             {t(copyStatus === "copied" ? "copied" : "copy")}
           </Button>
-        </div>
+        </Flex>
+        <pre
+          ref={preRef}
+          tabIndex={0}
+          translate="no"
+          role="region"
+          aria-label={t("codeAria", { format: t(`formats.${format}`) })}
+          className={`whitespace-pre-wrap break-all p-4 font-mono text-sm leading-6 text-foreground${format === "serverFetch" ? " max-h-[28rem] overflow-auto" : ""}`}
+        >
+          <code>
+            {highlightRequest(snippet ?? "", controller.changedParam)}
+          </code>
+        </pre>
       </div>
       <p className="text-xs leading-5 text-muted-foreground">
         {highlightPlaceholder(t("steps.copyHelper"))}
@@ -160,18 +179,32 @@ export function RequestStep({
           {t("steps.urlHeader")}
         </p>
       )}
+      <details className="text-xs leading-5 text-muted-foreground">
+        <summary className="inline-flex min-h-8 cursor-pointer items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring">
+          {t("steps.environmentTitle")}
+        </summary>
+        <p className="mt-2">{t("steps.environmentBody")}</p>
+        <pre
+          translate="no"
+          className="mt-2 whitespace-pre-wrap break-all rounded-md bg-muted p-3 font-mono text-foreground"
+        >
+          <code>read -rs XYNES_API_KEY; export XYNES_API_KEY</code>
+        </pre>
+      </details>
       <p
         role="status"
         aria-live="polite"
         aria-atomic="true"
-        className="text-xs leading-5 text-muted-foreground"
+        className="min-h-5 text-xs leading-5 text-muted-foreground"
       >
         <span key={copyFeedbackRevision}>
-          {copyStatus === "copied"
-            ? t("copied")
-            : copyStatus === "manual"
-              ? t("copyFailed")
-              : ""}
+          {copyPending
+            ? t("copyPending")
+            : copyStatus === "copied"
+              ? t("copied")
+              : copyStatus === "manual"
+                ? t("copyFailed")
+                : ""}
         </span>
       </p>
     </Flex>

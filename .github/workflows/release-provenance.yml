@@ -79,7 +79,7 @@ jobs:
           persist-credentials: false
           path: "lumia-ds"
           repository: "Xynes-Studio/lumia-ds"
-          ref: "cbd49e2a84e1d56e0120eef5d1ef2fbfda864943"
+          ref: "e3b955a75d1ffd669c01a9ff74612906dfcd172f"
       -
         uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
         with:
@@ -137,7 +137,7 @@ jobs:
           mkdir -p "$artifact_dir"
           python3 - <<'PY'
           import json,os,pathlib
-          record=json.loads('{"artifact_kind": "compiled-next-production-output", "linked_source_commits": {"lumia-ds": "cbd49e2a84e1d56e0120eef5d1ef2fbfda864943", "xynes-auth-sdk": "fae49e08898d309fee03c645fd54eb831a8b524c", "xynes-i18n": "16c31d264e1065c443f57311fc96768022c1605b"}, "runtime_versions": {"bun": "1.4.2", "node": "22.22.0", "pnpm": "10.33.0"}}')
+          record=json.loads('{"artifact_kind": "compiled-next-production-output", "linked_source_commits": {"lumia-ds": "e3b955a75d1ffd669c01a9ff74612906dfcd172f", "xynes-auth-sdk": "fae49e08898d309fee03c645fd54eb831a8b524c", "xynes-i18n": "16c31d264e1065c443f57311fc96768022c1605b"}, "runtime_versions": {"bun": "1.4.2", "node": "22.22.0", "pnpm": "10.33.0"}}')
           record.update(repository=os.environ["GITHUB_REPOSITORY"], source_commit=os.environ["GITHUB_SHA"], workflow_run_id=os.environ["GITHUB_RUN_ID"], workflow_run_attempt=os.environ["GITHUB_RUN_ATTEMPT"])
           pathlib.Path(os.environ["RUNNER_TEMP"],"release-candidate","build-record.json").write_text(json.dumps(record,sort_keys=True,indent=2)+"\n")
           PY

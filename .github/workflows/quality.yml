@@ -42,7 +42,7 @@ jobs:
         with:
           persist-credentials: false
           repository: Xynes-Studio/lumia-ds
-          ref: cbd49e2a84e1d56e0120eef5d1ef2fbfda864943
+          ref: e3b955a75d1ffd669c01a9ff74612906dfcd172f
           path: lumia-ds
 
       - name: Check out auth SDK

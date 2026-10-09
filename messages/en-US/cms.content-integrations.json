@@ -8,26 +8,29 @@
   "description": "Copy a request that returns this content from the CMS API.",
   "close": "Close",
   "status": {
-    "published": "Live. The API returns the last published version.",
-    "changes": "Live, but your latest edits aren't. Republish to update what the API returns.",
-    "unpublished": "Not live yet. Publish this entry and the request starts working. You can copy it now.",
-    "archived": "Not live. Archived content isn't served. Restore and republish it to go live.",
-    "legacy": "Not live. This was published before API delivery existed. Republish it once to fix it.",
-    "unknown": "We couldn't confirm whether this is live. The request works once it's published.",
+    "published": "Published. The API serves the last published version.",
+    "changes": "Published version available. Republish to include your latest edits.",
+    "unpublished": "Not published. Publish this entry before requesting it. You can copy the request now.",
+    "archived": "Archived. Restore and republish before requesting this entry.",
+    "legacy": "Republish once to make this previously published entry available through the API.",
+    "unknown": "Publication status unavailable. The API serves published content only.",
     "folder": "Returns published entries in this folder. Drafts and subfolders aren't included. If you moved an entry here, republish it to include it."
   },
   "steps": {
     "keyTitle": "Get a read-only key",
-    "keyBody": "You need a read-only API key for workspace {workspace}. Create it once in Workspace Admin.",
+    "keyBody": "Use a read-only key for workspace {workspace}, managed in Workspace Admin.",
     "keyAction": "Create key",
-    "keySkip": "Already have one? Skip to step 2.",
+    "keySkip": "Already have a read-only key? Use it with the request below.",
     "copyTitle": "Copy the request",
-    "copyHelper": "Replace $XYNES_API_KEY with your key. Copied examples never contain a real key.",
-    "urlHeader": "Send it with the header Authorization: Bearer '<your key>'.",
+    "copyHelper": "$XYNES_API_KEY is a named environment variable. Examples contain no credentials.",
+    "urlHeader": "URL requests still need the header Authorization: Bearer '<your key>'.",
     "publishTitle": "Publish to go live",
     "publishBody": "The API serves the last published version.",
     "publishAction": "Publish from the editor",
-    "publishInEditor": "Use Publish at the top of the editor."
+    "publishInEditor": "Use Publish at the top of the editor.",
+    "environmentTitle": "Set up the environment variable",
+    "environmentBody": "In your shell, enter the key privately with the command below. The request expands the named variable; never use the raw key as its name. Keep keys out of source and shell history. JavaScript examples run on your server.",
+    "readiness": "Requests also require a configured gateway and a key with CMS read permissions."
   },
   "formats": {
     "curl": "cURL",
@@ -105,5 +108,6 @@
     "metadata": "Metadata",
     "closeMetadata": "Close metadata panel"
   },
-  "eyebrowFolderPath": "Folder · {path} · workspace {workspace}"
+  "eyebrowFolderPath": "Folder · {path} · workspace {workspace}",
+  "copyPending": "Copying…"
 }

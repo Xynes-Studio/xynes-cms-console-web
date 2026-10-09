@@ -2135,10 +2135,10 @@ it("refreshes API status after header Publish succeeds without reloading or remo
   mockAutosaveFlush.mockResolvedValue(undefined);
   mockPublishWorkspaceContentEntry.mockResolvedValue({...draft,status:"published",deliveryState:"available",publishedAt:"2026-10-08T10:00:00.000Z",updatedAt:"2026-10-08T10:00:00.000Z"});
   render(<NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}><CmsEditorScreen entryId={entryId} workspaceSlug="editorial" /></NextIntlClientProvider>);
-  await screen.findByText("Not live yet. Publish this entry and the request starts working. You can copy it now.");
+  await screen.findByText("Not published. Publish this entry before requesting it. You can copy the request now.");
   const canvas=screen.getByTestId("lumia-editor-mock");
   fireEvent.click(screen.getByTestId("publish-btn"));
-  await screen.findByText("Live. The API returns the last published version.");
+  await screen.findByText("Published. The API serves the last published version.");
   expect(screen.getByTestId("lumia-editor-mock")).toBe(canvas);
   expect(mockGetWorkspaceContentEntryById).toHaveBeenCalledTimes(1);
   expect(mockPublishWorkspaceContentEntry).toHaveBeenCalledTimes(1);
