@@ -20,9 +20,9 @@ when an already-open panel crosses a breakpoint at native browser zoom.
 | Ordinary browser suite | 76 passed; three provisioned tests skipped in this configuration. |
 | Provisioned B5 browser/backend suite | All three passed separately against both an isolated backend and the actual local port-4100 gateway. |
 | Lumia full suite | 2,030 passed, two existing skips. |
-| Lumia components coverage | 332 tests / 66 files passed; S/B/F/L 95.80/86.44/84.47/95.80%, above configured 80% gates. |
+| Lumia components coverage | 332 tests / 66 files passed; S/B/F/L 95.81/86.50/84.47/95.81%, above configured 80% gates. |
 | Lumia lint, type-check, full coverage sweep, all package/docs builds and Storybook build | Passed. |
-| Lumia visual regression | 24 passed across Chromium, Firefox and WebKit using existing browser executables through a temporary configuration; CI's bundled browser versions were not locally installed. |
+| Lumia browser/visual regression | 36 passed across Chromium, Firefox and WebKit using existing browser executables through a temporary configuration; CI's bundled browser versions were not locally installed. |
 | Contract checks | 48 schema checks passed; consumer mirror checked without regeneration; infra delivery/content safety checks passed. |
 | Native browser 200% zoom | Actual Chrome UI zoom passed for folder and editor hosts, fixed header/Close, internal scroll and focus restoration. |
 
@@ -67,6 +67,18 @@ proof are therefore not claimed. Revocation of the older exposed key remains its
 owner's follow-up in the original environment; it was absent from this database.
 
 The CMS workflows and release source record pin Lumia commit
-`e3b955a75d1ffd669c01a9ff74612906dfcd172f`, containing `semantic.css` and the
+`595d99261b1b325ac3806290dba63ba5808de9ad`, containing `semantic.css` and the
 Alert/Sheet fixes from [Lumia PR #238](https://github.com/Xynes-Studio/lumia-ds/pull/238). Merge Lumia first.
 Package publication and hosted rollout are separate operations.
+
+## PR review follow-up
+
+Lumia PR #238 identified that Tailwind preset consumers lacked the singular
+`--color-on-primary` variable used by Button and `buttonStyles`. The shared
+stylesheet now aliases it to `--colors-on-primary` in every theme scope. Two
+browser regressions first reproduced the white-on-pale dark-theme defect; all
+12 new checks pass across Chromium, Firefox and WebKit, including system,
+explicit/nested themes, theme switching, standalone fallback and inline override
+compatibility. The complete Lumia browser suite passes 36 tests; lint, workspace
+type-check, components coverage and build also pass. All CMS workflow/source-record
+pins above now consume the reviewed fix.
