@@ -172,6 +172,7 @@ export function CmsEditorScreen({
   const desktop = useApiDesktop();
   const [apiPanelRequest, setApiPanelRequest] = useState(0);
   const consumedApiLink = useRef<string | null>(null);
+  const integrationTriggerRef = useRef<HTMLButtonElement>(null);
 
   const resolvedSlug = (currentWorkspace?.slug?.trim() || workspaceSlug).trim();
   const integrationsEnabled =
@@ -406,7 +407,7 @@ export function CmsEditorScreen({
     if (consumedApiLink.current === linkIdentity) return;
     consumedApiLink.current = linkIdentity;
     if (desktop) setApiPanelRequest(previous => previous + 1);
-    else integrationDialog.open(integrationContext);
+    else integrationDialog.open(integrationContext, () => integrationTriggerRef.current?.focus());
     const remaining = new URLSearchParams(searchParams.toString());
     remaining.delete("panel");
     router.replace(`${pathname}${remaining.size ? `?${remaining}` : ""}`, {scroll:false});
@@ -620,6 +621,7 @@ export function CmsEditorScreen({
       <CmsEditorLayout
         integrationIdentity={integrationIdentity}
         apiPanelRequest={apiPanelRequest}
+        integrationTriggerRef={integrationTriggerRef}
         integrationDialogOpen={Boolean(selectedIntegrationContext)}
         integrationPanel={
           integrationsEnabled && integrationContext ? (

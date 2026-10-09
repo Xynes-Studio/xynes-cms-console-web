@@ -168,9 +168,11 @@ it("localizes the integration metadata trigger and names its drawer/close contro
 
 it("opens the API sheet directly from the mobile header without a metadata drawer", () => {
   const customize = vi.fn();
+  const integrationTriggerRef = { current: null as HTMLButtonElement | null };
   render(<NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}>
-    <CmsEditorLayout {...base} onCustomizeIntegrations={customize} integrationPanel={<EditorApiCard context={entryContext} />}><p>Canvas</p></CmsEditorLayout>
+    <CmsEditorLayout {...base} integrationTriggerRef={integrationTriggerRef} onCustomizeIntegrations={customize} integrationPanel={<EditorApiCard context={entryContext} />}><p>Canvas</p></CmsEditorLayout>
   </NextIntlClientProvider>);
+  expect(integrationTriggerRef.current).toBe(screen.getByRole("button", {name:"API"}));
   fireEvent.click(screen.getByRole("button", {name:"API"}));
   expect(customize).toHaveBeenCalledOnce();
   expect(document.querySelector("[data-lumia-drawer-root]")).toBeNull();

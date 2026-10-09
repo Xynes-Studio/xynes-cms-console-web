@@ -50,13 +50,13 @@ PLAYWRIGHT_E2E_PORT=3207 pnpm test:e2e e2e/content-integration-hosts.spec.ts e2e
 | Lumia lint / type-check / component build | Green | Green |
 | CMS full suite | 1,056 pass / 86 files | 1,095 pass / 92 files; zero failures |
 | CMS lint / typecheck / production build | Green | Green |
-| CMS coverage gate | Configured 85% for every global metric | 93.25% statements, 87.64% branches, 97.43% functions, 93.75% lines |
+| CMS coverage gate | Configured 85% for every global metric | 93.22% statements, 87.61% branches, 97.43% functions, 93.72% lines |
 | Three fixture browser suites | Old presentation | 20 cases pass, including responsive Copy geometry and dark action-link contrast |
 
 The final logs are local scratch artifacts, not committed runtime output:
 `/private/tmp/api-access-lumia-{lint,typecheck,full-2}.log`,
-`/private/tmp/api-access-{lint,typecheck,coverage,build}-acceptance-final.log`, and
-`/private/tmp/api-access-browser-acceptance-final.log`.
+`/private/tmp/api-access-{lint,typecheck,coverage,build}-focus-final.log`, and
+`/private/tmp/api-access-browser-focus-final.log`.
 
 The relevant RED/GREEN evidence includes overlay layering, translated close labels,
 status/copy/options/sheet/host behavior, session and clipboard timers, publish-status
@@ -75,20 +75,20 @@ Every changed production module exceeds the ADR-001 80% floor in all metrics.
 
 | CMS file | S | B | F | L |
 | --- | ---: | ---: | ---: | ---: |
-| `ApiAccessSheet.tsx` | 100 | 93.10 | 85.71 | 100 |
-| `ApiStatusLine.tsx` | 100 | 95.24 | 100 | 100 |
-| `EditorApiCard.tsx` | 100 | 100 | 100 | 100 |
-| `RequestStep.tsx` | 100 | 95.12 | 100 | 100 |
+| `ApiAccessSheet.tsx` | 100.00 | 93.10 | 85.71 | 100.00 |
+| `ApiStatusLine.tsx` | 100.00 | 95.24 | 100.00 | 100.00 |
+| `EditorApiCard.tsx` | 100.00 | 100.00 | 100.00 | 100.00 |
+| `RequestStep.tsx` | 100.00 | 95.12 | 100.00 | 100.00 |
 | `RequestOptions.tsx` | 97.96 | 97.37 | 94.12 | 97.83 |
-| `request-summary.ts` | 100 | 100 | 100 | 100 |
-| `useApiDesktop.ts` | 100 | 100 | 100 | 100 |
-| `useContentIntegration.ts` | 100 | 95.77 | 100 | 100 |
-| `CmsContentCardGrid.tsx` | 95.65 | 93.55 | 100 | 95.65 |
-| `CmsContentCardList.tsx` | 97.30 | 88.37 | 100 | 97.30 |
-| `CmsContentToolbar.tsx` | 100 | 90.48 | 100 | 100 |
-| `CmsEditorLayout.tsx` | 87.57 | 86.93 | 92.68 | 89.68 |
+| `request-summary.ts` | 100.00 | 100.00 | 100.00 | 100.00 |
+| `useApiDesktop.ts` | 100.00 | 100.00 | 100.00 | 100.00 |
+| `useContentIntegration.ts` | 100.00 | 95.77 | 100.00 | 100.00 |
+| `CmsContentCardGrid.tsx` | 95.65 | 93.55 | 100.00 | 95.65 |
+| `CmsContentCardList.tsx` | 97.30 | 88.37 | 100.00 | 97.30 |
+| `CmsContentToolbar.tsx` | 100.00 | 90.48 | 100.00 | 100.00 |
+| `CmsEditorLayout.tsx` | 87.65 | 87.10 | 92.68 | 89.74 |
 | `CmsContentListPanel.tsx` | 92.86 | 80.43 | 94.83 | 94.12 |
-| `CmsEditorScreen.tsx` | 92.62 | 82.42 | 100 | 93.36 |
+| `CmsEditorScreen.tsx` | 92.68 | 82.42 | 100.00 | 93.39 |
 
 The feature files live under `src/features/content-integrations`, host components
 under `src/components/dashboard`, and orchestration under `src/features/cms-content`.
@@ -150,9 +150,15 @@ Only navigation, panel request preferences and placeholder Copy were exercised.
 
 Evidence images remain outside Git under workspace
 `artifacts/cms-content-integrations-ux-review-2026-10-08/impl-verification/`.
-The final corrected visual capture is `live-api-editor-final-320.png`. Earlier inspected captures include `live-mobile-deeplink-375.png`,
-`live-folder-options-1280.png`, `live-legacy-1280.png`, and
-`fixture-api-{375,721,768,1280}.png`. Capture excludes sidebar email.
+The extended real-app matrix is saved as `live-viewport-matrix.json` and covers
+root/list/grid/legacy/folder/clipboard/invalid recovery/editor at all three required
+viewports. Mobile deep-link Escape initially returned BODY; a shared header-trigger
+ref now restores API focus. The canonical-env Screen/Layout suites pass 77 cases,
+and the live mobile regression passes after waiting for parameter removal.
+
+The final corrected visual capture is `live-api-editor-final-320.png`. Other inspected final captures include `phase3-04-invalid-1280.png`,
+`phase3-09-mobile-editor-375.png`, `phase3-11-restored-api-focus-375.png`,
+`phase3-12-no-overflow-320.png`, and `fixture-api-{375,721,768,1280}.png`. Capture excludes sidebar email.
 The in-app capture API sometimes reloads the page or captures loading state;
 those images are not treated as behavioral proof. Viewport control initially
 failed, then worked after a reset; actual DOM dimensions were checked each time.
@@ -172,8 +178,12 @@ was stale; visible navigation led to the working `/dashboard/apps` route.
 - The provisioned B5 live-key/backend delivery matrix was **not run**, as the
   runbook reserves it for an explicit request. Existing contract/security tests
   pass unchanged; this epic does not claim renewed backend transport acceptance.
-- Full live Phase 3 rows were not duplicated at every viewport; the table records
-  the exact real observations, supplemented by the automated host matrix.
+- Root/list/grid/folder/editor checks were repeated at 375×812, 768×1024 and
+  1280×800; the safe boolean/focus-name results are in `live-viewport-matrix.json`.
+  A separate valid screenshot for every table row is not available: desktop
+  capture returned loading/background/empty images despite successful DOM checks.
+  Those failed captures were removed from the proof set; inspected captures and the
+  matrix record complement the actual DOM/keyboard/clipboard observations.
 
 These boundaries keep the runbook's exhaustive live definition of done open;
 green automated gates alone are not a claim that all manual acceptance is finished.
@@ -198,3 +208,17 @@ engine/contract/security files. They match their preflight values. Unrelated fil
 remain unstaged. The original runbook/SPEC/review artifacts are not modified.
 Lumia owns overlay layers; no CMS stacking override was added. Commits use normal
 hooks and GPG signing; no hook bypass is used.
+
+### Manual acceptance still needed
+
+1. In a browser with native zoom controls, set 200% zoom and open both a folder and
+   editor API panel. Verify Close stays visible, the body can scroll, wrapping
+   requests remain readable, and the page has no horizontal overflow. Restore 100%.
+2. With VoiceOver or NVDA, open the panel by keyboard. Listen for its title,
+   description and status; confirm Copy is reachable within four Tabs and Copied
+   is announced. Changing options should not repeatedly announce the entry status.
+3. Capture the remaining desktop root/folder/copied/legacy/grid/editor-card states
+   directly in the signed-in browser, cropping out the sidebar user menu.
+
+Do not publish, save content, create a key or run the provisioned B5 matrix for
+these checks. Report these results before treating exhaustive acceptance as done.

@@ -58,6 +58,7 @@ export type CmsEditorLayoutProps = {
   integrationDialogOpen?: boolean;
   integrationIdentity?: string;
   apiPanelRequest?: number;
+  integrationTriggerRef?: React.RefObject<HTMLButtonElement | null>;
   children: React.ReactNode;
 };
 
@@ -312,6 +313,7 @@ export function CmsEditorLayout({
   integrationDialogOpen = false,
   integrationIdentity,
   apiPanelRequest = 0,
+  integrationTriggerRef,
   children,
 }: CmsEditorLayoutProps) {
   const initialScheduleDefaults = getScheduleFieldDefaults(
@@ -321,7 +323,8 @@ export function CmsEditorLayout({
   const [isMetaDrawerOpen, setIsMetaDrawerOpen] = useState(false);
   const metadataElement = useRef<HTMLElement>(null);
   const metadataTrigger = useRef<HTMLButtonElement>(null);
-  const apiTrigger = useRef<HTMLButtonElement>(null);
+  const localApiTrigger = useRef<HTMLButtonElement>(null);
+  const apiTrigger = integrationTriggerRef ?? localApiTrigger;
   const hasIntegrations = Boolean(integrationPanel && onCustomizeIntegrations);
   const metadataScope = JSON.stringify([integrationIdentity, hasIntegrations]);
   const [metadataSession, setMetadataSession] = useState<{

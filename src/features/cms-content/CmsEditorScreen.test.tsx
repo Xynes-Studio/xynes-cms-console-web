@@ -146,6 +146,7 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     onRetrySave,
     integrationPanel,
     apiPanelRequest,
+    integrationTriggerRef,
     onCustomizeIntegrations,
   }: {
     children: React.ReactNode;
@@ -168,6 +169,7 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     onRetrySave?: () => void;
     integrationPanel?: React.ReactNode;
     apiPanelRequest?: number;
+    integrationTriggerRef?: React.RefObject<HTMLButtonElement | null>;
     onCustomizeIntegrations?: (restoreFocus: () => void) => void;
   }) => (
     <div
@@ -180,6 +182,7 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
       data-api-panel-request={apiPanelRequest}
     >
       {integrationPanel}
+      {integrationPanel && <button ref={integrationTriggerRef}>API</button>}
       {integrationPanel && (
         <button
           onClick={(event) => {
@@ -2112,7 +2115,11 @@ describe("API editor deep links", () => {
     render(<NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}><CmsEditorScreen entryId={entryId} workspaceSlug="editorial" /></NextIntlClientProvider>);
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining("/edit?keep=1"),{scroll:false}));
     if (desktop) {expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute("data-api-panel-request","1");expect(screen.queryByRole("dialog")).toBeNull();}
-    else expect(screen.getByRole("dialog",{name:'Use "Deep link" via API'})).toBeVisible();
+    else {
+      expect(screen.getByRole("dialog",{name:'Use "Deep link" via API'})).toBeVisible();
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(screen.getByRole("button", { name: /^API$/ })).toHaveFocus());
+    }
     expect(mockPublishWorkspaceContentEntry).not.toHaveBeenCalled();
     expect(mockAutosaveFlush).not.toHaveBeenCalled();
   });
