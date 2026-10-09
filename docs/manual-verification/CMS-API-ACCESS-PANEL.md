@@ -241,3 +241,45 @@ hooks and GPG signing; no hook bypass is used.
 
 Do not publish, save content, create a key or run the provisioned B5 matrix for
 these checks. Report these results before treating exhaustive acceptance as done.
+
+
+## 2026-10-09 review handoff and newly reported defects
+
+The owner requested coordinated draft PRs against develop. This report records
+checks of the original epic; it is not a claim of full visual or API deployment
+acceptance. The subsequent audit found a light-mode Copy icon inheritance defect,
+dark placeholder/status icon contrast defects, incomplete semantic theme tokens,
+and hierarchy/readability improvements. These remain unfixed in the current code.
+
+The current local database also has no delivery route rows, the supplied old key
+lacks delivery scopes, and the referenced entry is a draft without a snapshot.
+The observed route-level 404 is unrelated to IP restriction. Data-preserving local
+route installation and explicit key replacement are separate from this UI epic.
+The earlier statement that no migration is needed refers to the UI changes, not
+to making this currently unprovisioned runtime ready for delivery.
+
+See [the findings, prioritized acceptance criteria and next-agent prompt](CMS-API-ACCESS-PANEL-HANDOFF-2026-10-09.md). Native 200% zoom and screen-reader audio remain
+unproven. Keep both PRs draft while these review/release boundaries are open.
+
+
+## Fresh PR-creation verification (2026-10-09)
+
+Fresh checks of the unchanged production code passed before PR creation:
+
+- CMS lint, typecheck, full coverage suite (1,095 tests / 92 files) and production build.
+- CMS coverage: 93.25% statements, 87.65% branches, 97.43% functions, 93.75% lines; the configured 85% global gates pass. Fresh statement/branch/function checks confirm the 80% floor for all 14 instrumented changed production modules. The original per-file table above records the earlier complete metric evidence.
+- All 20 cases in the three CMS content-integration browser suites pass.
+- Lumia lint, workspace type-check, full suite (2,024 pass / two existing editor skips), and the touched components build pass. Components have 326 passing tests with coverage.
+- Latest fetched develop remains the original base in both repositories. Existing epic signatures verify; protected-contract and unrelated-file preservation checks pass.
+
+An initial CMS build failed with linked declaration diagnostics during overlapping
+Lumia validation/build work; after Lumia's build completed, sequential CMS
+typecheck/build passed without any source fix or weakened check. The first browser
+launch was blocked by the sandbox's local-port permission; the permitted rerun
+passed all 20 cases. Logs: `/private/tmp/api-access-pr-cms-*.log` and
+`/private/tmp/api-access-pr-lumia-*.log`.
+
+These checks validate the existing epic, not the unresolved theme defects or
+current-environment delivery readiness described in the handoff. The broader
+Lumia Storybook visual suite/full workspace build and provisioned backend matrix
+were not rerun in this PR-creation pass.
