@@ -35,24 +35,25 @@ test("B3 folder/list/grid IDs, action isolation and focus restoration", async ({
   await page.setViewportSize({ width: 1280, height: 900 });
   await ready(page, "list");
   const folder = page.getByRole("button", {
-    name: "Integrations for folder News",
+    name: 'Use folder "News" via API',
   });
   await folder.click();
-  await page.getByRole("tab", { name: "REST API" }).click();
+  await page.getByRole("radio", { name: "URL", exact: true }).click();
   expect(
-    new URL(await page.getByLabel("Request URL").inputValue()).searchParams.get(
-      "directoryId",
-    ),
+    new URL(
+      (await page.getByLabel("Request code, URL").textContent())!,
+    ).searchParams.get("directoryId"),
   ).toBe(DIRECTORY);
   await page.keyboard.press("Escape");
   await expect(folder).toBeFocused();
   const entry = page.getByRole("button", {
-    name: "Integrations for First story",
+    name: 'Use "First story" via API',
   });
   await entry.click();
-  await page.getByRole("tab", { name: "REST API" }).click();
+  await page.getByRole("radio", { name: "URL", exact: true }).click();
   expect(
-    new URL(await page.getByLabel("Request URL").inputValue()).pathname,
+    new URL((await page.getByLabel("Request code, URL").textContent())!)
+      .pathname,
   ).toContain(`/delivery/entries/${ENTRY}`);
   await page.keyboard.press("Escape");
   await expect(entry).toBeFocused();
@@ -62,16 +63,16 @@ test("B3 folder/list/grid IDs, action isolation and focus restoration", async ({
   });
   await trigger.click();
   await page
-    .getByRole("menuitem", { name: "Integrations for First story" })
+    .getByRole("menuitem", { name: 'Use "First story" via API' })
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
   await ready(page, "root");
   await expect(
-    page.getByRole("button", { name: "Integrations", exact: true }),
-  ).toBeDisabled();
-  await expect(page.getByText("Open a folder first.")).toBeVisible();
+    page.getByRole("button", { name: /Use folder.*via API/ }),
+  ).toHaveCount(0);
+  await expect(page.getByText("Open a folder first.")).toHaveCount(0);
 });
 test("B3 desktop editor preserves draft/canvas and restores Customize focus", async ({
   page,
@@ -82,8 +83,8 @@ test("B3 desktop editor preserves draft/canvas and restores Customize focus", as
   const canvas = page.getByRole("textbox", { name: "Rich Text Editor" });
   await canvas.fill("Unsaved document text");
   const canvasHandle = await canvas.elementHandle();
-  await page.getByRole("tab", { name: "Integrations", exact: true }).click();
-  const customize = page.getByRole("button", { name: "Customize request" });
+  await page.getByRole("tab", { name: "API", exact: true }).click();
+  const customize = page.getByRole("button", { name: "Open API panel" });
   await page.screenshot({
     path: path.join("output/playwright/b3-editor-desktop-panel.png"),
     fullPage: true,
@@ -91,7 +92,7 @@ test("B3 desktop editor preserves draft/canvas and restores Customize focus", as
   await customize.click();
   await expect(page.getByRole("dialog")).toContainText("Unsaved local title");
   await expect(page.getByRole("dialog")).toContainText(
-    "Saved edits are excluded",
+    "Live, but your latest edits aren't.",
   );
   await page.keyboard.press("Escape");
   await expect(customize).toBeFocused();
@@ -119,21 +120,25 @@ test("B3 mobile drawer hands off to one full modal and restores metadata focus",
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await ready(page, "editor");
-  const metadata = page.getByRole("button", { name: /Open metadata panel|OOppeenn mmeettaaddaattaa ppaanneell/ });
+  const metadata = page.getByRole("button", {
+    name: /Open metadata panel|OOppeenn mmeettaaddaattaa ppaanneell/,
+  });
   await metadata.click();
   await page.keyboard.press("Escape");
   await expect(metadata).toBeFocused();
   await metadata.click();
-  await page.getByRole("tab", { name: "Integrations", exact: true }).click();
+  await page.getByRole("tab", { name: "API", exact: true }).click();
   await page.screenshot({
     path: path.join("output/playwright/b3-editor-mobile-panel.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Customize request" }).click();
+  await page.getByRole("button", { name: "Open API panel" }).click();
   await expect(page.locator("[data-lumia-drawer-root]")).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await page.keyboard.press("Escape");
-  await expect(metadata).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "API", exact: true }),
+  ).toBeFocused();
   await expect(page.getByTestId("fixture-save-calls")).toHaveText("0");
   await expect(page.getByTestId("fixture-publish-calls")).toHaveText("0");
   await page.screenshot({
@@ -147,10 +152,10 @@ test("B3 rollout off leaves editor, toolbar and cards without dead integrations 
   for (const host of ["list", "grid", "editor"]) {
     await ready(page, host, "&disabled=1");
     await expect(
-      page.getByRole("button", { name: /Integrations/ }),
+      page.getByRole("button", { name: /Use.*via API|^API$/ }),
     ).toHaveCount(0);
     await expect(
-      page.getByRole("tab", { name: "Integrations", exact: true }),
+      page.getByRole("tab", { name: "API", exact: true }),
     ).toHaveCount(0);
   }
 });
@@ -169,11 +174,15 @@ test("B3 mobile pseudo locale renders the shared panel and dialog without page o
   ]);
   await page.setViewportSize({ width: 390, height: 844 });
   await ready(page, "editor");
-  await page.getByRole("button", { name: /Open metadata panel|OOppeenn mmeettaaddaattaa ppaanneell/ }).click();
-  await page.getByRole("tab", { name: /IInntteeggrraattiioonnss/ }).click();
+  await page
+    .getByRole("button", {
+      name: /Open metadata panel|OOppeenn mmeettaaddaattaa ppaanneell/,
+    })
+    .click();
+  await page.getByRole("tab", { name: /AAPPII/ }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en-XA");
   await page
-    .getByRole("button", { name: /CCuussttoommiizzee rreeqquueesstt/ })
+    .getByRole("button", { name: /OOppeenn AAPPII ppaanneell/ })
     .click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -189,6 +198,6 @@ test("B3 mobile pseudo locale renders the shared panel and dialog without page o
   });
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("button", { name: /Open metadata panel|OOppeenn mmeettaaddaattaa ppaanneell/ }),
+    page.getByRole("button", { name: /^API$|^\[AAPPII\]$/ }),
   ).toBeFocused();
 });

@@ -34,7 +34,7 @@ import {
   getCreateEntryErrorMessage,
 } from "./CmsContentActions";
 import { mapEntryToGridCardProps, mapEntryToListCardProps } from "./mappers";
-import { ContentIntegrationDialog } from "../content-integrations/ContentIntegrationDialog";
+import { ApiAccessSheet } from "../content-integrations/ApiAccessSheet";
 import { useIntegrationDialog } from "../content-integrations/useIntegrationDialog";
 import {
   buildDirectoryIntegrationContext,
@@ -60,7 +60,6 @@ const safeDecodePathSegment = (segment: string) => {
 export function CmsContentListPanel() {
   const { show: showToast } = useToast();
   const t = useTranslations("cms.content");
-  const ti = useTranslations("cms.contentIntegrations");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -283,16 +282,6 @@ export function CmsContentListPanel() {
           }
         : null,
   });
-  const folderIntegrationUnavailable = !breadcrumbParts.length
-    ? ti("hosts.openFolder")
-    : !apiBaseUrl
-      ? ti("hosts.configUnavailable")
-      : isUnmatchedDirectoryPath || resolvedDirectoryId === null
-        ? ti("hosts.folderUnavailable")
-        : !folderIntegrationContext
-          ? ti("hosts.resolving")
-          : undefined;
-
   const breadcrumbItems: BreadcrumbItem[] = [
     {
       label: "Contents",
@@ -706,10 +695,8 @@ export function CmsContentListPanel() {
               : undefined
           }
           integrationsTargetLabel={folderIntegrationContext?.target.label}
-          integrationsDisabled={!folderIntegrationContext}
-          integrationsUnavailableReason={
-            integrationsEnabled ? folderIntegrationUnavailable : undefined
-          }
+          integrationsResolving={integrationsEnabled && breadcrumbParts.length > 0 && isDirectoryResolving}
+          integrationActive={selectedContext?.target.kind === "directory"}
           onCreate={() => {
             setCreateError(null);
 
@@ -834,6 +821,7 @@ export function CmsContentListPanel() {
                 <li key={item.id}>
                   {state.view === "grid" ? (
                     <CmsContentCardGrid
+                      integrationActive={selectedIntegration?.target.kind === "entry" && selectedIntegration.target.entryId === item.id}
                       {...mapEntryToGridCardProps({
                         entry: item,
                         handlers: listHandlers,
@@ -843,6 +831,7 @@ export function CmsContentListPanel() {
                     />
                   ) : (
                     <CmsContentCardList
+                      integrationActive={selectedIntegration?.target.kind === "entry" && selectedIntegration.target.entryId === item.id}
                       {...mapEntryToListCardProps({
                         entry: item,
                         handlers: listHandlers,
@@ -858,7 +847,7 @@ export function CmsContentListPanel() {
         ) : null}
       </div>
       {selectedContext && (
-        <ContentIntegrationDialog
+        <ApiAccessSheet
           context={selectedContext}
           open
           onOpenChange={(open) => {

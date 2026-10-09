@@ -1322,249 +1322,70 @@ the one already expected by infra's parity entrypoint. Take the frontend commit
 revision only after B1 is committed; do not label mutable working files as pinned
 API-integration evidence. Bodies here are JSON only and never sign/fetch storage.
 
-## Reusable integration workbench (CMS-INT-B2)
+## Use via API subsystem
 
-The pure B1 `index.ts` remains framework-independent. UI hosts import
-`ContentIntegrationDialog` or `IntegrationWorkbench` from their named modules;
-no auth SDK dependency, lifecycle form or host persistence is added here.
+`src/features/content-integrations` owns the folder/entry API helper presentation.
+Use `ApiAccessSheet` with a validated `IntegrationContext`, controlled `open`,
+`onOpenChange`, optional trigger, and `host="list"|"editor"`. Reuse
+`useIntegrationDialog` for scope invalidation and focus restoration. Its restore
+callback remains unchanged. `EditorApiCard` supplies sidebar status, publishing
+guidance and a request summary; `CmsEditorLayout` supplies Open API panel and the
+direct mobile API header action. The editor canvas/autosave/lifecycle remain
+independent of the helper.
 
-- `useContentIntegration`: ephemeral control/tab/format/copy state. Reset identity
-  includes workspace UUID, target kind/UUID, workspace slug and public API base.
-  A fresh generation token prevents old clipboard promises from reporting success
-  after A→B→A switches. Writes serialize independently of visible feedback and across workbench
-  unmount/reopen or independently mounted hosts. Rejected writes release the queue.
-- `IntegrationCustomization`: metadata-backed folder sorting/limit/fields plus
-  Advanced offset/title search; entries expose fields only. ID is mandatory,
-  folder bodies are excluded and response format stays JSON. Invalid values
-  remain visible and block generation rather than being silently clamped.
-- `IntegrationRequestPreview`: GET URL, environment-variable authentication,
-  URL/cURL/server fetch formats, selected-field table and projected static JSON.
-  Clipboard success follows promise fulfillment. Denied/missing clipboard gives
-  polite manual-copy guidance with selectable code and safe messages.
-- `IntegrationWorkbench`: four Lumia tabs; Scripts/SDK explain Coming soon and
-  offer REST. The shortcut transfers focus to the REST trigger. Availability
-  metadata supplies guidance, never evidence that a request succeeded. Draft/
-  scheduled content needs publishing, archived content needs republishing, saved
-  changes stay excluded, and legacy republish_required requires a validated snapshot.
-  Missing metadata shows unknown; unavailable content may still produce a stable
-  request for later use. Folder delivery follows the B1 published-directory contract.
-- `ContentIntegrationDialog`: controlled Lumia modal, visible workspace/target
-  context, optional trigger for focus restoration, scrollable mobile layout and
-  translated closeLabel. Hosts without a trigger own close-focus restoration.
+- `ApiStatusLine`: the existing publication-availability logic, one mount-time
+  announcement, no actions. Folder copy has no count because the authoring folder
+  can differ from the last-published folder.
+- `RequestStep`: format radio group, wrapping pre/code, marked placeholder,
+  standard primary Copy button and polite feedback. Invalid options hide Copy;
+  Go to field expands options and focuses the first invalid input. Denied clipboard
+  access focuses/selects the entire code without exposing the exception.
+- `RequestOptions` / `request-summary`: a truthful summary plus Adjust accordion,
+  combined four-value sort, bounded pagination/search, optional response fields
+  and static ID guidance. Checkbox labels and numeric controls retain 32px hit areas.
+- `useContentIntegration`: module-level preferences keyed by the existing request
+  context key; no localStorage, database, content, keys or copy status in the cache.
+  Copy operations remain globally serialized across unmount/reopen, with revision
+  and generation guards. Copied clears after 2s; changed query pairs highlight for
+  1.2s and honor reduced motion.
+- `useApiDesktop`: subscribes to the shared768px editor breakpoint; SSR defaults
+  to a right sheet. Mobile uses a full-height bottom sheet. The body owns scrolling
+  except the allowed tall JavaScript code scroller. Header title clamps to two
+  lines with a full-label hover; full text remains the accessible dialog title.
+- Static response preview uses `buildExampleResponse`, starts collapsed and
+  reflects selected fields. Scripts/SDK roadmap is not interactive.
 
-Workspace Admin retains API key ownership. The native styled anchor reuses
-`buildWorkspaceAdminIntegrationUrl("cms_readonly_key", workspaceSlug)` with its
-existing safe-origin fallback. External links include safe rel/target and a
-translated screen-reader hint. Credentials are never accepted/stored/rendered;
-configuration error codes map to localized text without raw URLs or validator
-details. Generated code is displayed as text, not HTML or executable scripts.
+The request engine and contract source are unchanged: `build-request.ts`,
+`snippets.ts`, `delivery-contract*.ts`, `resource-adapters.ts`, `gateway-origin.ts`,
+`host-context.ts` and JSON fixtures. Generating examples never executes a request
+or grants access. Key lifecycle remains in Workspace Admin; the key link uses the
+existing safe URL builder and a new-tab hint.
 
-`cms.contentIntegrations` is statically registered in `src/i18n/config.ts`, using
-`messages/{en-US,en-XA}/cms.content-integrations.json` and a matching metadata
-sidecar. Bounds use ICU number formatting; protocol field names and code retain
-their contract syntax. Catalog tests enforce key/placeholder parity and safe copy.
+Host rules: root has no folder action/helper; resolving folders show Skeleton.
+The grid action is last after MenuSeparator and never adjacent to Delete.
+The selected card/breadcrumb has a primary ring. The editor API tab contains no
+inline code. `?panel=api` waits for valid loaded context, applies once per route
+identity, and strips only that parameter with `router.replace(...,{scroll:false})`.
+Publication success updates API status without reload; live proof uses a mocked
+publication transition, never publishes real local content.
 
-Real-component Vitest tests use the app's React runtime via aliases/dedupe and
-optimize the linked Lumia package, including CommonJS peers. This matches Next's
-already-configured React aliases and avoids substituting focus/tab primitives.
-Coverage emits JSON for per-file evidence and retains all existing 85% thresholds.
+Lumia owns overlay layers: Sheet overlay200/content210 and Drawer200, consistent
+with Dialog. CMS adds no z-index overrides. `SheetContent.closeLabel` supplies
+translated Close copy. The owner-selected keyboard order is title → key link →
+format → code → Copy; Close follows the content. This overrides the old Close-first
+line in the supplied specification.
 
-The new `/e2e/content-integrations` fixture is disabled in production even when
-the fixture flag is set. It supports allowlisted query fixtures `target=entry`,
-`state=draft|legacy` and `config=invalid`. Browser tests wait for fixture hydration,
-exercise desktop/mobile en-XA, copy denial, focus containment, tab navigation and
-restoration, static examples and invalid config. No backend is needed. For an
-isolated checkout whose dependency symlinks leave the Turbopack root, start the
-existing webpack dev path on the chosen fixture port, then run Playwright against
-that port (all public fixture origins must match):
+The existing PostHog `cms_content_integrations` flag remains default OFF. Unavailable
+or loading flag evaluation hides all entry points and closes an open panel.
+No new flag, backend change, dependency install or key lifecycle form is added.
 
-```sh
-pnpm dev --webpack --hostname 127.0.0.1 --port 3202
-PLAYWRIGHT_E2E_PORT=3202 pnpm exec playwright test e2e/content-integrations.spec.ts
-```
-
-Build verification uses non-secret fixture env values from the repository's
-Playwright configuration plus `NEXT_API_URL` and `XYNES_BUILD_VERSION`. Product
-folder/card/editor wiring, delivery metadata adapters and rollout gates are described
-in the B3 section below. No CMS global key management, API mutation or persistence change is included.
-
-
-## Contextual integration hosts (CMS-INT-B3)
-
-The CMS app owns these contextual consumers. Workspace Admin continues to own API
-key lifecycle. No new authoring route, API endpoint, database migration, auth SDK
-flag contract or dependency is introduced.
-
-- `host-context.ts` builds metadata-only contexts and rejects mismatched entry or
-  workspace IDs. Folder context comes from the existing successful directory-path
-  resolver, stamped with workspace/path/API scope and its persisted UUID. Root,
-  unmatched, failed and resolving folders cannot generate a folder request.
-- `useIntegrationDialog` owns ephemeral open context and close-focus restoration.
-  Scope, auth availability and flag changes immediately clear it, including A→B→A
-  navigation. List scope includes current authoring query; editor scope includes
-  workspace/entry/API origin. No integration preferences use URL or local storage.
-- Toolbar and row/grid components expose optional callbacks; orchestration in
-  `CmsContentListPanel` resolves the original DTO and supplies one dialog. Grid
-  actions restore their menu trigger; row actions stop navigation propagation.
-  With rollout disabled, the existing controls remain intact.
-- `CmsEditorLayout` accepts an opaque `integrationPanel`, a Customize callback,
-  identity and dialog visibility. Details defaults selected and resets on target
-  change. The layout owns tabs, the mobile drawer and logical focus; it performs
-  no API/auth work. Enabled mobile drawers mount only while open, and are removed
-  before the full dialog opens. Closing returns to the visible metadata trigger
-  or desktop Customize, including viewport changes.
-- `CmsEditorScreen` injects context/panel/dialog. The Lumia editor key, document
-  state, autosave, uploads, save/publish handlers and dirty-navigation guard are
-  retained. Opening integration views never saves or publishes.
-- `ContentIntegrationPanel` reuses the B2 request hook/preview in compact mode.
-  `IntegrationAvailabilityNotice` and `IntegrationKeyLink` share the exact
-  publication guidance and safe Workspace Admin link with the full workbench.
-  A published badge alone does not prove delivery availability. Missing or
-  unrecognized optional `deliveryState` is unknown; the DTO parser allows only
-  `available`, `unpublished`, `republish_required`, otherwise unknown. Existing
-  responses without the field remain compatible. Last published snapshots are
-  the supported delivery source; draft controls are deferred.
-
-New host labels live in `cms.contentIntegrations.hosts`, with en-US/en-XA catalogs
-and translator metadata. Catalog/ICU parity checks run in the full test suite.
-Product controls use Lumia Buttons/Flex/Tabs/Dialog and escaped text, not HTML.
-Generated examples contain credential placeholders only. They do not fetch content
-or accept authoring tokens; issuing and authorizing API keys remains server-owned.
-
-### Rollout and verification
-
-The runtime PostHog boolean is `cms_content_integrations` (default OFF in both
-`xynes-auth-sdk/src/types/feature-flags.ts` and
-`xynes-gateway/src/featureFlags/types.ts`). All hosts use
-`useContentIntegrationsEnabled`, which reads the existing SDK provider and hides
-controls while flag evaluation is loading or has failed. Hosts additionally
-require an authenticated session outside its loading state. Disabling the flag
-closes any open integration dialog on the next evaluation. The SDK rejects
-obsolete request successes and failures after workspace switches, so a slow
-previous-workspace response cannot overwrite the current rollout result.
-
-The existing CMS provider forwards the active workspace UUID and bearer token to
-`GET /flags`. The gateway sends the PostHog `workspace` group plus its `id`
-property. The integration flag is excluded from anonymous public flags. Configure
-a boolean flag with the exact key above and enable the intended workspace only.
-No PostHog secret or browser SDK is added. This remains a visibility gate;
-delivery authentication, scopes and published-snapshot rules do not change.
-
-The provider fetches on mount and workspace changes; it does not poll. Refresh
-an open page after a PostHog flip. Deploy the gateway and SDK contract additions
-alongside the CMS consumer before rollout. No database migration is needed.
-The former `NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED` variable and Docker
-build argument are removed; they cannot override PostHog anymore.
-
-Keep `NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE` empty for real PostHog verification.
-The existing override mechanism still forces values in local/CI builds when
-explicitly configured; it takes precedence over the remote result. Browser
-fixtures use that mechanism without transmitting real credentials:
-
-```sh
-NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE='{"cms_content_integrations":true}' pnpm dev --webpack --hostname 127.0.0.1 --port 3206
-PLAYWRIGHT_E2E_PORT=3206 pnpm exec playwright test e2e/content-integration-hosts.spec.ts e2e/content-integrations.spec.ts
-pnpm lint
-pnpm typecheck
-pnpm test:coverage
-pnpm build
-```
-
-For future features, confirm the PostHog key with the owner and ask them to create
-it before implementation and rollout. Add default-off entries to both contracts,
-then test enabled, disabled, malformed/missing and failed evaluation states.
-
-Run build and typecheck sequentially: both consume Next's generated types. The
-`/e2e/content-integration-hosts` route requires the fixture flag and non-production
-mode, accepts only allowlisted host values and uses harmless metadata. Tests cover
-folder/entry IDs, action isolation, real editor dirty-body preservation, no save/
-publish calls, default-off controls, desktop/mobile focus, one modal, pseudo locale
-and page/console errors. Fixture evidence does not replace B5's live API proof.
-
-Legacy debt in touched editor code remains: the permissive document-body boundary
-casts through `unknown` to `LumiaEditorStateJSON`, and existing Details/header/
-Drawer labels contain English. B3 adds no such casts or labels. A document-schema
-validation story and B4 localization/accessibility polish should address these
-separately; no broad editor or shared primitive rewrite is part of B3.
-
-
-## Integration accessibility and responsive behavior (CMS-INT-B4)
-
-B4 extends B1–B3 without changing the delivery contract, rollout flag, authoring
-persistence, request execution or key ownership. `cms.contentIntegrations` was
-already statically registered in B2; no second namespace or dynamic locale imports
-are added. New validation/scroll-region/metadata labels have en-US/en-XA messages
-and translator metadata. Existing unsupported-locale fallback and catalog/ICU
-parity tests remain authoritative.
-
-`useContentIntegration` derives safe field-invalid flags from the existing
-`DirectoryOptionsSchema`. Numeric text stays visible, including empty/fractional/
-out-of-range input. `IntegrationCustomization` combines Lumia's linked bounds hint
-with a unique linked error and `aria-invalid`; errors name whole-number bounds
-and item/character units with ICU formatting. Schema details/raw errors stay out
-of product copy. Valid edits clear field errors and restore generation.
-
-Warnings retain Lumia Alert styling. On Customize, an INVALID_OPTIONS summary
-uses a non-live note when a linked field error already supplies the polite
-announcement. Other errors and summaries outside Customize remain polite statuses,
-so REST preview failures still have recovery guidance. Coming soon,
-clipboard success and manual-copy recovery are polite statuses. Protocol URLs,
-snippets and static response code are read-only/selectable and `translate="no"`;
-URL/snippet spellcheck is disabled. Code/response areas scroll without adding a
-custom keyboard trap; only the existing modal traps focus. The field-table scroller
-is a named, focusable region with a visible focus outline for native arrow-key
-scrolling. The Workspace Admin anchor is positioned so its absolutely positioned
-screen-reader hint remains within the link; long sidebar content cannot place that
-hint outside the scrolling panel and inflate document height.
-
-`ContentIntegrationDialog` uses Lumia's existing grid with two bounded rows. The
-header and primitive close remain outside the named, focusable scrolling body.
-The outer container uses `overflow-clip`: `overflow-hidden` permits programmatic
-focus scrolling and hid the header in native Chrome at200% zoom. Inner body uses
-`overflow-y-auto` and scroll containment. Tabs wrap their labels in min-width-safe
-spans; metadata tabs and Customize fit the narrow sidebar. Long unbroken resource
-names wrap; response tables/code may scroll within their own bounded areas. No
-shell CSS override, custom Dialog/Tabs primitive or new dependency is introduced.
-
-Integration-enabled mobile metadata composes a localized trigger and named Lumia
-Drawer, using additive `closeLabel`/`ariaLabel` props. The companion DS change owns
-that former hard-coded-label defect, tests it independently and retains default
-English for existing consumers. Flag-off hosts retain their original behavior.
-Both CMS CI workflows pin companion [Lumia PR236](https://github.com/Xynes-Studio/lumia-ds/pull/236)
-commit `16b2f5adc8556c54d2cb1aa35257b588667fa7d6`. Review/merge the companion
-before this consumer. Local development uses its rebuilt linked dist; no npm
-publication is required. B5 still
-owns provisioned read-only-key/copied-request and frozen publication proof before
-production activation. No key lifecycle form or request execution is added.
-
-### Verification
-
-```sh
-pnpm exec vitest run src/features/content-integrations src/i18n/config.test.ts
-PLAYWRIGHT_E2E_PORT=3207 pnpm exec playwright test e2e/content-integration-accessibility.spec.ts e2e/content-integration-hosts.spec.ts e2e/content-integrations.spec.ts
-pnpm lint
-pnpm test:coverage
-pnpm build
-pnpm typecheck
-```
-
-Use non-secret fixture env (as in Playwright config) and the B3 webpack dev path
-for isolated linked checkouts. Keep build/typecheck sequential. A stale shared
-Vitest optimizer cache can retain old linked DS APIs: refresh only an owned cache
-or use an equivalent local config with an owned app-local cacheDir, never delete
-another checkout's cache. No coverage thresholds/exclusions are changed.
-
-Browser coverage includes320px en-US/en-XA with a1200-character unbroken title,
-keyboard tabs/REST recovery/focus containment, selectable code and copy denial,
-translated/named mobile Drawer, desktop pseudo-locale sidebar and a short CSS
-reflow viewport. Native Chrome200% is verified separately; a smaller viewport is
-only a regression surrogate, not a claim of actual browser zoom. Owned native tab
-zoom is restored to100% and the tab closed after verification.
-
-Remaining legacy debt is outside these integration controls: editor/header Details
-copy and en-US date formatters are still hard-coded, and the permissive persisted
-editor-body cast remains. They require an editor-wide localization/document decoder
-story; B4 adds no new casts, skips, credentials or raw error interpolation.
+Validate with `pnpm lint`, `pnpm typecheck`, `pnpm test --maxWorkers=2`,
+`pnpm test:coverage --maxWorkers=2`, `pnpm build`, then the three isolated
+content-integration Playwright suites. Report per-file coverage (new files≥80%,
+global configured85% all metrics), browser keyboard/reflow proof and live-runtime
+limitations in [CMS-API-ACCESS-PANEL.md](manual-verification/CMS-API-ACCESS-PANEL.md).
+Provisioned B5 transport tests remain separately authorized; do not create keys
+or mutate local CMS content for visual validation.
 
 ## Provisioned integration browser acceptance (CMS-INT-B5)
 

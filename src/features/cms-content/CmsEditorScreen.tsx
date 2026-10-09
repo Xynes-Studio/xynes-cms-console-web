@@ -2,7 +2,7 @@
 import { useContentIntegrationsEnabled } from "../content-integrations/useContentIntegrationsEnabled";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAuth, useFeatureFlag, useWorkspace } from "@xynes/auth-sdk";
 import { Alert, ConfirmDialog } from "@lumia-ui/components";
 import {
@@ -11,8 +11,9 @@ import {
   type MediaUploadCallbacks,
 } from "@lumia-ui/editor";
 import { CmsEditorLayout } from "../../components/dashboard/CmsEditorLayout";
-import { ContentIntegrationDialog } from "../content-integrations/ContentIntegrationDialog";
-import { ContentIntegrationPanel } from "../content-integrations/ContentIntegrationPanel";
+import { ApiAccessSheet } from "../content-integrations/ApiAccessSheet";
+import { EditorApiCard } from "../content-integrations/EditorApiCard";
+import { useApiDesktop } from "../content-integrations/useApiDesktop";
 import { useIntegrationDialog } from "../content-integrations/useIntegrationDialog";
 import {
   buildEntryIntegrationContext,
@@ -166,6 +167,12 @@ export function CmsEditorScreen({
   } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const desktop = useApiDesktop();
+  const [apiPanelRequest, setApiPanelRequest] = useState(0);
+  const consumedApiLink = useRef<string | null>(null);
+  const integrationTriggerRef = useRef<HTMLButtonElement>(null);
 
   const resolvedSlug = (currentWorkspace?.slug?.trim() || workspaceSlug).trim();
   const integrationsEnabled =
@@ -393,6 +400,19 @@ export function CmsEditorScreen({
   const selectedIntegrationContext =
     integrationDialog.context && integrationContext ? integrationContext : null;
 
+  useEffect(() => {
+    if (searchParams.get("panel") !== "api") { consumedApiLink.current = null; return; }
+    if (!integrationsEnabled || !integrationContext || !entry) return;
+    const linkIdentity = `${integrationIdentity}:${pathname}:${searchParams.toString()}`;
+    if (consumedApiLink.current === linkIdentity) return;
+    consumedApiLink.current = linkIdentity;
+    if (desktop) setApiPanelRequest(previous => previous + 1);
+    else integrationDialog.open(integrationContext, () => integrationTriggerRef.current?.focus());
+    const remaining = new URLSearchParams(searchParams.toString());
+    remaining.delete("panel");
+    router.replace(`${pathname}${remaining.size ? `?${remaining}` : ""}`, {scroll:false});
+  }, [searchParams, pathname, desktop, integrationsEnabled, integrationContext, entry, integrationIdentity, integrationDialog, router]);
+
   // ── publish ───────────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
     if (!entry || !currentWorkspace?.id || !accessToken || isPublishing) return;
@@ -600,10 +620,12 @@ export function CmsEditorScreen({
       />
       <CmsEditorLayout
         integrationIdentity={integrationIdentity}
+        apiPanelRequest={apiPanelRequest}
+        integrationTriggerRef={integrationTriggerRef}
         integrationDialogOpen={Boolean(selectedIntegrationContext)}
         integrationPanel={
           integrationsEnabled && integrationContext ? (
-            <ContentIntegrationPanel context={integrationContext} />
+            <EditorApiCard key={String(Boolean(selectedIntegrationContext))} context={integrationContext} />
           ) : undefined
         }
         onCustomizeIntegrations={(restoreFocus) => {
@@ -664,7 +686,8 @@ export function CmsEditorScreen({
         />
       </CmsEditorLayout>
       {selectedIntegrationContext && (
-        <ContentIntegrationDialog
+        <ApiAccessSheet
+          host="editor"
           context={selectedIntegrationContext}
           open
           onOpenChange={(open) => {

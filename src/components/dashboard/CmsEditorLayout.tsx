@@ -57,6 +57,8 @@ export type CmsEditorLayoutProps = {
   onCustomizeIntegrations?: (restoreFocus: () => void) => void;
   integrationDialogOpen?: boolean;
   integrationIdentity?: string;
+  apiPanelRequest?: number;
+  integrationTriggerRef?: React.RefObject<HTMLButtonElement | null>;
   children: React.ReactNode;
 };
 
@@ -199,6 +201,12 @@ function IntegrationMetadataButton({
     </Button>
   );
 }
+function ApiHeaderButton({buttonRef,onOpen}: {buttonRef:React.RefObject<HTMLButtonElement | null>;onOpen:(trigger:HTMLButtonElement)=>void}) {
+  const t = useTranslations("cms.contentIntegrations");
+  return <Button ref={buttonRef} type="button" variant="outline" size="sm" className="md:hidden" onClick={event => onOpen(event.currentTarget)}>
+    <Icon name="code" size="sm" aria-hidden="true" />{t("editor.tab")}
+  </Button>;
+}
 function IntegrationMetadataDrawer({
   open,
   onOpenChange,
@@ -255,7 +263,7 @@ function EditorMetadataTabs({
           className="min-w-0 whitespace-normal [overflow-wrap:anywhere] px-2"
         >
           <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">
-            {t("hosts.integrations")}
+            {t("editor.tab")}
           </span>
         </TabsTrigger>
       </TabsList>
@@ -267,11 +275,12 @@ function EditorMetadataTabs({
         <Button
           type="button"
           variant="outline"
-          className="mt-4 h-auto w-full whitespace-normal text-left"
+          size="sm"
+          className="mt-4 w-full"
           data-content-integration-customize
           onClick={(event) => onCustomize(event.currentTarget)}
         >
-          {t("hosts.customize")}
+          {t("editor.open")}
         </Button>
       </TabsContent>
     </Tabs>
@@ -303,6 +312,8 @@ export function CmsEditorLayout({
   onCustomizeIntegrations,
   integrationDialogOpen = false,
   integrationIdentity,
+  apiPanelRequest = 0,
+  integrationTriggerRef,
   children,
 }: CmsEditorLayoutProps) {
   const initialScheduleDefaults = getScheduleFieldDefaults(
@@ -312,16 +323,19 @@ export function CmsEditorLayout({
   const [isMetaDrawerOpen, setIsMetaDrawerOpen] = useState(false);
   const metadataElement = useRef<HTMLElement>(null);
   const metadataTrigger = useRef<HTMLButtonElement>(null);
+  const localApiTrigger = useRef<HTMLButtonElement>(null);
+  const apiTrigger = integrationTriggerRef ?? localApiTrigger;
   const hasIntegrations = Boolean(integrationPanel && onCustomizeIntegrations);
   const metadataScope = JSON.stringify([integrationIdentity, hasIntegrations]);
   const [metadataSession, setMetadataSession] = useState<{
     scope: string;
     tab: "details" | "integrations";
-  }>({ scope: metadataScope, tab: "details" });
+    request: number;
+  }>({ scope: metadataScope, tab: apiPanelRequest ? "integrations" : "details", request: apiPanelRequest });
   let metadataTab = metadataSession.tab;
-  if (metadataSession.scope !== metadataScope) {
-    metadataTab = "details";
-    setMetadataSession({ scope: metadataScope, tab: "details" });
+  if (metadataSession.scope !== metadataScope || metadataSession.request !== apiPanelRequest) {
+    metadataTab = apiPanelRequest && metadataSession.request !== apiPanelRequest ? "integrations" : "details";
+    setMetadataSession({ scope: metadataScope, tab: metadataTab, request: apiPanelRequest });
   }
   const selectMetadataTab = useCallback((tab: string) => {
     if (tab === "details" || tab === "integrations")
@@ -343,7 +357,7 @@ export function CmsEditorLayout({
         trigger.focus();
         return;
       }
-      const mobile = metadataTrigger.current;
+      const mobile = apiTrigger.current;
       if (mobile?.isConnected && mobile.getClientRects().length) {
         mobile.focus();
         return;
@@ -617,6 +631,7 @@ export function CmsEditorLayout({
               Metadata
             </Button>
           )}
+          {hasIntegrations && <ApiHeaderButton buttonRef={apiTrigger} onOpen={customizeIntegrations} />}
         </div>
         <div className="flex items-center gap-2">
           <Button

@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CmsEditorLayout } from "../../components/dashboard/CmsEditorLayout";
 import { getCmsMessages } from "../../i18n/config";
-import { ContentIntegrationPanel } from "./ContentIntegrationPanel";
+import { EditorApiCard } from "./EditorApiCard";
 import { entryContext } from "./workbench-test-fixtures";
 afterEach(cleanup);
 const base = {
@@ -28,7 +28,7 @@ function ui(dialogOpen = false) {
         integrationIdentity="entry-a"
         integrationDialogOpen={dialogOpen}
         onCustomizeIntegrations={vi.fn()}
-        integrationPanel={<ContentIntegrationPanel context={entryContext} />}
+        integrationPanel={<EditorApiCard context={entryContext} />}
       >
         <textarea aria-label="Canvas draft" defaultValue="Unsaved canvas" />
       </CmsEditorLayout>
@@ -44,8 +44,10 @@ describe("editor integration presentation", () => {
       "true",
     );
     fireEvent.change(canvas, { target: { value: "Still dirty" } });
-    fireEvent.click(screen.getByRole("tab", { name: "Integrations" }));
-    expect(screen.getByLabelText("Request URL")).toBeVisible();
+    fireEvent.click(screen.getByRole("tab", { name: "API" }));
+    expect(screen.getByText("6 of 6 fields")).toBeVisible();
+    expect(screen.getByRole("button", {name:"Open API panel"})).toBeVisible();
+    expect(document.querySelector("pre,code")).toBeNull();
     expect(screen.queryByRole("tab", { name: "Scripts" })).toBeNull();
     expect(screen.getByLabelText("Canvas draft")).toBe(canvas);
     expect(canvas).toHaveValue("Still dirty");
@@ -82,15 +84,15 @@ it("restores Customize on desktop and resets sidebar selection when its identity
         {...base}
         integrationIdentity={identity}
         onCustomizeIntegrations={customize}
-        integrationPanel={<ContentIntegrationPanel context={entryContext} />}
+        integrationPanel={<EditorApiCard context={entryContext} />}
       >
         <textarea aria-label="Canvas draft" defaultValue="Dirty" />
       </CmsEditorLayout>
     </NextIntlClientProvider>
   );
   const { rerender } = render(renderNode("a"));
-  fireEvent.click(screen.getByRole("tab", { name: "Integrations" }));
-  const button = screen.getByRole("button", { name: "Customize request" });
+  fireEvent.click(screen.getByRole("tab", { name: "API" }));
+  const button = screen.getByRole("button", { name: "Open API panel" });
   vi.spyOn(button, "getClientRects").mockReturnValue(new VisibleRects());
   fireEvent.click(button);
   customize.mock.calls[0]?.[0]();
@@ -111,17 +113,17 @@ it("restores mobile metadata or the new desktop Customize after the drawer has u
         integrationIdentity="a"
         integrationDialogOpen={open}
         onCustomizeIntegrations={customize}
-        integrationPanel={<ContentIntegrationPanel context={entryContext} />}
+        integrationPanel={<EditorApiCard context={entryContext} />}
       >
         <p>Canvas</p>
       </CmsEditorLayout>
     </NextIntlClientProvider>
   );
   const { rerender } = render(renderNode(false));
-  const metadata = screen.getByRole("button", { name: "Open metadata panel" });
-  fireEvent.click(metadata);
-  fireEvent.click(screen.getByRole("tab", { name: "Integrations" }));
-  fireEvent.click(screen.getByRole("button", { name: "Customize request" }));
+  const metadata = screen.getByRole("button", { name: "API" });
+  fireEvent.click(screen.getByRole("button", { name: "Open metadata panel" }));
+  fireEvent.click(screen.getByRole("tab", { name: "API" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open API panel" }));
   rerender(renderNode(true));
   vi.spyOn(metadata, "getClientRects").mockReturnValue(new VisibleRects());
   customize.mock.calls[0]?.[0]();
@@ -133,7 +135,7 @@ it("restores mobile metadata or the new desktop Customize after the drawer has u
   });
   customize.mock.calls[0]?.[0]();
   expect(
-    screen.getByRole("button", { name: "Customize request" }),
+    screen.getByRole("button", { name: "Open API panel" }),
   ).toHaveFocus();
 });
 
@@ -144,7 +146,7 @@ it("localizes the integration metadata trigger and names its drawer/close contro
         {...base}
         integrationIdentity="entry-a"
         onCustomizeIntegrations={vi.fn()}
-        integrationPanel={<ContentIntegrationPanel context={entryContext} />}
+        integrationPanel={<EditorApiCard context={entryContext} />}
       >
         <textarea aria-label="Canvas draft" />
       </CmsEditorLayout>
@@ -162,4 +164,29 @@ it("localizes the integration metadata trigger and names its drawer/close contro
   });
   fireEvent.click(close);
   expect(trigger).toHaveFocus();
+});
+
+it("opens the API sheet directly from the mobile header without a metadata drawer", () => {
+  const customize = vi.fn();
+  const integrationTriggerRef = { current: null as HTMLButtonElement | null };
+  render(<NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}>
+    <CmsEditorLayout {...base} integrationTriggerRef={integrationTriggerRef} onCustomizeIntegrations={customize} integrationPanel={<EditorApiCard context={entryContext} />}><p>Canvas</p></CmsEditorLayout>
+  </NextIntlClientProvider>);
+  expect(integrationTriggerRef.current).toBe(screen.getByRole("button", {name:"API"}));
+  fireEvent.click(screen.getByRole("button", {name:"API"}));
+  expect(customize).toHaveBeenCalledOnce();
+  expect(document.querySelector("[data-lumia-drawer-root]")).toBeNull();
+});
+it("applies a desktop API tab request once without remounting the canvas", () => {
+  const node = (apiPanelRequest: number) => <NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}>
+    <CmsEditorLayout {...base} apiPanelRequest={apiPanelRequest} onCustomizeIntegrations={vi.fn()} integrationPanel={<EditorApiCard context={entryContext} />}><textarea aria-label="Canvas" defaultValue="Dirty" /></CmsEditorLayout>
+  </NextIntlClientProvider>;
+  const {rerender} = render(node(0));
+  const canvas = screen.getByLabelText("Canvas");
+  rerender(node(1));
+  expect(screen.getByRole("tab", {name:"API"})).toHaveAttribute("aria-selected","true");
+  fireEvent.click(screen.getByRole("tab", {name:"Details"}));
+  rerender(node(1));
+  expect(screen.getByRole("tab", {name:"Details"})).toHaveAttribute("aria-selected","true");
+  expect(screen.getByLabelText("Canvas")).toBe(canvas);
 });

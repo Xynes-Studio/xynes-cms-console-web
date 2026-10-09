@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { buildIntegrationRequest } from "./build-request";
 import { DELIVERY_CONTRACT } from "./delivery-contract";
 import { buildRequestSnippets } from "./snippets";
@@ -11,7 +11,6 @@ import type {
   RequestSnippets,
 } from "./types";
 
-export type IntegrationTab = "customize" | "rest" | "scripts" | "sdk";
 export type CodeFormat = keyof RequestSnippets;
 export type IntegrationControls = {
   sortBy: "publishedAt" | "title";
@@ -21,26 +20,39 @@ export type IntegrationControls = {
   search: string;
   fields: readonly DeliveryField[];
 };
+export type ChangedParam = "sortBy" | "limit" | "offset" | "search" | "fields";
+// Preferences contain no content, keys or authentication. Browser memory only.
+const preferences = new Map<
+  string,
+  { controls: IntegrationControls; format: CodeFormat }
+>();
+function contextKey(context: IntegrationContext) {
+  const target = context.target;
+  return `${context.workspaceId}:${target.kind}:${target.kind === "directory" ? target.directoryId : target.entryId}`;
+}
 type CopyStatus = "idle" | "pending" | "copied" | "manual";
 type Session = {
   identity: string;
   generation: symbol;
   revision: number;
   controls: IntegrationControls;
-  tab: IntegrationTab;
   format: CodeFormat;
   copyStatus: CopyStatus;
+  copyFeedbackRevision: number;
+  changedParam: ChangedParam | null;
 };
 function newSession(identity: string, context: IntegrationContext): Session {
   const directory = DELIVERY_CONTRACT.operations.directory;
+  const saved = preferences.get(contextKey(context));
   return {
     identity,
     generation: Symbol(),
     revision: 0,
-    tab: "customize",
-    format: "curl",
+    format: saved?.format ?? "curl",
     copyStatus: "idle",
-    controls: {
+    copyFeedbackRevision: 0,
+    changedParam: null,
+    controls: saved?.controls ?? {
       sortBy: directory.defaultSortBy,
       sortDirection: directory.defaultSortDirection,
       limit: String(directory.limit.default),
@@ -88,7 +100,36 @@ export function useContentIntegration(context: IntegrationContext) {
     current = newSession(identity, context);
     setSession(current);
   }
-  const { controls, format, tab, copyStatus } = current;
+  const { controls, format, copyStatus, copyFeedbackRevision, changedParam } =
+    current;
+  const generation = current.generation;
+  const revision = current.revision;
+  useEffect(() => {
+    if (copyStatus !== "copied") return;
+    const timer = window.setTimeout(() => {
+      setSession((previous) =>
+        previous.generation === generation && previous.revision === revision
+          ? { ...previous, copyStatus: "idle" }
+          : previous,
+      );
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [copyStatus, generation, revision, copyFeedbackRevision]);
+  const preferenceKey = contextKey(context);
+  useEffect(() => {
+    preferences.set(preferenceKey, { controls, format });
+  }, [preferenceKey, controls, format]);
+  useEffect(() => {
+    if (!changedParam) return;
+    const timer = window.setTimeout(() => {
+      setSession((previous) =>
+        previous.generation === generation && previous.revision === revision
+          ? { ...previous, changedParam: null }
+          : previous,
+      );
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [changedParam, generation, revision]);
   const options =
     target.kind === "directory"
       ? {
@@ -117,9 +158,22 @@ export function useContentIntegration(context: IntegrationContext) {
     : undefined;
 
   function updateControls(patch: Partial<IntegrationControls>) {
+    const changed: ChangedParam | null =
+      patch.sortBy !== undefined || patch.sortDirection !== undefined
+        ? "sortBy"
+        : patch.limit !== undefined
+          ? "limit"
+          : patch.offset !== undefined
+            ? "offset"
+            : patch.search !== undefined
+              ? "search"
+              : patch.fields !== undefined
+                ? "fields"
+                : null;
     setSession((previous) => ({
       ...previous,
       controls: { ...previous.controls, ...patch },
+      changedParam: changed,
       revision: previous.revision + 1,
       copyStatus: "idle",
     }));
@@ -128,20 +182,11 @@ export function useContentIntegration(context: IntegrationContext) {
     setSession((previous) => ({
       ...previous,
       format: next,
+      changedParam: null,
       revision: previous.revision + 1,
       copyStatus: "idle",
     }));
   }
-  const setTab = useCallback((next: string) => {
-    if (
-      next !== "customize" &&
-      next !== "rest" &&
-      next !== "scripts" &&
-      next !== "sdk"
-    )
-      return;
-    setSession((previous) => ({ ...previous, tab: next }));
-  }, []);
   async function copy() {
     if (snippet === undefined || writeInFlight.current) return;
     writeInFlight.current = true;
@@ -151,7 +196,13 @@ export function useContentIntegration(context: IntegrationContext) {
       setSession((previous) =>
         previous.generation === copySession.generation &&
         previous.revision === copySession.revision
-          ? { ...previous, copyStatus: status }
+          ? {
+              ...previous,
+              copyStatus: status,
+              copyFeedbackRevision:
+                previous.copyFeedbackRevision +
+                (status === "copied" || status === "manual" ? 1 : 0),
+            }
           : previous,
       );
     complete("pending");
@@ -176,13 +227,13 @@ export function useContentIntegration(context: IntegrationContext) {
     invalidFields,
     result,
     snippet,
-    tab,
     format,
     copyStatus,
+    copyFeedbackRevision,
+    changedParam,
     copyPending,
     updateControls,
     setFormat,
-    setTab,
     copy,
   };
 }

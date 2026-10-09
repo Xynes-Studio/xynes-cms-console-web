@@ -1,15 +1,57 @@
 {
   "namespace": "cms.contentIntegrations",
   "owner": "xynes-cms-console-web",
-  "audience": "CMS authors copying published-content REST requests",
+  "audience": "CMS authors and developers using the last published content through REST APIs",
   "context": {
-    "availability": "Publication metadata is informational; never promise a request was executed or access verified. Legacy snapshots require republish.",
-    "fields": "Labels are translated; JSON field names, GET, JSON and executable code remain protocol syntax.",
-    "comingSoon": "No dates, scripts or SDK imports. REST works through the API.",
-    "hosts": "Folder/card/editor hosts consume the same request engine. Integrations never saves or publishes; root needs a persisted folder. Details is the default editor panel.",
-    "validation": "Inline polite messages tied to their field. Bounds use locale-aware numbers and explicit item/character units; never show validator internals."
+    "status": "One state line using publication metadata. Fixed folder wording, no count or execution/access claim. No internal delivery jargon.",
+    "steps": "Linear key/copy/publish guidance. Publishing remains in the editor header; CMS never manages keys here.",
+    "options": "Contract-backed progressive options. Sort combines field/direction. Search matches title or description. ID is always returned.",
+    "preview": "Static JSON only, never live content. Protocol identifiers remain unchanged.",
+    "editor": "API publishing hub and one shared panel. Existing authoring save/publish behavior remains unchanged.",
+    "hosts": "Existing metadata navigation labels and safe public-API configuration errors. Root has no API toolbar action.",
+    "fields": "Labels are translated; JSON field names remain protocol syntax.",
+    "validation": "Polite field errors with bounded whole-number/item/character limits; do not render raw validator details."
   },
   "placeholders": {
+    "triggerFolderAria": [
+      "title"
+    ],
+    "triggerEntryAria": [
+      "title"
+    ],
+    "eyebrowFolder": [
+      "workspace"
+    ],
+    "eyebrowEntry": [
+      "workspace"
+    ],
+    "title": [
+      "title"
+    ],
+    "steps.keyBody": [
+      "workspace"
+    ],
+    "codeAria": [
+      "format"
+    ],
+    "options.summaryFolder": [
+      "items",
+      "sort",
+      "fields"
+    ],
+    "options.summaryEntry": [
+      "fields",
+      "total"
+    ],
+    "options.fix": [
+      "field"
+    ],
+    "options.summaryOffset": [
+      "offset"
+    ],
+    "options.summarySearch": [
+      "search"
+    ],
     "bounds.limit": [
       "min",
       "max"
@@ -21,12 +63,6 @@
     "bounds.search": [
       "max"
     ],
-    "hosts.folderAction": [
-      "title"
-    ],
-    "hosts.entryAction": [
-      "title"
-    ],
     "validation.limit": [
       "min",
       "max"
@@ -37,6 +73,16 @@
     ],
     "validation.search": [
       "max"
+    ],
+    "options.itemsCount": [
+      "count"
+    ],
+    "options.fieldsCount": [
+      "count"
+    ],
+    "eyebrowFolderPath": [
+      "path",
+      "workspace"
     ]
   },
   "security": {
