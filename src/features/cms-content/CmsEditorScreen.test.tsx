@@ -59,6 +59,8 @@ const {
 
 type MockLumiaEditorMode = "passthrough" | "sticky-on-mount";
 
+const mockReplace = vi.fn();
+let mockSearchParams = new URLSearchParams();
 let mockIsAuthLoading = false;
 let mockIsAuthenticated = true;
 let mockCurrentWorkspace = {
@@ -83,7 +85,9 @@ let mockAutosaveState: UseCmsEntryAutosaveResult<
 // ─── module mocks ─────────────────────────────────────────────────────────────
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useSearchParams: () => mockSearchParams,
+  usePathname: () => "/dashboard/editorial/content/entry/33333333-3333-4333-8333-333333333333/edit",
 }));
 
 vi.mock("@xynes/auth-sdk", () => ({
@@ -141,6 +145,7 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     onTagsChange,
     onRetrySave,
     integrationPanel,
+    apiPanelRequest,
     onCustomizeIntegrations,
   }: {
     children: React.ReactNode;
@@ -162,6 +167,7 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
     onTagsChange?: (v: string) => void;
     onRetrySave?: () => void;
     integrationPanel?: React.ReactNode;
+    apiPanelRequest?: number;
     onCustomizeIntegrations?: (restoreFocus: () => void) => void;
   }) => (
     <div
@@ -171,6 +177,7 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
       data-save-state={saveState}
       data-is-publishing={isPublishing ? "true" : "false"}
       data-path-label={pathLabel}
+      data-api-panel-request={apiPanelRequest}
     >
       {integrationPanel}
       {integrationPanel && (
@@ -180,7 +187,7 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
             onCustomizeIntegrations?.(() => trigger.focus());
           }}
         >
-          Customize request
+          Open API panel
         </button>
       )}
       <span data-testid="editor-title">{title}</span>
@@ -284,10 +291,12 @@ vi.mock("../../components/dashboard/CmsEditorLayout", () => ({
 vi.mock("@lumia-ui/components", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@lumia-ui/components")>()),
   Alert: ({
+    children,
     title,
     description,
     "data-testid": testId,
   }: {
+    children?: React.ReactNode;
     title: string;
     description: string;
     "data-testid"?: string;
@@ -295,6 +304,7 @@ vi.mock("@lumia-ui/components", async (importOriginal) => ({
     <div data-testid={testId ?? "alert"}>
       <span>{title}</span>
       <span>{description}</span>
+      {children}
     </div>
   ),
   ConfirmDialog: ({
@@ -1953,9 +1963,9 @@ describe("CMS-INT-B3 editor scope and preservation", () => {
     );
     const editor = screen.getByTestId("lumia-editor-mock");
     const beforeBody = screen.getByTestId("lumia-editor-value").textContent;
-    fireEvent.click(screen.getByRole("button", { name: "Customize request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open API panel" }));
     expect(
-      screen.getByRole("dialog", { name: "Content integrations" }),
+      screen.getByRole("dialog", { name: 'Use "Unsaved local title" via API' }),
     ).toBeVisible();
     expect(screen.getByTestId("lumia-editor-mock")).toBe(editor);
     expect(screen.getByTestId("editor-title")).toHaveTextContent(
@@ -1964,7 +1974,7 @@ describe("CMS-INT-B3 editor scope and preservation", () => {
     expect(screen.getByTestId("lumia-editor-value").textContent).toBe(
       beforeBody,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Close integrations" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByTestId("editor-title")).toHaveTextContent(
       "Unsaved local title",
     );
@@ -2001,10 +2011,10 @@ it("CMS-INT-B3 closes integrations immediately when authoring authentication is 
   const { rerender } = render(node);
   await waitFor(() =>
     expect(
-      screen.getByRole("button", { name: "Customize request" }),
+      screen.getByRole("button", { name: "Open API panel" }),
     ).toBeVisible(),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Customize request" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open API panel" }));
   expect(screen.getByRole("dialog")).toBeVisible();
   mockIsAuthenticated = false;
   rerender(
@@ -2014,7 +2024,7 @@ it("CMS-INT-B3 closes integrations immediately when authoring authentication is 
   );
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(
-    screen.queryByRole("button", { name: "Customize request" }),
+    screen.queryByRole("button", { name: "Open API panel" }),
   ).toBeNull();
 });
 describe("integration-enabled editor publication failures", () => {
@@ -2070,7 +2080,7 @@ describe("integration-enabled editor publication failures", () => {
       );
       await waitFor(() =>
         expect(
-          screen.getByRole("button", { name: "Customize request" }),
+          screen.getByRole("button", { name: "Open API panel" }),
         ).toBeVisible(),
       );
       fireEvent.click(screen.getByTestId(`status-${status}-btn`));
@@ -2083,8 +2093,46 @@ describe("integration-enabled editor publication failures", () => {
         "private-marker",
       );
       expect(
-        screen.getByRole("button", { name: "Customize request" }),
+        screen.getByRole("button", { name: "Open API panel" }),
       ).toBeVisible();
     },
   );
+});
+
+describe("API editor deep links", () => {
+  afterEach(() => { mockSearchParams = new URLSearchParams(); vi.unstubAllGlobals(); });
+  it.each([true, false])("applies panel=api after loading and retains other query parameters (desktop=%s)", async desktop => {
+    mockSearchParams = new URLSearchParams("panel=api&keep=1");
+    vi.stubGlobal("matchMedia", () => ({matches:desktop,addEventListener:vi.fn(),removeEventListener:vi.fn()}));
+    mockIntegrationFlags.enabled = true;
+    const workspaceId="55555555-5555-4555-8555-555555555555", entryId="33333333-3333-4333-8333-333333333333";
+    mockCurrentWorkspace={id:workspaceId,slug:"editorial",name:"Editorial"};
+    mockGetAccessToken.mockResolvedValue("fixture-token");
+    mockGetWorkspaceContentEntryById.mockResolvedValue(makeEntry({id:entryId,workspaceId,status:"draft",title:"Deep link",body:makeEditorBody()}));
+    render(<NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}><CmsEditorScreen entryId={entryId} workspaceSlug="editorial" /></NextIntlClientProvider>);
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining("/edit?keep=1"),{scroll:false}));
+    if (desktop) {expect(screen.getByTestId("cms-editor-layout")).toHaveAttribute("data-api-panel-request","1");expect(screen.queryByRole("dialog")).toBeNull();}
+    else expect(screen.getByRole("dialog",{name:'Use "Deep link" via API'})).toBeVisible();
+    expect(mockPublishWorkspaceContentEntry).not.toHaveBeenCalled();
+    expect(mockAutosaveFlush).not.toHaveBeenCalled();
+  });
+});
+
+it("refreshes API status after header Publish succeeds without reloading or remounting the canvas", async () => {
+  mockIntegrationFlags.enabled=true;
+  const workspaceId="66666666-6666-4666-8666-666666666666",entryId="33333333-3333-4333-8333-333333333333";
+  mockCurrentWorkspace={id:workspaceId,slug:"editorial",name:"Editorial"};
+  mockGetAccessToken.mockResolvedValue("fixture-token");
+  const draft=makeEntry({id:entryId,workspaceId,title:"Publication proof",body:makeEditorBody(),status:"draft",deliveryState:"unpublished"});
+  mockGetWorkspaceContentEntryById.mockResolvedValue(draft);
+  mockAutosaveFlush.mockResolvedValue(undefined);
+  mockPublishWorkspaceContentEntry.mockResolvedValue({...draft,status:"published",deliveryState:"available",publishedAt:"2026-10-08T10:00:00.000Z",updatedAt:"2026-10-08T10:00:00.000Z"});
+  render(<NextIntlClientProvider locale="en-US" messages={getCmsMessages("en-US")}><CmsEditorScreen entryId={entryId} workspaceSlug="editorial" /></NextIntlClientProvider>);
+  await screen.findByText("Not live yet. Publish this entry and the request starts working. You can copy it now.");
+  const canvas=screen.getByTestId("lumia-editor-mock");
+  fireEvent.click(screen.getByTestId("publish-btn"));
+  await screen.findByText("Live. The API returns the last published version.");
+  expect(screen.getByTestId("lumia-editor-mock")).toBe(canvas);
+  expect(mockGetWorkspaceContentEntryById).toHaveBeenCalledTimes(1);
+  expect(mockPublishWorkspaceContentEntry).toHaveBeenCalledTimes(1);
 });

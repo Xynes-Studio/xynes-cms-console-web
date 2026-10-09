@@ -2,7 +2,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { Button, Flex } from "@lumia-ui/components";
 import { useTranslations } from "next-intl";
-import { ContentIntegrationDialog } from "../../../src/features/content-integrations/ContentIntegrationDialog";
+import { ApiAccessSheet } from "../../../src/features/content-integrations/ApiAccessSheet";
 import {
   folderContext,
   entryContext,
@@ -52,12 +52,19 @@ export function IntegrationFixture({
       data-testid="integration-fixture"
       data-ready={ready}
     >
-      <h1>{t("title")}</h1>
-      <ContentIntegrationDialog
+      <h1>{t("trigger")}</h1>
+      <ApiAccessSheet
         context={context}
         open={open}
         onOpenChange={setOpen}
-        trigger={<Button type="button">{t("title")}</Button>}
+        trigger={
+          <Button
+            type="button"
+            aria-label={t("title", { title: context.target.label })}
+          >
+            {t("trigger")}
+          </Button>
+        }
       />
     </Flex>
   );

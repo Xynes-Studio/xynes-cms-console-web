@@ -7,6 +7,7 @@ import {
   Input,
   Select,
   ViewToggle,
+  Skeleton,
   type BreadcrumbItem,
 } from "@lumia-ui/components";
 import { Icon } from "@lumia-ui/icons";
@@ -34,8 +35,8 @@ export type CmsContentToolbarProps = {
   onCreate: () => void;
   onIntegrations?: (trigger: HTMLButtonElement) => void;
   integrationsTargetLabel?: string;
-  integrationsDisabled?: boolean;
-  integrationsUnavailableReason?: string;
+  integrationsResolving?: boolean;
+  integrationActive?: boolean;
   onQueryChange: (value: string) => void;
   onSearchSubmit: () => void;
   onSortChange: (value: CmsContentSortBy) => void;
@@ -67,8 +68,8 @@ export function CmsContentToolbar({
   onCreate,
   onIntegrations,
   integrationsTargetLabel,
-  integrationsDisabled = false,
-  integrationsUnavailableReason,
+  integrationsResolving = false,
+  integrationActive = false,
   onQueryChange,
   onSearchSubmit,
   onSortChange,
@@ -106,7 +107,7 @@ export function CmsContentToolbar({
           <Breadcrumbs
             items={breadcrumbItems}
             maxItems={5}
-            className="min-w-0 rounded-full border border-border px-3 py-1 [&_a]:cursor-pointer [&_button]:cursor-pointer"
+            className={`min-w-0 rounded-full border border-border px-3 py-1 [&_a]:cursor-pointer [&_button]:cursor-pointer${integrationActive ? " [&_[aria-current=page]]:ring-2 [&_[aria-current=page]]:ring-primary/40" : ""}`}
           />
           <span className="text-sm text-foreground/90">
             {t("itemCount", { count: itemCount })}
@@ -127,29 +128,13 @@ export function CmsContentToolbar({
             />
             {t("create")}
           </Button>
-          {onIntegrations && (
-            <Flex direction="col" gap="none">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={integrationsDisabled}
-                aria-label={
-                  integrationsTargetLabel
-                    ? ti("hosts.folderAction", {
-                        title: integrationsTargetLabel,
-                      })
-                    : ti("hosts.integrations")
-                }
+          {onIntegrations && (integrationsResolving
+            ? <Skeleton data-testid="cms-api-trigger-resolving" className="h-8 w-28" />
+            : integrationsTargetLabel && <Button
+                size="sm" variant="outline"
+                aria-label={ti("triggerFolderAria", { title: integrationsTargetLabel })}
                 onClick={(event) => onIntegrations(event.currentTarget)}
-              >
-                {ti("hosts.integrations")}
-              </Button>
-              {integrationsUnavailableReason && (
-                <p className="max-w-64 text-xs text-muted-foreground">
-                  {integrationsUnavailableReason}
-                </p>
-              )}
-            </Flex>
+              ><Icon name="code" size="sm" aria-hidden="true" />{ti("trigger")}</Button>
           )}
           <form className="flex items-center gap-2" onSubmit={handleSubmit}>
             <Input

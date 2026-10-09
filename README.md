@@ -323,63 +323,31 @@ validated folder/entry URLs, placeholder-only cURL/server-side REST examples and
 static projected response fixtures. There is no new UI or rollout flag enabled
 in B1. See [developer usage, security policy and A5 handoff](docs/DEVELOPER.md#cms-content-integration-request-engine-cms-int-b1).
 
-## Content integrations workbench (CMS-INT-B2)
+## Use via API panel
 
-`src/features/content-integrations/ContentIntegrationDialog.tsx` accepts a validated
-B1 `IntegrationContext`, controlled `open`/`onOpenChange` and an optional host
-button via `trigger`. `IntegrationWorkbench.tsx` also renders independently for
-a future editor panel. Customize, REST API, Scripts and SDK share the same
-contract-driven request engine. Requests serve published snapshots; examples are
-static and no request is executed when the UI opens or changes.
+CMS folder and entry delivery helpers use the reusable `ApiAccessSheet` subsystem
+in `src/features/content-integrations/`. It presents status, a Workspace Admin
+read-only-key link, the copy-ready cURL request, optional publishing guidance,
+progressive request options and a static JSON example. JavaScript and URL formats
+are available; SDK/scripts remain noninteractive coming-soon copy.
 
-B2 has a development-only fixture
-at `/e2e/content-integrations` with `NEXT_PUBLIC_ENABLE_E2E_FIXTURES=1`; production
-builds return not found. The dialog requires Lumia's additive `closeLabel` prop
-from the companion CMS-INT-B2 DS change. Build linked components before checking
-the app. No new dependency, runtime configuration or migration is required.
+The panel uses a right Lumia Sheet (420px at tablet widths, 480px on desktop) and
+a full-height bottom Sheet below 768px. Initial focus goes to the title; Copy is
+reachable within four Tab presses, with Close after the content. The folder
+trigger appears only inside a resolved saved folder. Entries have row/menu
+triggers; the editor has an API publishing hub and a direct mobile API button.
+`?panel=api` selects the desktop API tab or opens the mobile sheet after loading,
+then removes only that parameter. Publishing stays in the editor header.
 
-```sh
-pnpm exec vitest run src/features/content-integrations
-pnpm exec playwright test e2e/content-integrations.spec.ts
-pnpm lint
-pnpm typecheck
-pnpm test:coverage
-pnpm build
-```
+Options and format persist per target in browser memory only. Generating/copying
+examples makes no delivery requests and accepts no real API key. The request
+builder, contracts and fixtures remain unchanged. The existing PostHog
+`cms_content_integrations` gate still defaults OFF and fails closed.
 
-See `docs/DEVELOPER.md` for ownership, state/copy behavior and localization.
-
-
-## Contextual integration hosts (CMS-INT-B3)
-
-Folder toolbar, content row/card and editor metadata hosts reuse the workbench.
-Folder requests use the resolved, persisted directory UUID. The root view asks
-for a folder first. Editor Details stays the default tab; Integrations shows a
-compact read-only preview with Customize opening the full dialog. Mobile metadata
-hands off to the dialog and restores logical focus without saving or publishing.
-
-The PostHog boolean `cms_content_integrations` enables these controls for
-authenticated, ready sessions. The gateway evaluates the active workspace and
-the auth SDK delivers the result through `/flags`; missing flags and unavailable
-evaluation keep the controls hidden. Disable the flag and refresh the page to
-turn the feature off. This is a visibility gate, not authorization.
-For local/CI fixtures only, use
-`NEXT_PUBLIC_FEATURE_FLAGS_OVERRIDE='{"cms_content_integrations":true}'`.
-Leave overrides empty when checking real PostHog targeting. The former
-`NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED` environment gate is no longer read.
-
-See [B3 ownership and verification](docs/DEVELOPER.md#contextual-integration-hosts-cms-int-b3).
-
-
-## Integration accessibility (CMS-INT-B4)
-
-Inline option errors are associated with their fields and announced politely.
-The dialog keeps its header/Close control fixed while its named body scrolls;
-keyboard-accessible code and wrapped tabs/actions support narrow and zoomed views.
-Labels and announcements use the existing en-US/en-XA integration catalogs.
-The localized metadata drawer requires Lumia's additive `closeLabel`/`ariaLabel`
-API from the companion B4 DS change. See the developer guide for test and release
-ordering. Rollout remains off pending B5 live API acceptance.
+See [developer guidance](docs/DEVELOPER.md#use-via-api-subsystem) and
+[verification report](docs/manual-verification/CMS-API-ACCESS-PANEL.md).
+Local development consumes rebuilt linked Lumia packages without an npm release;
+CI/provenance checkouts must pin the companion immutable commit.
 
 ### CMS-INT-B5 provisioned acceptance
 

@@ -1,31 +1,77 @@
 {
-  "title": "Content integrations",
-  "description": "Build a request for published content.",
-  "close": "Close integrations",
-  "workspace": "Workspace",
-  "folder": "Folder",
-  "entry": "Content",
-  "format": "Response format",
-  "json": "JSON",
-  "tabs": {
-    "customize": "Customize",
-    "rest": "REST API",
-    "scripts": "Scripts",
-    "sdk": "SDK"
+  "trigger": "Use via API",
+  "triggerFolderAria": "Use folder \"{title}\" via API",
+  "triggerEntryAria": "Use \"{title}\" via API",
+  "eyebrowFolder": "Folder · workspace {workspace}",
+  "eyebrowEntry": "Entry · workspace {workspace}",
+  "title": "Use \"{title}\" via API",
+  "description": "Copy a request that returns this content from the CMS API.",
+  "close": "Close",
+  "status": {
+    "published": "Live. The API returns the last published version.",
+    "changes": "Live, but your latest edits aren't. Republish to update what the API returns.",
+    "unpublished": "Not live yet. Publish this entry and the request starts working. You can copy it now.",
+    "archived": "Not live. Archived content isn't served. Restore and republish it to go live.",
+    "legacy": "Not live. This was published before API delivery existed. Republish it once to fix it.",
+    "unknown": "We couldn't confirm whether this is live. The request works once it's published.",
+    "folder": "Returns published entries in this folder. Drafts and subfolders aren't included. If you moved an entry here, republish it to include it."
   },
-  "controls": {
-    "order": "Order by",
-    "direction": "Direction",
+  "steps": {
+    "keyTitle": "Get a read-only key",
+    "keyBody": "You need a read-only API key for workspace {workspace}. Create it once in Workspace Admin.",
+    "keyAction": "Create key",
+    "keySkip": "Already have one? Skip to step 2.",
+    "copyTitle": "Copy the request",
+    "copyHelper": "Replace $XYNES_API_KEY with your key. Copied examples never contain a real key.",
+    "urlHeader": "Send it with the header Authorization: Bearer '<your key>'.",
+    "publishTitle": "Publish to go live",
+    "publishBody": "The API serves the last published version.",
+    "publishAction": "Publish from the editor",
+    "publishInEditor": "Use Publish at the top of the editor."
+  },
+  "formats": {
+    "curl": "cURL",
+    "serverFetch": "JavaScript",
+    "url": "URL"
+  },
+  "codeAria": "Request code, {format}",
+  "copy": "Copy",
+  "copied": "Copied",
+  "copyFailed": "Couldn't copy. Select the code and copy it manually.",
+  "options": {
+    "adjust": "Adjust",
+    "summaryFolder": "{items} · {sort} · {fields}",
+    "summaryEntry": "{fields} of {total} fields",
+    "sort": "Sort",
     "newest": "Newest first",
     "oldest": "Oldest first",
-    "az": "A–Z",
-    "za": "Z–A",
-    "limit": "Items per request",
-    "fields": "Fields to return",
-    "id": "ID — always returned",
-    "advanced": "Advanced",
-    "offset": "Skip items",
-    "search": "Search title"
+    "titleAsc": "Title A–Z",
+    "titleDesc": "Title Z–A",
+    "limit": "Items per page",
+    "fields": "Fields",
+    "idAlways": "ID is always included",
+    "pagination": "Pagination",
+    "offset": "Skip first",
+    "offsetHelp": "To load the next page, add your items-per-page number to this. Check page.hasMore in the response.",
+    "search": "Title or description contains",
+    "searchPlaceholder": "launch",
+    "fix": "Fix {field} to update the request.",
+    "goToField": "Go to field",
+    "summaryOffset": " · skip {offset}",
+    "summarySearch": " · title contains \"{search}\"",
+    "itemsCount": "{count, plural, one {# item} other {# items}}",
+    "fieldsCount": "{count, plural, one {# field} other {# fields}}",
+    "unknownItems": "— items"
+  },
+  "preview": {
+    "toggle": "What you'll get back",
+    "note": "Example only, not your live content. Fields match your selection.",
+    "pagination": "The response includes page.hasMore. When it's true, request the next page with a larger skip value."
+  },
+  "roadmap": "JavaScript SDK and scripts are coming soon.",
+  "editor": {
+    "tab": "API",
+    "open": "Open API panel"
   },
   "fields": {
     "id": "ID",
@@ -37,7 +83,7 @@
   },
   "errors": {
     "INVALID_API_BASE_URL": "Public API address is missing or invalid. Ask your administrator to configure the public gateway URL.",
-    "INVALID_CONTEXT": "The workspace or content target is missing or invalid. Reopen integrations from your workspace.",
+    "INVALID_CONTEXT": "The workspace or content target is missing or invalid. Reopen the API panel from your workspace.",
     "INVALID_OPTIONS": "Use whole numbers within the limits shown and keep search within its character limit."
   },
   "bounds": {
@@ -45,65 +91,19 @@
     "offset": "{min, number}–{max, number} items skipped",
     "search": "Up to {max, number} characters"
   },
-  "availability": {
-    "unknown": "Availability has not been checked. Delivery requires published content and an authorized workspace API key.",
-    "unpublished": "Publish this content before it can be delivered. You can copy the request for later use.",
-    "archived": "Republish this archived content to restore delivery. You can copy the request for later use.",
-    "changes": "Saved edits are excluded until you republish. Delivery serves the last published version.",
-    "legacy": "Republish this legacy content to create a validated delivery snapshot.",
-    "published": "Delivery serves the last published version. The example below does not verify availability or access."
+  "validation": {
+    "limit": "Enter a whole number from {min, number} to {max, number} items.",
+    "offset": "Enter a whole number from {min, number} to {max, number} items skipped.",
+    "search": "Use no more than {max, number} characters."
   },
-  "adminLink": "Get a read-only API key in Workspace Admin",
   "externalHint": "(opens in new tab)",
-  "preview": {
-    "url": "Request URL",
-    "auth": "Authentication",
-    "authHint": "A read-only API key for this workspace is required. Keep it on your server; examples use an environment variable.",
-    "format": "Code format",
-    "formats": {
-      "url": "URL only",
-      "curl": "cURL",
-      "serverFetch": "Server-side JavaScript (fetch)"
-    },
-    "code": "Code example",
-    "copy": "Copy example",
-    "pending": "Copying…",
-    "copied": "Copied",
-    "manual": "Copy manually: select the code and copy it with your keyboard or device menu.",
-    "fields": "Selected response fields",
-    "name": "Field",
-    "type": "Type",
-    "required": "Always returned",
-    "yes": "Yes",
-    "no": "No",
-    "example": "Static example — not live content",
-    "response": "Example response"
-  },
-  "comingSoon": {
-    "title": "Coming soon",
-    "description": "Scripts and SDKs are planned. Use the REST API to integrate published content today.",
-    "rest": "Use REST API"
-  },
   "hosts": {
-    "integrations": "Integrations",
-    "folderAction": "Integrations for folder {title}",
-    "entryAction": "Integrations for {title}",
-    "openFolder": "Open a folder first.",
-    "resolving": "Wait for the folder to load.",
-    "folderUnavailable": "This folder is unavailable. Open a saved folder.",
     "details": "Details",
-    "customize": "Customize request",
-    "panelSummary": "Integrate published content through the REST API.",
     "drawerLabel": "Open metadata panel",
     "panels": "Content panels",
     "configUnavailable": "Public API address is missing. Ask your administrator to configure it.",
     "metadata": "Metadata",
     "closeMetadata": "Close metadata panel"
   },
-  "validation": {
-    "limit": "Enter a whole number from {min, number} to {max, number} items.",
-    "offset": "Enter a whole number from {min, number} to {max, number} items skipped.",
-    "search": "Use no more than {max, number} characters."
-  },
-  "scrollRegion": "Integration options and request"
+  "eyebrowFolderPath": "Folder · {path} · workspace {workspace}"
 }

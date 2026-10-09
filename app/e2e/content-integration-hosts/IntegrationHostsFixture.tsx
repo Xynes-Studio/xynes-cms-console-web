@@ -3,13 +3,12 @@ import { useContentIntegrationsEnabled } from "../../../src/features/content-int
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { Flex } from "@lumia-ui/components";
 import { LumiaEditor, type LumiaEditorStateJSON } from "@lumia-ui/editor";
-import { useTranslations } from "next-intl";
 import { CmsContentToolbar } from "../../../src/components/dashboard/CmsContentToolbar";
 import { CmsContentCardGrid } from "../../../src/components/dashboard/CmsContentCardGrid";
 import { CmsContentCardList } from "../../../src/components/dashboard/CmsContentCardList";
 import { CmsEditorLayout } from "../../../src/components/dashboard/CmsEditorLayout";
-import { ContentIntegrationPanel } from "../../../src/features/content-integrations/ContentIntegrationPanel";
-import { ContentIntegrationDialog } from "../../../src/features/content-integrations/ContentIntegrationDialog";
+import { EditorApiCard } from "../../../src/features/content-integrations/EditorApiCard";
+import { ApiAccessSheet } from "../../../src/features/content-integrations/ApiAccessSheet";
 import { useIntegrationDialog } from "../../../src/features/content-integrations/useIntegrationDialog";
 import {
   buildDirectoryIntegrationContext,
@@ -109,14 +108,16 @@ export function IntegrationHostsFixture({
   const [publishCalls, setPublishCalls] = useState(0);
   const [bodyChanges, setBodyChanges] = useState(0);
   const lastBody = useRef<string | undefined>(undefined);
-  const onEditorChange = useCallback((value: LumiaEditorStateJSON) => {
-    currentBody.current = value;
-    const serialized = JSON.stringify(value);
-    if (lastBody.current !== undefined && lastBody.current !== serialized)
-      setBodyChanges((previous) => previous + 1);
-    lastBody.current = serialized;
-  }, [setBodyChanges]);
-  const t = useTranslations("cms.contentIntegrations");
+  const onEditorChange = useCallback(
+    (value: LumiaEditorStateJSON) => {
+      currentBody.current = value;
+      const serialized = JSON.stringify(value);
+      if (lastBody.current !== undefined && lastBody.current !== serialized)
+        setBodyChanges((previous) => previous + 1);
+      lastBody.current = serialized;
+    },
+    [setBodyChanges],
+  );
   const enabled = useContentIntegrationsEnabled() && !disabled;
   const dialog = useIntegrationDialog(host, enabled);
   const publicationState = resolveIntegrationPublicationState(
@@ -207,9 +208,7 @@ export function IntegrationHostsFixture({
           }}
           integrationIdentity={storedEntry.id}
           integrationPanel={
-            enabled && entry ? (
-              <ContentIntegrationPanel context={entry} />
-            ) : undefined
+            enabled && entry ? <EditorApiCard context={entry} /> : undefined
           }
           integrationDialogOpen={Boolean(dialog.context)}
           onCustomizeIntegrations={(focus) => {
@@ -247,13 +246,11 @@ export function IntegrationHostsFixture({
                 : undefined
             }
             integrationsTargetLabel={folder?.target.label}
-            integrationsDisabled={!folder}
-            integrationsUnavailableReason={
-              enabled && !folder ? t("hosts.openFolder") : undefined
-            }
+            integrationActive={dialog.context?.target.kind === "directory"}
           />
           {host === "grid" ? (
             <CmsContentCardGrid
+              integrationActive={dialog.context?.target.kind === "entry"}
               entryId={storedEntry.id}
               title={title}
               status={
@@ -267,6 +264,7 @@ export function IntegrationHostsFixture({
             />
           ) : (
             <CmsContentCardList
+              integrationActive={dialog.context?.target.kind === "entry"}
               entryId={storedEntry.id}
               title={title}
               status={
@@ -283,7 +281,8 @@ export function IntegrationHostsFixture({
         </>
       )}
       {dialog.context && (
-        <ContentIntegrationDialog
+        <ApiAccessSheet
+          host={host === "editor" ? "editor" : "list"}
           context={
             dialog.context.target.kind === "entry" && entry
               ? entry

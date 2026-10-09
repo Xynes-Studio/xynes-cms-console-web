@@ -136,13 +136,12 @@ describe("CMS-INT-B3 list orchestration", () => {
     vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "0");
     render(ui());
     const button = await screen.findByRole("button", {
-      name: "Integrations for folder News",
+      name: 'Use folder "News" via API',
     });
     await waitFor(() => expect(button).toBeEnabled());
     fireEvent.click(button);
-    fireEvent.click(screen.getByRole("tab", { name: "REST API" }));
-    expect(screen.getByLabelText("Request URL")).toHaveProperty(
-      "value",
+    expect(screen.getByLabelText("Request code, cURL")).toHaveProperty(
+      "textContent",
       expect.stringContaining(`directoryId=${entry.directoryId}`),
     );
     expect(mocks.push).not.toHaveBeenCalled();
@@ -152,21 +151,21 @@ describe("CMS-INT-B3 list orchestration", () => {
   it("opens the entry with its delivery metadata and closes on route/workspace change", async () => {
     mocks.integrationsEnabled = true;
     const { rerender } = render(ui());
-    await screen.findByRole("button", { name: "Integrations for folder News" });
+    await screen.findByRole("button", { name: 'Use folder "News" via API' });
     fireEvent.click(
-      screen.getByRole("button", { name: "Integrations for First story" }),
+      screen.getByRole("button", { name: 'Use "First story" via API' }),
     );
-    expect(screen.getByRole("dialog")).toHaveTextContent("legacy content");
+    expect(screen.getByRole("dialog")).toHaveTextContent("before API delivery existed");
     mocks.pathname = "/dashboard/editorial/content";
     rerender(ui());
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByText("Open a folder first.")).toBeVisible();
+    expect(screen.queryByRole("button", {name:/Use folder/})).toBeNull();
   });
   it("keeps every host action absent while rollout is off", async () => {
     vi.stubEnv("NEXT_PUBLIC_CMS_CONTENT_INTEGRATIONS_ENABLED", "1");
     render(ui());
     await screen.findByText("First story");
-    expect(screen.queryByRole("button", { name: /Integrations/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Use.*via API/ })).toBeNull();
   });
   it.each(["loading", "error"])(
     "keeps integrations hidden while flag evaluation has a %s state",
@@ -177,7 +176,7 @@ describe("CMS-INT-B3 list orchestration", () => {
         state === "error" ? new Error("Flags unavailable") : null;
       render(ui());
       await screen.findByText("First story");
-      expect(screen.queryByRole("button", { name: /Integrations/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Use.*via API/ })).toBeNull();
     },
   );
   it("closes an open dialog immediately when the remote flag is disabled", async () => {
@@ -185,17 +184,17 @@ describe("CMS-INT-B3 list orchestration", () => {
     const { rerender } = render(ui());
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Integrations for folder News" }),
+        screen.getByRole("button", { name: 'Use folder "News" via API' }),
       ).toBeEnabled(),
     );
-    await screen.findByRole("button", { name: "Integrations for First story" });
+    await screen.findByRole("button", { name: 'Use "First story" via API' });
     fireEvent.click(
-      screen.getByRole("button", { name: "Integrations for First story" }),
+      screen.getByRole("button", { name: 'Use "First story" via API' }),
     );
     expect(screen.getByRole("dialog")).toBeVisible();
     mocks.integrationsEnabled = false;
     rerender(ui());
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Integrations/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Use.*via API/ })).toBeNull();
   });
 });

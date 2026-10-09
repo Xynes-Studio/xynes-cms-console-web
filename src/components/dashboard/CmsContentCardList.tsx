@@ -21,6 +21,7 @@ export type CmsEntryCardListProps = {
   status: "draft" | "published" | "archived";
   collaborators: string[];
   isFavorite: boolean;
+  integrationActive?: boolean;
   isDeleting?: boolean;
   isFavoritePending?: boolean;
   onOpen: (entryId: string) => void;
@@ -75,6 +76,7 @@ export function CmsContentCardList({
   status,
   collaborators,
   isFavorite,
+  integrationActive = false,
   isDeleting = false,
   isFavoritePending = false,
   onOpen,
@@ -110,7 +112,7 @@ export function CmsContentCardList({
     <Card
       data-testid="cms-content-card-list"
       data-status={status}
-      className="flex flex-col gap-4 border-border bg-background p-4"
+      className={`flex flex-col gap-4 border-border bg-background p-4${integrationActive ? " ring-2 ring-primary/40" : ""}`}
     >
       <div
         role="button"
@@ -166,14 +168,14 @@ export function CmsContentCardList({
           <Button
             variant="outline"
             size="sm"
-            aria-label={ti("hosts.entryAction", { title })}
+            aria-label={ti("triggerEntryAria", { title })}
             onClick={(event) => {
               event.stopPropagation();
               onIntegrations(entryId, event.currentTarget);
             }}
           >
-            <Icon name="external-link" size="sm" aria-hidden="true" />
-            {ti("hosts.integrations")}
+            <Icon name="code" size="sm" aria-hidden="true" />
+            {ti("trigger")}
           </Button>
         )}
 

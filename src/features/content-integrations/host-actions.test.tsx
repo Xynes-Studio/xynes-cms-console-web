@@ -65,35 +65,29 @@ describe("integration presentation hosts", () => {
     );
     const primary = screen.getByTestId("cms-content-toolbar-primary-row");
     const button = within(primary).getByRole("button", {
-      name: "Integrations for folder News",
+      name: 'Use folder "News" via API',
     });
     fireEvent.click(button);
     expect(action).toHaveBeenCalledOnce();
     expect(
       within(
         screen.getByTestId("cms-content-toolbar-secondary-row"),
-      ).queryByRole("button", { name: /Integrations/ }),
+      ).queryByRole("button", { name: /Use.*via API/ }),
     ).toBeNull();
   });
-  it("explains why root integration is unavailable without calling an action", () => {
+  it("hides the action and helper at root; resolving saved folders show a skeleton", () => {
     const action = vi.fn();
-    render(
-      intl(
-        <CmsContentToolbar
-          {...toolbar}
-          onIntegrations={action}
-          integrationsDisabled
-          integrationsUnavailableReason="Open a folder first."
-        />,
-      ),
-    );
-    expect(screen.getByRole("button", { name: /Integrations/ })).toBeDisabled();
-    expect(screen.getByText("Open a folder first.")).toBeVisible();
+    const { rerender } = render(intl(<CmsContentToolbar {...toolbar} onIntegrations={action} />));
+    expect(screen.queryByRole("button", {name:/via API/})).toBeNull();
+    expect(screen.queryByText("Open a folder first.")).toBeNull();
+    rerender(intl(<CmsContentToolbar {...toolbar} onIntegrations={action} integrationsResolving />));
+    expect(screen.getByTestId("cms-api-trigger-resolving")).toBeVisible();
+    expect(screen.queryByRole("button", {name:/via API/})).toBeNull();
     expect(action).not.toHaveBeenCalled();
   });
   it("keeps existing toolbar unchanged without the optional callback", () => {
     render(intl(<CmsContentToolbar {...toolbar} />));
-    expect(screen.queryByRole("button", { name: /Integrations/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Use.*via API/ })).toBeNull();
   });
   it("list action carries the matching ID and return-focus button without opening/navigating", () => {
     const integrate = vi.fn();
@@ -112,7 +106,7 @@ describe("integration presentation hosts", () => {
       ),
     );
     const button = screen.getByRole("button", {
-      name: "Integrations for First story",
+      name: 'Use "First story" via API',
     });
     fireEvent.click(button);
     expect(integrate).toHaveBeenCalledWith(id, button);
@@ -138,9 +132,13 @@ describe("integration presentation hosts", () => {
       name: "Actions for content First story",
     });
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    const items = screen.getAllByRole("menuitem");
+    expect(items.at(-1)).toHaveAccessibleName('Use "First story" via API');
+    expect(items.at(-2)).not.toHaveTextContent("Delete");
+    expect(screen.getByRole("separator")).toBeVisible();
     bubble.mockClear();
     fireEvent.click(
-      screen.getByRole("menuitem", { name: "Integrations for First story" }),
+      screen.getByRole("menuitem", { name: 'Use "First story" via API' }),
     );
     expect(integrate).toHaveBeenCalledWith(id, trigger);
     expect(open).not.toHaveBeenCalled();
@@ -148,6 +146,6 @@ describe("integration presentation hosts", () => {
   });
   it("keeps card actions unchanged with no integration callback", () => {
     render(intl(<CmsContentCardList {...card} collaborators={[]} />));
-    expect(screen.queryByRole("button", { name: /Integrations/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Use.*via API/ })).toBeNull();
   });
 });

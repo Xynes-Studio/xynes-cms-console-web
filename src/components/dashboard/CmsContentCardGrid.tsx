@@ -7,6 +7,7 @@ import {
   Menu,
   MenuContent,
   MenuItem,
+  MenuSeparator,
   MenuTrigger,
 } from "@lumia-ui/components";
 import { useLocale, useTranslations } from "next-intl";
@@ -29,6 +30,7 @@ export type CmsEntryCardGridProps = {
   avatarUrl?: string | null;
   status: "draft" | "published" | "archived";
   isFavorite: boolean;
+  integrationActive?: boolean;
   isDeleting?: boolean;
   isFavoritePending?: boolean;
   onOpen: (entryId: string) => void;
@@ -68,6 +70,7 @@ export function CmsContentCardGrid({
   avatarUrl,
   status,
   isFavorite,
+  integrationActive = false,
   isDeleting = false,
   isFavoritePending = false,
   onOpen,
@@ -103,7 +106,7 @@ export function CmsContentCardGrid({
       data-status={status}
       className={`flex h-full flex-col gap-4 border-border bg-background p-4 text-left transition-colors hover:bg-muted/20${
         isArchived ? " opacity-60 grayscale" : ""
-      }`}
+      }${integrationActive ? " ring-2 ring-primary/40" : ""}`}
     >
       <div className="flex items-start gap-3">
         <button
@@ -159,17 +162,7 @@ export function CmsContentCardGrid({
             </Button>
           </MenuTrigger>
           <MenuContent align="end">
-            {onIntegrations && (
-              <MenuItem
-                label={ti("hosts.integrations")}
-                icon="external-link"
-                aria-label={ti("hosts.entryAction", { title })}
-                onClick={(event) => event.stopPropagation()}
-                onSelect={() =>
-                  onIntegrations(entryId, integrationTrigger.current)
-                }
-              />
-            )}
+
 
             <MenuItem
               label={isDeleting ? t("deleting") : t("delete")}
@@ -195,6 +188,18 @@ export function CmsContentCardGrid({
               disabled={isFavoritePending}
               onSelect={() => onToggleFavorite(entryId)}
             />
+            {onIntegrations && <MenuSeparator />}
+            {onIntegrations && (
+              <MenuItem
+                label={ti("trigger")}
+                icon="code"
+                aria-label={ti("triggerEntryAria", { title })}
+                onClick={(event) => event.stopPropagation()}
+                onSelect={() =>
+                  onIntegrations(entryId, integrationTrigger.current)
+                }
+              />
+            )}
           </MenuContent>
         </Menu>
       </div>
