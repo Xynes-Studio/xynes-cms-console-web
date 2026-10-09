@@ -11,7 +11,7 @@ and merge checkpoints. No remote merge or package publication is performed.
 
 | Repository | Base | Dependency revision |
 | --- | --- | --- |
-| `lumia-ds` | `3e8eaa1ff07d96563f858b874474cdf0b34a5d30` | `e5c1067995a4b8a99df57e68a8a8421a1b7f676b` |
+| `lumia-ds` | `3e8eaa1ff07d96563f858b874474cdf0b34a5d30` | `cbd49e2a84e1d56e0120eef5d1ef2fbfda864943` |
 | `xynes-cms-console-web` | `d265a5da399e516350b25203c463fb691660d4c8` | Commit containing this report |
 
 All three CMS workflow checkouts and the release provenance record pin that
@@ -259,7 +259,7 @@ The earlier statement that no migration is needed refers to the UI changes, not
 to making this currently unprovisioned runtime ready for delivery.
 
 See [the findings, prioritized acceptance criteria and next-agent prompt](CMS-API-ACCESS-PANEL-HANDOFF-2026-10-09.md). Native 200% zoom and screen-reader audio remain
-unproven. Keep both PRs draft while these review/release boundaries are open.
+unproven. Keep release acceptance open while these review/deployment boundaries remain unresolved.
 
 
 ## Fresh PR-creation verification (2026-10-09)
@@ -283,3 +283,40 @@ These checks validate the existing epic, not the unresolved theme defects or
 current-environment delivery readiness described in the handoff. The broader
 Lumia Storybook visual suite/full workspace build and provisioned backend matrix
 were not rerun in this PR-creation pass.
+
+
+## PR review repairs (2026-10-09)
+
+The failed CMS Code and browser gates check was not an expected acceptance gap.
+Its six failures were `ENOENT` while writing two screenshot paths under a
+developer-specific `/Users` directory on Ubuntu. The locale/viewport cases now
+use `testInfo.outputPath`, keeping artifacts in Playwright's configured output
+directory with distinct test/retry paths. Historical screenshots outside Git
+remain available; new automated captures live under ignored `test-results`.
+
+Lumia PR237 also identified nested scrims painting below parent modal content.
+The regression first failed at `200 >= 210` in both unit and browser checks.
+Modal scrims/content now share the layer above z-50 editors, and later portals
+render their scrim then content above the parent. A harmless, production-disabled
+fixture covers Dialog inside Sheet and Sheet inside Dialog with actual computed
+CSS/document order and Escape/focus restoration. Its modal content mounts only
+while open, matching the real API host's pattern. No app stacking override was
+added and no API/security contract changed.
+
+Both PRs were externally marked ready after creation; this work preserves that
+state. Ready status and automated success do not close the existing visual/API
+readiness findings or native zoom/screen-reader boundaries. The updated immutable Lumia dependency pin and fresh repair verification follow.
+
+
+Repair verification: Lumia `cbd49e2a84e1d56e0120eef5d1ef2fbfda864943` is built locally and pinned in all three
+CMS workflow checkouts plus release provenance. Lumia lint/type-check/components
+build/full suite pass (2,024 pass, two existing skips), including all 28 focused
+Sheet/Dialog/Drawer tests; the changed overlay-layer module has 100% S/B/F coverage.
+CMS lint/typecheck/coverage/build pass (1,095 tests; S/B/F/L 93.22/87.61/97.43/93.72,
+above all configured 85% global gates). The complete browser gate in CI mode
+passes 54 cases with the three pre-existing provisioned B5 cases skipped; those
+require the isolated live-key fixture setup and are not claimed here. Both nesting
+cases pass actual CSS/order and Escape/focus checks, and their inspected screenshots
+show dimmed parent surfaces. All six previously failing screenshot cases now pass.
+No test/coverage threshold was weakened. Logs: `/private/tmp/api-access-pr60-review-*.log`,
+`/private/tmp/api-access-pr237-review-*.log`, plus the nested RED/GREEN logs.

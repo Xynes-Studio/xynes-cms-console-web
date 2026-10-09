@@ -6,7 +6,7 @@ Date: 2026-10-09 (Asia/Kolkata). Scope: the reusable “Use via API” panel and
 
 The existing CMS/Lumia epic is submitted for review as coordinated **draft PRs against develop**. It implements the reusable panel and overlay foundation; it does not implement the new theme/design remediation in this handoff. The unresolved API deployment/access findings and manual acceptance boundaries prohibit a claim that the entire integration is working. Keep the PostHog rollout conservative until readiness is proven.
 
-Companion: [Lumia PR #237](https://github.com/Xynes-Studio/lumia-ds/pull/237), targeting `develop`, pinned commit `e5c1067995a4b8a99df57e68a8a8421a1b7f676b`.
+Companion: [Lumia PR #237](https://github.com/Xynes-Studio/lumia-ds/pull/237), targeting `develop`, pinned commit `cbd49e2a84e1d56e0120eef5d1ef2fbfda864943`.
 
 Merge/release coordination: review Lumia first, retain its immutable pinned revision in all three CMS workflows/provenance, then review CMS. If Lumia code changes, rebuild locally and update those pins to the new reviewed commit before CMS CI. No package publication is needed for the existing local link workflow. Neither PR is authorization to merge or deploy.
 
@@ -140,3 +140,20 @@ Improve normal, hover, focus, selected, pending, copied, manual-copy, invalid-op
 - [ ] QA-01: configured gates/per-file coverage, real-browser themes and current-deployment API smoke all evidenced.
 - [ ] Native zoom/audio acceptance completed or an explicit owner scope decision recorded.
 - [ ] No unrelated edits, data destruction, public draft exposure, permission weakening, raw credential artifacts or unapproved publication.
+
+
+## PR review follow-up (2026-10-09)
+
+The owner subsequently marked both PRs ready externally. That review state is
+preserved; the broader theme/design/API acceptance findings in this handoff are
+still open. A failing automated check is not expected merely because acceptance
+is incomplete.
+
+CMS PR60's browser gate failed six cases when writing developer-specific macOS
+screenshot paths on Ubuntu. Those captures now use Playwright `testInfo.outputPath`
+in the configured ignored output directory. Lumia PR237's nested modal review
+is addressed by using one shared above-editor layer for scrims/content and portal
+paint order, with unit and real-browser regressions for both nesting directions
+and Escape focus restoration. See the appended repair verification in
+`CMS-API-ACCESS-PANEL.md`; the other visual/API work is not part of these narrow
+review repairs.

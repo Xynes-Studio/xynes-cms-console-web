@@ -28,7 +28,7 @@ for (const locale of ["en-US", "en-XA"]) {
     page,
     context,
     baseURL,
-  }) => {
+  }, testInfo) => {
     await context.addCookies([
       {
         name: "xynes_locale",
@@ -67,7 +67,7 @@ for (const locale of ["en-US", "en-XA"]) {
       await code.textContent(),
     );
     await page.screenshot({
-      path: `/Users/archanray/xynes-erp/artifacts/cms-content-integrations-ux-review-2026-10-08/impl-verification/fixture-${locale}-320.png`,
+      path: testInfo.outputPath(`fixture-${locale}-320.png`),
     });
     await close.click();
     await expect(dialog).toBeHidden();
@@ -81,7 +81,7 @@ for (const locale of ["en-US", "en-XA"]) {
 for (const width of [375, 721, 768, 1280]) {
   test(`keyboard Copy within four Tabs and responsive bounds at ${width}px`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await open(page);
     const dialog = page.getByRole("dialog");
@@ -125,7 +125,7 @@ for (const width of [375, 721, 768, 1280]) {
       ).toBe(true);
     }
     await page.screenshot({
-      path: `/Users/archanray/xynes-erp/artifacts/cms-content-integrations-ux-review-2026-10-08/impl-verification/fixture-api-${width}.png`,
+      path: testInfo.outputPath(`fixture-api-${width}.png`),
     });
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
