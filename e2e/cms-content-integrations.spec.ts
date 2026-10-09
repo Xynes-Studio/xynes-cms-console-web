@@ -85,31 +85,31 @@ async function openEntry(
   title: string,
 ) {
   if (host === "editor") {
-    await page.getByRole("tab", { name: "Integrations", exact: true }).click();
-    await page.getByRole("button", { name: "Customize request" }).click();
+    await page.getByRole("tab", { name: "API", exact: true }).click();
+    await page.getByRole("button", { name: "Open API panel" }).click();
   } else if (host === "grid") {
     await page
       .getByRole("button", { name: `Actions for content ${title}` })
       .click();
     await page
-      .getByRole("menuitem", { name: `Integrations for ${title}` })
+      .getByRole("menuitem", { name: `Use "${title}" via API` })
       .click();
   } else
-    await page
-      .getByRole("button", { name: `Integrations for ${title}` })
-      .click();
+    await page.getByRole("button", { name: `Use "${title}" via API` }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
 }
 async function capture(page: Page) {
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("tab", { name: "REST API" }).click();
   return copiedRequest(page, dialog);
 }
 async function copiedRequest(page: Page, scope: Locator) {
-  const displayedUrl = await scope.getByLabel("Request URL").inputValue();
-  const displayedCode = await scope.getByLabel("Code example").inputValue();
-  await scope.getByRole("button", { name: "Copy example" }).click();
-  await expect(scope.getByText("Copied", { exact: true })).toBeVisible();
+  const displayedCode = await scope
+    .getByLabel("Request code, cURL")
+    .textContent();
+  await scope.getByRole("button", { name: "Copy", exact: true }).click();
+  await expect(
+    scope.getByRole("button", { name: "Copied", exact: true }),
+  ).toBeVisible();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toBe(displayedCode);
   // Parse the producer's fixed cURL representation. Never run it in a shell or rebuild its URL.
@@ -119,7 +119,7 @@ async function copiedRequest(page: Page, scope: Locator) {
     );
   if (!match) throw new Error("Unexpected copied request structure");
   const [, url, authorization] = match;
-  expect(url).toBe(displayedUrl);
+  expect(displayedCode).toContain(url);
   return { action: "execute" as const, url, authorization };
 }
 async function execute(
@@ -169,12 +169,12 @@ test.describe("B5 provisioned copied-request acceptance", () => {
     const before = await control({ action: "evidence" });
     await ready(page, "list");
     const folder = page.getByRole("button", {
-      name: "Integrations for folder News",
+      name: 'Use folder "News" via API',
     });
     await folder.click();
-    await page.getByLabel("Order by").selectOption("title");
-    await page.getByLabel("Direction").selectOption("asc");
-    await page.getByLabel("Items per request").fill("1");
+    await page.getByRole("button", { name: "Adjust", exact: true }).click();
+    await page.getByLabel("Sort", { exact: true }).selectOption("title:asc");
+    await page.getByLabel("Items per page").fill("1");
     for (const name of ["Description", "Tags", "Published date"]) {
       const box = page.getByRole("checkbox", { name, exact: true });
       await box.focus();
@@ -192,40 +192,29 @@ test.describe("B5 provisioned copied-request acceptance", () => {
     expect(parsed.searchParams.get("directoryId")).toBe(context.directoryId);
     expect(parsed.searchParams.get("sortBy")).toBe("title");
     expect(parsed.searchParams.get("sortDirection")).toBe("asc");
-    await page.getByRole("tab", { name: "Customize" }).click();
-    await page.getByLabel("Direction").selectOption("desc");
+    await page.getByLabel("Sort", { exact: true }).selectOption("title:desc");
     const descending = await execute(await capture(page));
     expect(feed.parse(descending.response).data.items[0]?.title).toBe(
       "Zulu publication",
     );
-    await page.getByRole("tab", { name: "Customize" }).click();
-    await page.getByLabel("Items per request").fill("100");
-    await page.getByText("Advanced", { exact: true }).click();
-    await page.getByLabel("Skip items").fill("1");
-    await page.getByLabel("Search title").fill("Publication");
-    await page.getByLabel("Direction").selectOption("asc");
-    await page.getByLabel("Items per request").fill("1");
+    await page.getByLabel("Items per page").fill("100");
+    await page.getByLabel("Skip first").fill("1");
+    await page.getByLabel("Title or description contains").fill("Publication");
+    await page.getByLabel("Sort", { exact: true }).selectOption("title:asc");
+    await page.getByLabel("Items per page").fill("1");
     const offset = feed.parse(
       (await execute(await capture(page))).response,
     ).data;
     expect(offset.items[0]?.title).toBe("Zulu publication");
     expect(offset.page.offset).toBe(1);
     expect(Object.keys(offset.items[0] ?? {}).sort()).toEqual(["id", "title"]);
-    await page
-      .getByRole("dialog")
-      .getByRole("tab", { name: "Customize" })
-      .click();
-    await page.getByLabel("Skip items").fill("0");
-    await page.getByLabel("Search title").fill("no-match-B5");
+    await page.getByLabel("Skip first").fill("0");
+    await page.getByLabel("Title or description contains").fill("no-match-B5");
     expect(
       feed.parse((await execute(await capture(page))).response).data.items,
     ).toEqual([]);
-    await page
-      .getByRole("dialog")
-      .getByRole("tab", { name: "Customize" })
-      .click();
-    await page.getByLabel("Search title").fill("");
-    await page.getByLabel("Items per request").fill("100");
+    await page.getByLabel("Title or description contains").fill("");
+    await page.getByLabel("Items per page").fill("100");
     const all = feed.parse((await execute(await capture(page))).response).data
       .items;
     expect(all.map((row) => row.id)).not.toContain(context.childEntryId);
@@ -236,17 +225,6 @@ test.describe("B5 provisioned copied-request acceptance", () => {
     let entryRequest: Awaited<ReturnType<typeof capture>> | undefined;
     for (const host of ["list", "grid", "editor"] as const) {
       await ready(page, host);
-      if (host === "editor") {
-        await page
-          .getByRole("tab", { name: "Integrations", exact: true })
-          .click();
-        const compact = await copiedRequest(
-          page,
-          page.getByRole("tabpanel", { name: "Integrations", exact: true }),
-        );
-        expect(compact).toEqual(entryRequest);
-        expect((await execute(compact)).status).toBe(200);
-      }
       await openEntry(page, host, "Publication A");
       const request = await capture(page);
       if (entryRequest) expect(request).toEqual(entryRequest);
@@ -291,12 +269,12 @@ test.describe("B5 provisioned copied-request acceptance", () => {
     ).toBe(404);
     await ready(page, "list", "&folder=empty");
     await page
-      .getByRole("button", { name: "Integrations for folder Empty" })
+      .getByRole("button", { name: 'Use folder "Empty" via API' })
       .click();
     const empty = await execute(await capture(page));
     expect(empty.status).toBe(200);
     expect(feed.parse(empty.response).data.items).toEqual([]);
-    const link = page.getByRole("link", { name: /Get a read-only API key/ });
+    const link = page.getByRole("link", { name: /Create key/ });
     await expect(link).toHaveAttribute(
       "href",
       /preset=cms_readonly&workspace=editorial/,
@@ -342,7 +320,13 @@ test.describe("B5 provisioned copied-request acceptance", () => {
     await page.getByLabel("Content title").fill("Publication B");
     const editor = page.getByRole("textbox", { name: "Rich Text Editor" });
     await editor.fill("Body B from editor");
+    const savedResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/e2e/cms-integrations") &&
+        response.request().method() === "POST",
+    );
     await page.getByRole("button", { name: "Save draft" }).click();
+    expect((await savedResponse).status()).toBe(200);
     await expect(page.getByTestId("fixture-save-calls")).toHaveText("1");
     const afterSave = detail.parse((await execute(request)).response).data
       .entry;
@@ -353,7 +337,7 @@ test.describe("B5 provisioned copied-request acceptance", () => {
     );
     await ready(page, "list");
     await page
-      .getByRole("button", { name: "Integrations for folder News" })
+      .getByRole("button", { name: 'Use folder "News" via API' })
       .click();
     const newsRequest = await capture(page);
     expect(
@@ -363,7 +347,7 @@ test.describe("B5 provisioned copied-request acceptance", () => {
     ).toContain(context.entryId);
     await ready(page, "list", "&folder=moved");
     await page
-      .getByRole("button", { name: "Integrations for folder Moved" })
+      .getByRole("button", { name: 'Use folder "Moved" via API' })
       .click();
     const movedRequest = await capture(page);
     expect(
@@ -395,7 +379,13 @@ test.describe("B5 provisioned copied-request acceptance", () => {
     ).toEqual([context.entryId]);
     for (const action of ["archive", "unpublish"] as const) {
       await control({ action });
-      expect((await execute(request)).status).toBe(404);
+      const unavailable = await execute(request);
+      expect(unavailable.status).toBe(404);
+      expect(
+        z
+          .object({ error: z.object({ code: z.literal("ENTRY_NOT_FOUND") }) })
+          .parse(unavailable.response).error.code,
+      ).toBe("ENTRY_NOT_FOUND");
       expect(
         feed.parse((await execute(movedRequest)).response).data.items,
       ).toEqual([]);
@@ -406,29 +396,29 @@ test.describe("B5 provisioned copied-request acceptance", () => {
 
   test("legacy guidance requires actual republish and retains scripts/SDK unavailability", async ({
     page,
-  }) => {
+  }, testInfo) => {
     await ready(page, "list", "&entry=legacy");
     await openEntry(page, "list", "Legacy publication");
-    await expect(page.getByText(/Republish this legacy content/)).toBeVisible();
+    await expect(
+      page.getByText(/Republish once to make this previously published entry/),
+    ).toBeVisible();
     const request = await capture(page);
     expect((await execute(request)).status).toBe(404);
     await control({ action: "legacyRepublish" });
     expect((await execute(request)).status).toBe(200);
     await ready(page, "list", "&entry=legacy");
     await openEntry(page, "list", "Legacy publication");
-    await expect(page.getByText(/Republish this legacy content/)).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByText(/Republish once to make this previously published entry/),
+    ).toHaveCount(0);
     expect((await execute(await capture(page))).status).toBe(200);
-    for (const name of ["Scripts", "SDK"]) {
-      await page.getByRole("tab", { name }).click();
-      await expect(
-        page.getByRole("tabpanel").getByText("Coming soon", { exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("tabpanel").locator("textarea,pre,script"),
-      ).toHaveCount(0);
-    }
+    await expect(
+      page.getByText("JavaScript SDK and scripts are coming soon."),
+    ).toBeVisible();
+    await expect(page.getByRole("dialog").getByRole("tab")).toHaveCount(0);
+    await expect(
+      page.getByRole("dialog").locator("textarea,script"),
+    ).toHaveCount(0);
     const evidence = process.env.CMS_B5_EVIDENCE_DIR;
     if (!evidence) throw new Error("Missing owned evidence output");
     await mkdir(evidence, { recursive: true });
@@ -438,7 +428,7 @@ test.describe("B5 provisioned copied-request acceptance", () => {
       { mode: 0o600 },
     );
     await page.screenshot({
-      path: path.join("output/playwright", "b5-live-legacy-sdk.png"),
+      path: testInfo.outputPath("b5-live-legacy-sdk.png"),
       fullPage: true,
     });
   });

@@ -25,6 +25,7 @@ export default async function ContentIntegrationFixturePage({
       draft={query.state === "draft"}
       invalid={query.config === "invalid"}
       long={query.long === "1"}
+      state={query.state}
     />
   );
 }

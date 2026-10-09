@@ -57,14 +57,17 @@ export function ApiAccessContent({
   );
   return (
     <Flex direction="col" gap="lg" className="min-w-0">
-      <ApiStatusLine context={context} />
-      <ol className="grid min-w-0 gap-6 list-none">
-        <li className="grid min-w-0 gap-2">
-          <h3 className="font-semibold">
+      <div className="min-w-0">
+        <ApiStatusLine context={context} />
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">{t("steps.readiness")}</p>
+      </div>
+      <ol className="grid min-w-0 gap-4 list-none">
+        <li className="grid min-w-0 gap-1">
+          <h3 className="text-sm font-medium text-muted-foreground">
             <span aria-hidden="true">1. </span>
             {t("steps.keyTitle")}
           </h3>
-          <p className="text-sm leading-5">
+          <p className="text-xs leading-5 text-muted-foreground">
             {t("steps.keyBody", { workspace: context.workspaceSlug })}
           </p>
           <a
@@ -82,7 +85,6 @@ export function ApiAccessContent({
             />
             <span className="sr-only"> {t("externalHint")}</span>
           </a>
-          <p className="text-xs text-muted-foreground">{t("steps.keySkip")}</p>
         </li>
         <li className="grid min-w-0 gap-2">
           <h3 className="font-semibold">

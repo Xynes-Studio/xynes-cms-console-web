@@ -1,5 +1,6 @@
 import {
   cleanup,
+  act,
   fireEvent,
   render,
   screen,
@@ -64,6 +65,37 @@ describe("request step", () => {
     );
     expect(document.querySelector("textarea,table")).toBeNull();
   });
+  it("gives Copy and Copied icons the button foreground and keeps the toolbar above full-width code", async () => {
+    vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    render(<Harness />);
+    const button = screen.getByRole("button", { name: "Copy" });
+    expect(button.querySelector("svg")).toHaveStyle({ color: "currentColor" });
+    const code = screen.getByLabelText("Request code, cURL");
+    expect(code).not.toHaveClass("pr-20");
+    expect(button.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(button);
+    const copied = await screen.findByRole("button", { name: "Copied" });
+    expect(copied.querySelector("svg")).toHaveStyle({ color: "currentColor" });
+  });
+  it("uses semantic highlight surface and foreground for credential placeholders", () => {
+    render(<Harness />);
+    const mark = screen.getByLabelText("Request code, cURL").querySelector("mark");
+    expect(mark).toHaveClass("bg-highlight", "text-highlight-foreground");
+  });
+  it("keeps a pending copy visibly legible and announces progress", async () => {
+    let finish: () => void = () => {};
+    vi.stubGlobal("navigator", { clipboard: { writeText: () => new Promise<void>(resolve => { finish = resolve; }) } });
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    const copy = screen.getByRole("button", { name: "Copy" });
+    try {
+      await waitFor(() => expect(copy).toHaveAttribute("aria-busy", "true"));
+      expect(copy).toHaveStyle({ opacity: "1" });
+      expect(screen.getByRole("status")).toHaveTextContent("Copying…");
+    } finally {
+      await act(async () => finish());
+    }
+  });
   it.each(["cURL", "JavaScript", "URL"])(
     "marks the credential helper in %s and applies format-specific wrapping",
     (format) => {
@@ -77,7 +109,7 @@ describe("request step", () => {
       if (format === "URL")
         expect(
           screen.getByText(
-            "Send it with the header Authorization: Bearer <your key>.",
+            "URL requests still need the header Authorization: Bearer <your key>.",
           ),
         ).toBeVisible();
     },
@@ -88,7 +120,7 @@ describe("request step", () => {
       target: { value: "7" },
     });
     const code = screen.getByLabelText("Request code, cURL");
-    const changed = code.querySelector("span.bg-warning\\/20");
+    const changed = code.querySelector("[data-changed-param]");
     expect(changed?.textContent).toBe("limit=7");
     expect(changed).toHaveClass("motion-reduce:transition-none");
     expect(code.textContent).toContain("limit=7&");

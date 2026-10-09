@@ -8,26 +8,29 @@
   "description": "[CCooppyy aa rreeqquueesstt tthhaatt rreettuurrnnss tthhiiss ccoonntteenntt ffrroomm tthhee CCMMSS AAPPII.]",
   "close": "[CClloossee]",
   "status": {
-    "published": "[LLiivvee. TThhee AAPPII rreettuurrnnss tthhee llaasstt ppuubblliisshheedd vveerrssiioonn.]",
-    "changes": "[LLiivvee, bbuutt yyoouurr llaatteesstt eeddiittss aarreenn'tt. RReeppuubblliisshh ttoo uuppddaattee wwhhaatt tthhee AAPPII rreettuurrnnss.]",
-    "unpublished": "[NNoott lliivvee yyeett. PPuubblliisshh tthhiiss eennttrryy aanndd tthhee rreeqquueesstt ssttaarrttss wwoorrkkiinngg. YYoouu ccaann ccooppyy iitt nnooww.]",
-    "archived": "[NNoott lliivvee. AArrcchhiivveedd ccoonntteenntt iissnn'tt sseerrvveedd. RReessttoorree aanndd rreeppuubblliisshh iitt ttoo ggoo lliivvee.]",
-    "legacy": "[NNoott lliivvee. TThhiiss wwaass ppuubblliisshheedd bbeeffoorree AAPPII ddeelliivveerryy eexxiisstteedd. RReeppuubblliisshh iitt oonnccee ttoo ffiixx iitt.]",
-    "unknown": "[WWee ccoouullddnn'tt ccoonnffiirrmm wwhheetthheerr tthhiiss iiss lliivvee. TThhee rreeqquueesstt wwoorrkkss oonnccee iitt'ss ppuubblliisshheedd.]",
+    "published": "[PPuubblliisshheedd. TThhee AAPPII sseerrvveess tthhee llaasstt ppuubblliisshheedd vveerrssiioonn.]",
+    "changes": "[PPuubblliisshheedd vveerrssiioonn aavvaaiillaabbllee. RReeppuubblliisshh ttoo iinncclluuddee yyoouurr llaatteesstt eeddiittss.]",
+    "unpublished": "[NNoott ppuubblliisshheedd. PPuubblliisshh tthhiiss eennttrryy bbeeffoorree rreeqquueessttiinngg iitt. YYoouu ccaann ccooppyy tthhee rreeqquueesstt nnooww.]",
+    "archived": "[AArrcchhiivveedd. RReessttoorree aanndd rreeppuubblliisshh bbeeffoorree rreeqquueessttiinngg tthhiiss eennttrryy.]",
+    "legacy": "[RReeppuubblliisshh oonnccee ttoo mmaakkee tthhiiss pprreevviioouussllyy ppuubblliisshheedd eennttrryy aavvaaiillaabbllee tthhrroouugghh tthhee AAPPII.]",
+    "unknown": "[PPuubblliiccaattiioonn ssttaattuuss uunnaavvaaiillaabbllee. TThhee AAPPII sseerrvveess ppuubblliisshheedd ccoonntteenntt oonnllyy.]",
     "folder": "[RReettuurrnnss ppuubblliisshheedd eennttrriieess iinn tthhiiss ffoollddeerr. DDrraaffttss aanndd ssuubbffoollddeerrss aarreenn'tt iinncclluuddeedd. IIff yyoouu mmoovveedd aann eennttrryy hheerree, rreeppuubblliisshh iitt ttoo iinncclluuddee iitt.]"
   },
   "steps": {
     "keyTitle": "[GGeett aa rreeaadd-oonnllyy kkeeyy]",
-    "keyBody": "[YYoouu nneeeedd aa rreeaadd-oonnllyy AAPPII kkeeyy ffoorr wwoorrkkssppaaccee {workspace}. CCrreeaattee iitt oonnccee iinn WWoorrkkssppaaccee AAddmmiinn.]",
+    "keyBody": "[UUssee aa rreeaadd-oonnllyy kkeeyy ffoorr wwoorrkkssppaaccee {workspace}, mmaannaaggeedd iinn WWoorrkkssppaaccee AAddmmiinn.]",
     "keyAction": "[CCrreeaattee kkeeyy]",
-    "keySkip": "[AAllrreeaaddyy hhaavvee oonnee? SSkkiipp ttoo sstteepp 2.]",
+    "keySkip": "[AAllrreeaaddyy hhaavvee aa rreeaadd-oonnllyy kkeeyy? UUssee iitt wwiitthh tthhee rreeqquueesstt bbeellooww.]",
     "copyTitle": "[CCooppyy tthhee rreeqquueesstt]",
-    "copyHelper": "[RReeppllaaccee $XYNES_API_KEY wwiitthh yyoouurr kkeeyy. CCooppiieedd eexxaammpplleess nneevveerr ccoonnttaaiinn aa rreeaall kkeeyy.]",
-    "urlHeader": "[SSeenndd iitt wwiitthh tthhee hheeaaddeerr Authorization: Bearer '<your key>'.]",
+    "copyHelper": "[$XYNES_API_KEY iiss aa nnaammeedd eennvviirroonnmmeenntt vvaarriiaabbllee. EExxaammpplleess ccoonnttaaiinn nnoo ccrreeddeennttiiaallss.]",
+    "urlHeader": "[UURRLL rreeqquueessttss ssttiillll nneeeedd tthhee hheeaaddeerr Authorization: Bearer '<your key>'.]",
     "publishTitle": "[PPuubblliisshh ttoo ggoo lliivvee]",
     "publishBody": "[TThhee AAPPII sseerrvveess tthhee llaasstt ppuubblliisshheedd vveerrssiioonn.]",
     "publishAction": "[PPuubblliisshh ffrroomm tthhee eeddiittoorr]",
-    "publishInEditor": "[UUssee PPuubblliisshh aatt tthhee ttoopp ooff tthhee eeddiittoorr.]"
+    "publishInEditor": "[UUssee PPuubblliisshh aatt tthhee ttoopp ooff tthhee eeddiittoorr.]",
+    "environmentTitle": "[SSeett uupp tthhee eennvviirroonnmmeenntt vvaarriiaabbllee]",
+    "environmentBody": "[IInn yyoouurr sshheellll, eenntteerr tthhee kkeeyy pprriivvaatteellyy wwiitthh tthhee ccoommmmaanndd bbeellooww. TThhee rreeqquueesstt eexxppaannddss tthhee nnaammeedd vvaarriiaabbllee; nneevveerr uussee tthhee rraaww kkeeyy aass iittss nnaammee. KKeeeepp kkeeyyss oouutt ooff ssoouurrccee aanndd sshheellll hhiissttoorryy. JJaavvaaSSccrriipptt eexxaammpplleess rruunn oonn yyoouurr sseerrvveerr.]",
+    "readiness": "[RReeqquueessttss aallssoo rreeqquuiirree aa ccoonnffiigguurreedd ggaatteewwaayy aanndd aa kkeeyy wwiitthh CCMMSS rreeaadd ppeerrmmiissssiioonnss.]"
   },
   "formats": {
     "curl": "[ccUURRLL]",
@@ -105,5 +108,6 @@
     "metadata": "[MMeettaaddaattaa]",
     "closeMetadata": "[CClloossee mmeettaaddaattaa ppaanneell]"
   },
-  "eyebrowFolderPath": "[FFoollddeerr · {path} · wwoorrkkssppaaccee {workspace}]"
+  "eyebrowFolderPath": "[FFoollddeerr · {path} · wwoorrkkssppaaccee {workspace}]",
+  "copyPending": "[CCooppyyiinngg…]"
 }

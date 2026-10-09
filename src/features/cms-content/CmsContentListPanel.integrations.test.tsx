@@ -155,7 +155,7 @@ describe("CMS-INT-B3 list orchestration", () => {
     fireEvent.click(
       screen.getByRole("button", { name: 'Use "First story" via API' }),
     );
-    expect(screen.getByRole("dialog")).toHaveTextContent("before API delivery existed");
+    expect(screen.getByRole("dialog")).toHaveTextContent("previously published entry");
     mocks.pathname = "/dashboard/editorial/content";
     rerender(ui());
     expect(screen.queryByRole("dialog")).toBeNull();

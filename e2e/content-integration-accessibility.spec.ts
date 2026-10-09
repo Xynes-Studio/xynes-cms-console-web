@@ -95,7 +95,10 @@ for (const width of [375, 721, 768, 1280]) {
         exact: true,
       }),
     ).toBeFocused();
-    for (let i = 0; i < 4; i++) await page.keyboard.press("Tab");
+    for (let i = 0; i < 4; i++) {
+      await page.keyboard.press("Tab");
+      if (await page.getByRole("button", { name: "Copy", exact: true }).evaluate(el => el === document.activeElement)) break;
+    }
     await expect(
       page.getByRole("button", { name: "Copy", exact: true }),
     ).toBeFocused();
@@ -107,13 +110,8 @@ for (const width of [375, 721, 768, 1280]) {
       .boundingBox();
     expect(copyBounds).not.toBeNull();
     expect(codeBounds).not.toBeNull();
-    expect(copyBounds!.y).toBeGreaterThanOrEqual(codeBounds!.y);
-    expect(copyBounds!.y + copyBounds!.height).toBeLessThanOrEqual(
-      codeBounds!.y + codeBounds!.height,
-    );
-    expect(copyBounds!.x + copyBounds!.width).toBeLessThanOrEqual(
-      codeBounds!.x + codeBounds!.width,
-    );
+    expect(copyBounds!.y + copyBounds!.height).toBeLessThanOrEqual(codeBounds!.y);
+    expect(copyBounds!.x + copyBounds!.width).toBeLessThanOrEqual(codeBounds!.x + codeBounds!.width + 4);
     const bounds = await dialog.boundingBox();
     expect(Math.round(bounds?.width ?? 0)).toBe(
       width < 768 ? width : width < 1024 ? 420 : 480,

@@ -47,7 +47,7 @@ describe("integration catalogs", () => {
     const onError = vi.fn();
     const t = createTranslator({ locale: "en-US", messages: en, onError });
     expect(t("steps.urlHeader")).toBe(
-      "Send it with the header Authorization: Bearer <your key>.",
+      "URL requests still need the header Authorization: Bearer <your key>.",
     );
     expect(onError).not.toHaveBeenCalled();
   });

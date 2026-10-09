@@ -1,5 +1,6 @@
 /* stylelint-disable at-rule-no-unknown, scss/at-rule-no-unknown */
 @import "tailwindcss";
+@import "@lumia-ui/components/semantic.css";
 @import "@lumia-ui/editor/styles.css";
 @import "@lumia-ui/marketing/styles.css";
 @source "../app/**/*.{js,ts,jsx,tsx,mdx}";
@@ -30,7 +31,10 @@
   --color-ring: var(--colors-ring, #6366f1);
   --color-destructive: var(--colors-destructive, #dc2626);
   --color-destructive-foreground: var(--colors-destructiveForeground, #ffffff);
-  --color-primary: #0f172a;
+  --color-highlight: var(--colors-highlight);
+  --color-highlight-foreground: var(--colors-highlightForeground);
+  --color-primary: var(--colors-primary);
+  --color-on-primary: var(--colors-on-primary);
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;
   --color-primary-200: #c7d2fe;
@@ -54,8 +58,8 @@
 
 body {
   min-height: 100vh;
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--colors-background, var(--background));
+  color: var(--colors-foreground, var(--foreground));
   font-family: var(--font-sans-stack);
   -webkit-tap-highlight-color: transparent;
 }

@@ -52,10 +52,10 @@ test("copy-ready request, progressive controls, invalid-field recovery and sessi
   await page.getByLabel("Items per page").fill("5");
   await expect(page.getByLabel("Request code, cURL")).toContainText("limit=5");
   await expect(
-    page.getByLabel("Request code, cURL").locator("span.bg-warning\\/20"),
+    page.getByLabel("Request code, cURL").locator("[data-changed-param]"),
   ).toHaveText("limit=5");
   await expect(
-    page.getByLabel("Request code, cURL").locator("span.bg-warning\\/20"),
+    page.getByLabel("Request code, cURL").locator("[data-changed-param]"),
   ).toHaveCount(0);
   await page.getByLabel("Sort", { exact: true }).selectOption("title:asc");
   await page.getByLabel("Skip first").fill("3");
@@ -122,7 +122,7 @@ test("unsafe config hides copy; unpublished entries still permit copying with gu
     page.getByRole("button", { name: "Copy", exact: true }),
   ).toHaveCount(0);
   await open(page, "?target=entry&state=draft");
-  await expect(page.getByRole("dialog")).toContainText("Not live yet.");
+  await expect(page.getByRole("dialog")).toContainText("Not published.");
   await expect(
     page.getByRole("button", { name: "Copy", exact: true }),
   ).toBeEnabled();
