@@ -24,7 +24,7 @@ export function resolveIntegrationPublicationState(
   return hasUnsavedChanges ||
     (Number.isFinite(publishedAt) &&
       Number.isFinite(updatedAt) &&
-      updatedAt - publishedAt > 1000)
+      updatedAt > publishedAt)
     ? "published-with-changes"
     : "published";
 }

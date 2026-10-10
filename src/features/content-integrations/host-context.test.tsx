@@ -77,6 +77,13 @@ describe("integration host boundaries", () => {
       }),
     ).toMatchObject({ deliveryState: "unknown" });
   });
+  it("shows a saved subsecond edit as a newer draft revision", () => {
+    expect(resolveIntegrationPublicationState({
+      ...entry,
+      deliveryState: "available",
+      updatedAt: "2026-10-01T00:00:00.250Z",
+    })).toBe("published-with-changes");
+  });
   it("shares the editor's saved/unsaved publication classification", () => {
     expect(resolveIntegrationPublicationState(entry)).toBe("published");
     expect(resolveIntegrationPublicationState(entry, true)).toBe(
