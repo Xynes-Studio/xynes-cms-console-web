@@ -81,6 +81,16 @@ function executeFetch(
   directoryRequest = false,
   fields?: readonly DeliveryField[],
 ) {
+  return executeFetchBatch([scenario], missingKey, directoryRequest, fields)[0];
+}
+
+type FetchResult = { status: number; stdout: string; stderr: string };
+function executeFetchBatch(
+  scenarios: readonly Scenario[],
+  missingKey = false,
+  directoryRequest = false,
+  fields?: readonly DeliveryField[],
+): FetchResult[] {
   let { request, output } = snippets(undefined, fields);
   if (directoryRequest) {
     const result = buildIntegrationRequest(
@@ -101,7 +111,7 @@ function executeFetch(
   }
   const directory = mkdtempSync(join(tmpdir(), "cms-b1-fetch-"));
   try {
-    const file = join(directory, "copied.mjs");
+    const file = join(directory, "runner.mjs");
     const prelude = `const spec = JSON.parse(process.env.SNIPPET_SCENARIO);
 let usedRuntimeKey = false;
 globalThis.fetch = async (url, options) => {
@@ -112,19 +122,37 @@ globalThis.fetch = async (url, options) => {
     return spec.payload;
   }};
 };\n`;
-    writeFileSync(
-      file,
-      prelude + output.serverFetch + "\nconsole.log(JSON.stringify({usedRuntimeKey, data}));\n",
-    );
-    return spawnSync(process.execPath, [file], {
+    // Each case executes an unchanged copied example in its own ESM module.
+    // One process per batch avoids dozens of Node startups within one test.
+    scenarios.forEach((_, index) => writeFileSync(
+      join(directory, `copied-${index}.mjs`),
+      prelude + output.serverFetch + "\nexport default {usedRuntimeKey, data};\n",
+    ));
+    writeFileSync(file, `const cases = JSON.parse(process.env.SNIPPET_CASES);
+const results = [];
+for (let index = 0; index < cases.length; index++) {
+  process.env.SNIPPET_SCENARIO = JSON.stringify(cases[index]);
+  try {
+    const {default: result} = await import('./copied-' + index + '.mjs');
+    results.push({status: 0, stdout: JSON.stringify(result), stderr: ''});
+  } catch (error) {
+    results.push({status: 1, stdout: '', stderr: error.message});
+  }
+}
+console.log(JSON.stringify(results));\n`);
+    const child = spawnSync(process.execPath, [file], {
       env: {
         NODE_ENV: "test",
         XYNES_API_KEY: missingKey ? "" : randomBytes(24).toString("hex"),
-        SNIPPET_SCENARIO: JSON.stringify(scenario),
+        SNIPPET_CASES: JSON.stringify(scenarios),
         EXPECTED_URL: request.url,
       },
       encoding: "utf8",
     });
+    expect(child.status).toBe(0);
+    const results: FetchResult[] = JSON.parse(child.stdout);
+    expect(results).toHaveLength(scenarios.length);
+    return results;
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -147,8 +175,7 @@ it("fails safely for missing keys, HTTP errors and malformed delivery successes"
     { ok: true, status: 200, payload: { ok: true, data: { entry: [] } } },
     { ok: true, status: 200, payload: {}, badJson: true },
   ];
-  for (const scenario of scenarios) {
-    const result = executeFetch(scenario);
+  for (const result of executeFetchBatch(scenarios)) {
     expect(result.status).not.toBe(0);
     expect(result.stderr).not.toContain("must-not-echo");
     expect(result.stderr).not.toContain("fixture private parse details");
@@ -210,16 +237,13 @@ it.each([false, true])(
     const fields = directoryRequest
       ? projectedFields.filter(field => field !== "body")
       : projectedFields;
-    function run(entry: unknown) {
+    function scenario(entry: unknown): Scenario {
       const data = directoryRequest
         ? { items: [entry], page: { limit: 20, offset: 0, hasMore: false } }
         : { entry };
-      return executeFetch(
-        { ok: true, status: 200, payload: { ok: true, data } },
-        false, directoryRequest, fields,
-      );
+      return { ok: true, status: 200, payload: { ok: true, data } };
     }
-    expect(run(projectedEntry).status).toBe(0);
+    const cases: { entry: unknown; label: string; allowed: boolean }[] = [{ entry: projectedEntry, label: "valid projected entry", allowed: true }];
     for (const field of fields) {
       const wrongValues: unknown[] = field === "tags"
         ? ["docs", ["docs", 123], null]
@@ -227,15 +251,22 @@ it.each([false, true])(
           ? [[], "not-object", 123]
           : [123, [], {}, null];
       for (const value of wrongValues) {
-        const response = run({ ...projectedEntry, [field]: value });
-        expect(response.status, `wrong ${field} type`).not.toBe(0);
-        expect(response.stderr).toContain("Invalid CMS delivery data");
+        cases.push({ entry: { ...projectedEntry, [field]: value }, label: `wrong ${field} type`, allowed: false });
       }
       const missing = { ...projectedEntry };
       Reflect.deleteProperty(missing, field);
-      expect(run(missing).status, `missing selected ${field}`).not.toBe(0);
+      cases.push({ entry: missing, label: `missing selected ${field}`, allowed: false });
     }
-    if (!directoryRequest) expect(run({ ...projectedEntry, body: null }).status).toBe(0);
+    if (!directoryRequest) cases.push({ entry: { ...projectedEntry, body: null }, label: "nullable body", allowed: true });
+    const results = executeFetchBatch(cases.map(value => scenario(value.entry)), false, directoryRequest, fields);
+    results.forEach((result, index) => {
+      const value = cases[index];
+      if (value.allowed) expect(result.status, value.label).toBe(0);
+      else {
+        expect(result.status, value.label).not.toBe(0);
+        expect(result.stderr, value.label).toContain("Invalid CMS delivery data");
+      }
+    });
   },
 );
 it("allows omitted unselected fields for ID-only copied requests", () => {

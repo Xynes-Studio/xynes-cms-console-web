@@ -15,9 +15,10 @@ export function integrationAvailability(context: IntegrationContext) {
     context.deliveryState === "unpublished"
   )
     return "unpublished";
-  if (context.publicationState === "published-with-changes") return "changes";
-  if (context.deliveryState === "available") return "published";
-  return "unknown";
+  if (context.deliveryState !== "available") return "unknown";
+  return context.publicationState === "published-with-changes"
+    ? "changes"
+    : "published";
 }
 
 const presentation = {

@@ -110,6 +110,11 @@ describe("API status line", () => {
       expect(alert?.querySelector("button,a")).toBeNull();
     },
   );
+  it("does not infer snapshot availability from newer draft timestamps", () => {
+    render(ui({ ...entryContext, publicationState: "published-with-changes", deliveryState: "unknown" }));
+    expect(screen.getByText("Publication status unavailable. The API serves published content only.")).toBeInTheDocument();
+    expect(screen.queryByText("Published version available. Republish to include your latest edits.")).toBeNull();
+  });
   it("uses fixed informational folder copy without a count or nested-folder promise", () => {
     render(ui(folderContext));
     const copy = screen.getByText(

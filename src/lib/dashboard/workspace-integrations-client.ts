@@ -58,7 +58,7 @@ const isWorkspaceDomainSummary = (
 
 const isWorkspaceApiKeySummary = (
   value: unknown,
-): value is { status: string; presetKey: unknown; scopes?: unknown } => {
+): value is { status: string; presetKey: unknown; scopes?: unknown; expiresAt?: unknown } => {
   if (!isRecord(value)) {
     return false;
   }
@@ -179,12 +179,20 @@ function summarizeApiKeys(rows: unknown[]): {
 } {
   let activeApiKeyCount = 0;
   let cmsScopedApiKeyCount = 0;
+  const now = Date.now();
   for (const row of rows) {
     if (!isWorkspaceApiKeySummary(row)) {
       continue;
     }
     if (row.status !== "active") {
       continue;
+    }
+    // Accounts retains stored status after timestamp expiry. Match the
+    // gateway's expiry boundary; malformed expiry cannot establish usability.
+    if (row.expiresAt !== undefined && row.expiresAt !== null) {
+      if (typeof row.expiresAt !== "string") continue;
+      const expiry = Date.parse(row.expiresAt);
+      if (!Number.isFinite(expiry) || expiry <= now) continue;
     }
     activeApiKeyCount += 1;
 

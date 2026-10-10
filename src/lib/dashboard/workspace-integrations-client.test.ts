@@ -39,6 +39,31 @@ const apiKeysEnvelope = (rows: unknown[]) =>
 describe("fetchCmsWorkspaceIntegrationStatus", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("excludes elapsed and malformed expiries without trusting the stored active status", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-10T00:00:00Z"));
+    const rows = [
+      { status: "active", presetKey: "cms_readonly", expiresAt: "2026-10-09T00:00:00Z" },
+      { status: "active", presetKey: "cms_publisher", expiresAt: "2026-10-10T00:00:00Z" },
+      { status: "active", presetKey: "cms_readonly", expiresAt: "invalid" },
+      { status: "active", presetKey: "cms_readonly", expiresAt: 123 },
+      { status: "active", presetKey: "cms_readonly", expiresAt: "2026-10-11T00:00:00Z" },
+      { status: "active", presetKey: "cms_readonly", expiresAt: null },
+      { status: "active", presetKey: "telemetry_read" },
+      { status: "revoked", presetKey: "cms_readonly", expiresAt: null },
+    ];
+    const fetchMock = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(new Response(url.endsWith("/domains") ? domainsEnvelope([]) : apiKeysEnvelope(rows))),
+    );
+    const status = await fetchCmsWorkspaceIntegrationStatus({
+      apiBaseUrl: "http://localhost:4100", workspaceId: "workspace-1",
+      accessToken: "fixture-token", fetchImpl: fetchMock,
+    });
+    expect(status).toEqual({ verifiedDomainCount: 0, pendingDomainCount: 0,
+      activeApiKeyCount: 3, cmsScopedApiKeyCount: 2, unavailable: false });
   });
 
   it("fetches workspace domains and api keys and collapses them into counts", async () => {

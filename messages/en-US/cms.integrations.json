@@ -26,7 +26,7 @@
     "apiKeys": {
       "eyebrow": "Workspace setup",
       "title": "Workspace API keys",
-      "description": "Issued and scoped from Workspace Admin. Raw values are shown once at creation; hashes only after.",
+      "description": "Issued and scoped from Workspace Admin. Raw values appear once at creation. Counts exclude expired keys but do not verify delivery permissions or gateway readiness.",
       "linkLabel": "Manage workspace API keys",
       "activeMetric": "Active",
       "cmsScopedMetric": "CMS-scoped"
@@ -40,7 +40,7 @@
     "publisher": {
       "eyebrow": "Publisher automation",
       "title": "Publisher automation",
-      "description": "Publisher key for build pipelines or scheduled jobs that publish on your behalf.",
+      "description": "New Publisher keys include published reads, draft authoring, publication and scheduling. Existing keys keep their original scopes.",
       "linkLabel": "Create a publisher automation key"
     }
   }
